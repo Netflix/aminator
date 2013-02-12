@@ -4,25 +4,11 @@ PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/etc/alternatives/jre/bin:/roo
 prog=${prog:-$( [[ $0 != -bash ]] &&  ${0##*/})}
 
 test -f /etc/sysconfig/app-ami && source /etc/sysconfig/app-ami
-bakery=/bakery
 
 # directory for mount points for attached base AMI volumes.
-oven=${bakery}/oven
+oven=${oven:-"/aminator/oven"}
 
-# directory to upload images to
-pkgroot=/mnt/packages
-
-# s3 place to store image bundles
-bundles=/mnt/bundles
-
-# abort after waiting this amount of time for volume/snapshot state transitions.
-vol_state_wait=${vol_state_wait:-300}
-snap_state_wait=${snap_state_wait:-600}
-
-# time to wait for a particular package to arrive in the yum repository.
-pkg_arrival_wait=${pkg_arrival_wait:-90}
-
-mkdir -p $oven $pkgroot $bundles
+mkdir -p $oven
 
 loglevel="local1.info"
 
@@ -34,7 +20,6 @@ parse_args(){
             a) action=${OPTARG} ;;
             # logging tag
             t) log_tag=${OPTARG} ;;
-            # soX/pci (bake)
             x) set -x ;;
             *) echo "${OPTION}: unknown option." &&  exit 1 ;;
         esac
@@ -47,7 +32,7 @@ parse_args(){
 
 mount_dev(){
 #
-# mounts device to /bakery/oven/$(basename $dev)
+# mounts device to $oven/$(basename $dev)
 #
 # Args:
 #       dev=$1: device to mount
@@ -197,7 +182,7 @@ mounts(){
 install_updates(){
 #
 # Update packages in the base AMI.
-# The list of packages is configured through bakery user data by
+# The list of packages is configured through aminator user data by
 # setting the "PKG_updates" parameter in /etc/sysconfig/app-ami
 #
 # This list generally contains the monitoring packages.

@@ -120,9 +120,9 @@ class BakeRequest(object):
         """ install self.pkg onto the file system rooted in self.mnt
         """
         self.fetcher.fetch("%s/var/cache" % (self.mnt))
-        cmd = boto.utils.ShellCommand("/apps/aminator/bin/aminator.sh -t %s -a install %s %s" % (pid,
-                                                                                             self.fetcher.rpmfilepath,
-                                                                                             self.mnt))
+        cmd = boto.utils.ShellCommand("/usr/bin/aminator.sh -t %s -a install %s %s" % (pid,
+                                                                                       self.fetcher.rpmfilepath,
+                                                                                       self.mnt))
         if cmd.getStatus() == 0:
             return True
         else:

@@ -120,7 +120,7 @@ class VolumeManager(boto.ec2.volume.Volume):
             return False
         return True
 
-    @retry(VolumeError, tries=8, delay=1, backoff=2, logger=log)
+    @retry(VolumeError, tries=10, delay=1, backoff=2, logger=log)
     def _attached(self):
         status = self.update()
         if status != 'in-use':
