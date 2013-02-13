@@ -14,7 +14,7 @@ from aminator.packagefetcher import PackageFetcher
 
 import logging
 from logging.handlers import SysLogHandler
-log = logging.getLogger('bake')
+log = logging.getLogger('aminate')
 
 now = datetime.datetime.utcnow
 
