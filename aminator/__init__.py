@@ -16,10 +16,9 @@
 #
 #
 
+__version__ = '0.9.0'
+
 import logging
-
-log = logging.getLogger(__name__)
-
 try:
     from logging import NullHandler
 except ImportError:
@@ -27,4 +26,4 @@ except ImportError:
         def emit(self, record):
             pass
 
-log.addHandler(NullHandler())
+logging.getLogger(__name__).addFilter(NullHandler())

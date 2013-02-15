@@ -1,4 +1,3 @@
-#!/usr/bin/env python2.7
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -17,17 +16,21 @@
 #
 #
 
+
+import argparse
 import datetime
+import logging
 import sys
 import urllib
+from logging.handlers import SysLogHandler
+
 import boto.utils
-from boto.ec2.blockdevicemapping import *
+from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
+
 from aminator.utils import ec2connection, register, add_tags, this_instance, pid
 from aminator.volumemanager import VolumeManager
 from aminator.packagefetcher import PackageFetcher
 
-import logging
-from logging.handlers import SysLogHandler
 log = logging.getLogger('aminate')
 
 now = datetime.datetime.utcnow
@@ -43,7 +46,6 @@ sde = '/dev/sde'
 
 
 def logging_init(executor=None):
-
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(logging.Formatter('%(asctime)s - %(message)s', '%F %T'))
     console.setLevel(logging.INFO)
@@ -61,6 +63,7 @@ def logging_init(executor=None):
     log.root.setLevel(logging.DEBUG)
 
 
+# TODO: this probably belongs in some other module, possibly configurable
 def new_ephemeral_mapping():
     """
     :rtype: `boto.ec2.blockdevicemapping.BlockDeviceMapping`
@@ -75,18 +78,7 @@ def new_ephemeral_mapping():
 
 
 class BakeReqError(StandardError):
-    """
-    aminator Device error
-    """
-    def __init__(self, reason, **kwargs):
-        StandardError.__init__(self, reason)
-        self.reason = reason
-
-    def __repr__(self):
-        return 'BakeReqError: %s' % self.reason
-
-    def __str__(self):
-        return 'BakeReqError: %s' % self.reason
+    pass
 
 
 class BakeRequest(object):
@@ -188,9 +180,7 @@ class BakeRequest(object):
                             self.vol.ami_metadata['base_ami_version'])
 
 
-def main():
-    import optparse
-
+def run():
     usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage)
     parser.add_option("-b", action="store", dest="base_ami_name", default=None,
