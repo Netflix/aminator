@@ -78,7 +78,7 @@ class BakeReqError(StandardError):
     """
     aminator Device error
     """
-    def __init__(self, reason, **kwargs):
+    def __init__(self, reason):
         StandardError.__init__(self, reason)
         self.reason = reason
 
