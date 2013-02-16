@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -17,58 +19,24 @@
 #
 
 import logging
+
 import boto
 import boto.ec2
 import boto.utils
-from boto.regioninfo import RegionInfo
 
-from aminator import NullHandler
+from aminator.clouds.ec2.core import ec2connection, is_ec2_instance
+
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
-
-__is_ec2_instance = None
-
-
-def _is_ec2_instance():
-    """
-    :rtype: bool
-    :return: True if the ec2 instance meta-data url is accessible, Return true, else False.
-    """
-    global __is_ec2_instance
-    if __is_ec2_instance is None:
-        __is_ec2_instance = (boto.utils.get_instance_metadata(timeout=2) is not None)
-    return __is_ec2_instance
-
-
-def ec2connection(region=None):
-    """
-    :type region: str
-    :param region: region for which to set connection endpoint
-    :rtype: :class:`boto.ec2.connection.EC2Connection`
-    :return: A connection to Amazon's EC2 service with an endpoint of the local region
-             None if not an ec2 instance.
-    """
-    if region is None and _is_ec2_instance() is False:
-        region = 'us-east-1'
-    elif region is None:
-        region = boto.utils.get_instance_metadata()['placement']['availability-zone'][:-1]
-
-    ec2regioninfo = RegionInfo(name=region, endpoint='ec2.%s.amazonaws.com' % (region))
-    return boto.connect_ec2(region=ec2regioninfo, is_secure=True)
 
 
 class InstanceInfo(boto.ec2.instance.Instance):
     def __init__(self):
         self.id = None
         self.connection = ec2connection()
-        if _is_ec2_instance():
+        if is_ec2_instance():
             self.id = boto.utils.get_instance_metadata()['instance-id']
             self.update()
-
-    def setReadOnly(self, value):
-        raise AttributeError
 
     @property
     def is_instance(self):

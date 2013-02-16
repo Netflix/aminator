@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -16,35 +18,24 @@
 #
 #
 
-import os
 import logging
+import os
+
 import boto
 import boto.ec2
-from aminator import NullHandler
-from aminator.utils import this_instance, ec2connection, retry, mount, unmount, os_node_exists, snapshot_complete
+
+from aminator.clouds.ec2.core import ec2connection
+from aminator.clouds.ec2.instanceinfo import this_instance
+from aminator.clouds.ec2.utils import snapshot_complete
 from aminator.devicemanager import DeviceManager
+from aminator.exceptions import VolumeError
+from aminator.utils import retry, mount, unmount, os_node_exists
+
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
-
-ovenroot = "/aminator/oven"
+# TODO: this should be configurable
+ovenroot = '/aminator/oven'
 pid = str(os.getpid())
-
-
-class VolumeError(StandardError):
-    """
-    General Bakery Volume error
-    """
-    def __init__(self, reason, *args):
-        StandardError.__init__(self, reason, *args)
-        self.reason = reason
-
-    def __repr__(self):
-        return 'VolumeError: %s' % self.reason
-
-    def __str__(self):
-        return 'VolumeError: %s' % self.reason
 
 
 class VolumeManager(boto.ec2.volume.Volume):
@@ -174,7 +165,9 @@ class VolumeManager(boto.ec2.volume.Volume):
         log.debug('deleting %s' % self.id)
         self.delete()
 
-    def _deleted(self):
+    @property
+    def deleted(self):
+        """Has the volume been deleted from EC2?"""
         try:
             self.update()
         except boto.exception.EC2ResponseError, e:
@@ -182,5 +175,3 @@ class VolumeManager(boto.ec2.volume.Volume):
                 log.debug('%s deleted' % self.id)
                 return True
         return False
-
-    deleted = property(_deleted, None, None, 'bool informing if the volume has been deleted from EC2.')
