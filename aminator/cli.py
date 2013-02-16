@@ -27,7 +27,7 @@ from datetime import datetime
 from logging.handlers import SysLogHandler
 
 from aminator.clouds.ec2.instanceinfo import this_instance
-from aminator.clouds.ec2.utils import ec2connection
+from aminator.clouds.ec2 import ec2connection
 from aminator.core import AminateRequest
 from aminator.utils import pid
 
