@@ -24,9 +24,29 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 requires = [
-    'boto'
+    'boto>=2.7',
+    'botocore>=0.4.2',
+    'requests',
+    'envoy'
 ]
 
+scripts = [
+    'bin/aminator.sh',
+    'bin/aminator-funcs.sh',
+]
+
+entry_points = {
+    'console_scripts': [
+        'aminate = aminator.cli:run',
+    ]
+}
+
+exclude_packages = [
+    'tests',
+    'tests.*',
+]
+
+# py2.6 compatibility
 try:
     import argparse
 except ImportError:
@@ -35,13 +55,9 @@ except ImportError:
 setup(
     name='aminator',
     version=aminator.__version__,
-    packages=find_packages(),
-    scripts=["bin/aminator.sh", "bin/aminator-funcs.sh"],
+    packages=find_packages(exclude=exclude_packages),
+    scripts=scripts,
     install_requires=requires,
-    entry_points={
-        'console_scripts': [
-            'aminate = aminator.cli:run',
-        ],
-    },
+    entry_points=entry_points,
     license=open('LICENSE.TXT').read(),
 )

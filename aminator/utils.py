@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -16,25 +18,22 @@
 #
 #
 
-import os
 import fcntl
+import functools
+import logging
+import os
 import re
 import stat
 from time import sleep
-import logging
-import boto
-import boto.ec2
+
 import boto.utils
 
-from aminator import NullHandler
-from aminator.ec2_data import ec2_obj_states
-from aminator.instanceinfo import this_instance, ec2connection
+from aminator.instanceinfo import this_instance
+
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
 
-pid = str(os.getpid())
+pid = os.getpid()
 
 
 def mounted(dir=None):
@@ -144,93 +143,16 @@ def retry(ExceptionToCheck, tries=3, delay=0.5, backoff=1, logger=None):
     return deco_retry
 
 
-def state_check(inst=None, state=None):
-    """
-    :type inst: any?
-    :param inst: instance of an object with an update() method.
-    :type state: str
-    :param state: object state
-    :rtype: bool
-    :return: True if object's state matches state
-    """
-    assert hasattr(inst, 'update'), "%s doesn't have an update method." % str(inst)
-    inst_name = type(inst).__name__
-    assert state in ec2_obj_states[inst_name], "%s is not a recognized state for %s object." % (state, inst_name)
-    inst.update()
-    if inst_name == 'Snapshot':
-        return inst.status == state
-    else:
-        return inst.state == state
+# http://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
+def memoize(obj):
+    cache = obj.cache = {}
 
-
-@retry(StandardError, tries=600, delay=2, backoff=1, logger=log)
-def wait_for_state(resource, state):
-    if state_check(resource, state):
-        return True
-    raise StandardError('waiting for {} to get to {}({})'.format(resource.id, state, resource.status))
-
-
-def ami_available(ami):
-    return wait_for_state(ami, 'available')
-
-
-def snapshot_complete(snapshot):
-    return wait_for_state(snapshot, 'completed')
-
-
-def register(**reg_args):
-    """
-    register an EC2 image. See boto.ec2.connection.EC2Connection.register_image() for param details.
-    Re-register with a revised name on name collisions.
-    :rtype: :class:`boto.ec2.image.Image`
-    :return: The registered Image or None on failure
-    """
-    ec2 = ec2connection()
-    try:
-        name = reg_args['name']
-    except KeyError:
-        log.error('register called without a name parameter')
-        return None
-
-    retries = 0
-    ami = boto.ec2.image.Image(connection=ec2)
-    while True:
-        try:
-            ami.id = ec2.register_image(**reg_args)
-            break
-        except boto.exception.EC2ResponseError as e:
-            if e.error_code == 'InvalidAMIName.Duplicate' and retries < 2:
-                retries += 1
-                reg_args['name'] = name + (".r%0d" % retries)
-                log.debug("Duplicate Name: re-registering with %s" % reg_args['name'])
-            else:
-                for (code, msg) in e.errors:
-                    log.debug("EC2ResponseError: %s: %s." % (code, msg))
-                return None
-    log.debug('%s registered' % ami.id)
-    if ami_available(ami):
-        return ami
-    else:
-        return None
-
-
-@retry(StandardError, tries=3, delay=1, backoff=2, logger=log)
-def add_tags(resource_ids, tags):
-    """
-    :type resource_ids: list
-    :param resource_ids: list containing the EC2 resource IDs to apply tags to
-    :type tags: dict
-    :param tags: dictionary of tag name/values to be applied to resource_ids
-    :rtype bool: returns True if the operation succeeds
-    """
-    ec2 = ec2connection()
-    try:
-        ec2.create_tags(resource_ids, tags)
-        return True
-    except boto.exception.EC2ResponseError as e:
-        log.debug(e)
-        raise(StandardError('create_tags failure.'))
-    return False
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        if args not in cache:
+            cache[args] = obj(*args, **kwargs)
+        return cache[args]
+    return memoizer
 
 
 def copy_image(src, dst):

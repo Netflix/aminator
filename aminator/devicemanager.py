@@ -1,4 +1,5 @@
-#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -17,16 +18,14 @@
 #
 #
 
-import os
 import fcntl
 import logging
-from aminator import NullHandler
+import os
+
 from aminator.utils import Flock, locked, stale_attachment
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
-
+# TODO: make configurable
 lockdir = '/var/lock'
 dev_alloc_lock = os.path.join(lockdir, 'dev_alloc')
 
@@ -73,28 +72,4 @@ class DeviceManager(object):
                 self.fh = open(device_node_lock, 'a')
                 fcntl.flock(self.fh, fcntl.LOCK_EX)
                 log.debug('fh = %s, dev = %s' % (str(self.fh), self.node))
-                break
-
-
-if __name__ == '__main__':
-    import logging
-    console = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(process)d - %(message)s')
-    console.setLevel(logging.INFO)
-    console.setFormatter(formatter)
-    log.addHandler(console)
-    log.setLevel(logging.INFO)
-    log.debug('boo')
-    from time import sleep
-    from random import random
-    from os import getpid
-    i = 5
-    while True:
-        log.info('%d waiting for dev' % getpid())
-        with DeviceManager() as dev:
-            sleeptime = (random() * 10)
-            log.info('%d got device %s for %f seconds.' % (getpid(), dev.node, sleeptime))
-            sleep(sleeptime)
-            i -= 1
-            if i <= 0:
                 break

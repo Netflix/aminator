@@ -1,4 +1,5 @@
-#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -17,20 +18,18 @@
 #
 #
 
-import sys
-import urllib2
 import json
 import logging
 import os
 import re
 import shutil
 import time
+import urllib2
+
 import boto.utils
-from aminator import NullHandler
+
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
 
 rpm_attrs = (name, ver, rel, desc) = ('Name', 'Version', 'Release', 'Description')
 bld_attrs = (job, num) = ('Build-Job', 'Build-Number')
@@ -39,33 +38,23 @@ mirror_pattern = re.compile(mirror_re)
 
 
 class PackageFetchError(StandardError):
-    """
-    General PackageFetch error
-    """
-    def __init__(self, reason, **kwargs):
-        StandardError.__init__(self, reason)
-        self.reason = reason
-
-    def __repr__(self):
-        return 'PackageFetchError: %s' % self.reason
-
-    def __str__(self):
-        return 'PackageFetchError: %s' % self.reason
+    pass
 
 
 class PackageFetcher(object):
     def __init__(self, pkg=None):
         if pkg is None:
             raise PackageFetchError('pkg is None')
+        self.pkg = pkg
         self.repos = []
         with open('/etc/yum.repos.d/nflx.mirrors') as mirrors:
             for mirror in mirrors:
                 if mirror_pattern.search(mirror):
                     self.repos.append(mirror.replace('$basearch', '').strip('\n'))
         log.info('looking up %s from:\n%s' % (pkg, '\n'.join(self.repos)))
-        req = urllib2.urlopen(self._random_mirror('api/list.json?pkg=%s' % pkg))
+        req = urllib2.urlopen(self._random_mirror('api/list.json?pkg=%s' % self.pkg))
         if req.code != 200:
-            raise PackageFetchError('package %s not found [%d]' % (pkg, req.code))
+            raise PackageFetchError('package %s not found [%d]' % (self.pkg, req.code))
         self.pkg_info = json.loads(req.read())
         self.pkg_info['pkg_uri'] = self.pkg_info['pkg_uri'].replace('ec2/', '')
         log.debug('download URI: %s' % (self.pkg_info['pkg_uri']))
@@ -84,17 +73,16 @@ class PackageFetcher(object):
         log.debug('downloading %s' % self.pkg_info['pkg_uri'])
         req = urllib2.urlopen(self._random_mirror(self.pkg_info['pkg_uri']))
         if req.code != 200:
-            raise PackageFetchError('package %s not found [%d]' % (pkg, req.code))
+            raise PackageFetchError('package %s not found [%d]' % (self.pkg, req.code))
         with open(self.rpmfilepath, 'w') as fp:
             shutil.copyfileobj(req.fp, fp)
         self._set_rpminfo()
         log.debug('%s: download complete.' % self.rpmfilepath)
 
-    def _setReadOnly(self):
-        raise AttributeError
-
-    def _appversion(self):
+    @property
+    def appversion(self):
         """return appversion string of the package
+           name-version-release/build-name/build-num
         """
         ret = ""
         if name not in self._rpminfo:
@@ -114,15 +102,13 @@ class PackageFetcher(object):
         ret = "%s/%s" % (ret, self._rpminfo[num])
         return ret
 
-    appversion = property(_appversion, _setReadOnly, None, 'name-version-release/build-name/build-num')
-
-    def _name_ver_rel(self):
+    @property
+    def name_ver_rel(self):
         """convenience method returning the name-version-release
            of the downloaded package.
+           name-version-release
         """
         return self.appversion.split('/')[0]
-
-    name_ver_rel = property(_name_ver_rel, _setReadOnly, None, 'name-version-release')
 
     def _random_mirror(self, uri):
         if uri is None:
@@ -147,16 +133,3 @@ class PackageFetcher(object):
             else:
                 # append to the previous key
                 self._rpminfo[key] = self._rpminfo[key] + line_segs[0].strip() + "\n"
-
-
-if __name__ == '__main__':
-    log.addHandler(logging.StreamHandler())
-    log.setLevel(logging.DEBUG)
-    try:
-        pkg = sys.argv[1]
-    except IndexError:
-        pkg = 'helloworld'
-    p = PackageFetcher(pkg)
-    p.fetch('/tmp')
-    log.info(p.appversion)
-    log.info(p.name_ver_rel)
