@@ -21,6 +21,7 @@ import datetime
 import sys
 import urllib
 import boto.utils
+import argparse
 from boto.ec2.blockdevicemapping import *
 from aminator.utils import ec2connection, register, add_tags, this_instance, pid
 from aminator.volumemanager import VolumeManager
@@ -188,21 +189,19 @@ class BakeRequest(object):
 
 
 def main():
-    import optparse
-
     usage = "usage: %prog [options]"
-    parser = optparse.OptionParser(usage)
-    parser.add_option("-b", action="store", dest="base_ami_name", default=None,
+    parser = argparse.ArgumentParser(usage)
+    parser.add_argument("-b", action="store", dest="base_ami_name", default=None,
                       help="REQUIRED, the name of base AMI on which to build.\n")
-    parser.add_option("-p", action="store", dest="pkg",
+    parser.add_argument("-p", action="store", dest="pkg",
                       help="REQUIRED, name of package to install\n")
-    parser.add_option("-n", action="store", dest="name", default=None,
+    parser.add_argument("-n", action="store", dest="name", default=None,
                       help="name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs)\n")
-    parser.add_option("-r", action="store", dest="regions, default=None",
+    parser.add_argument("-r", action="store", dest="regions, default=None",
                       help="comma delmitted list of regions to copy resultant AMI (unimplemented)\n")
-    parser.add_option("-s", action="store", dest="suffix", default=now().strftime('%Y%m%d%H%M'),
+    parser.add_argument("-s", action="store", dest="suffix", default=now().strftime('%Y%m%d%H%M'),
                       help="suffix of ami name, (default yyyymmddHHMM)\n")
-    parser.add_option("-e", action="store", dest="executor", default="aminator",
+    parser.add_argument("-e", action="store", dest="executor", default="aminator",
                       help="the name of the user invoking\n")
 
     (options, args) = parser.parse_args()
