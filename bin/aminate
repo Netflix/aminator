@@ -90,8 +90,7 @@ class BakeReqError(StandardError):
 
 
 class BakeRequest(object):
-    def __init__(self, pkg=None, base=None, wants_ebs=True, wants_s3=False, name=None, suffix=None,
-                       virtualization_type=None, creator=None):
+    def __init__(self, pkg=None, base=None, wants_ebs=True, wants_s3=False, name=None, suffix=None,creator=None):
         log.info('looking up package %s' % pkg)
         self.fetcher = PackageFetcher(pkg)
         self.base = base
