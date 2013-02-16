@@ -30,9 +30,10 @@ from collections import OrderedDict
 import boto
 from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
 
-from aminator.ec2_data import ec2_obj_states
-from aminator.instanceinfo import ec2connection
-from aminator.utils import retry
+from aminator.clouds.ec2.data import ec2_obj_states
+from aminator.clouds.ec2.core import ec2connection
+from aminator.clouds.ec2.instanceinfo import this_instance
+from aminator.utils import retry, os_node_exists
 
 log = logging.getLogger(__name__)
 
@@ -148,4 +149,18 @@ def add_tags(resource_ids, tags):
     except boto.exception.EC2ResponseError as e:
         log.debug(e)
         raise(StandardError('create_tags failure.'))
+    return False
+
+
+def stale_attachment(dev):
+    """
+    :type dev: str
+    :param dev: device node to check
+    :rtype: bool
+    :return: True device appears stale. That is, if AWS thinks a volume is attached to dev
+             but the OS does see the device node.
+    """
+    block_devs = this_instance.block_devs
+    if dev in block_devs and not os_node_exists(dev):
+        return True
     return False

@@ -24,9 +24,12 @@ import os
 import boto
 import boto.ec2
 
+from aminator.clouds.ec2.core import ec2connection
+from aminator.clouds.ec2.instanceinfo import this_instance
+from aminator.clouds.ec2.utils import snapshot_complete
 from aminator.devicemanager import DeviceManager
 from aminator.exceptions import VolumeError
-from aminator.utils import this_instance, ec2connection, retry, mount, unmount, os_node_exists, snapshot_complete
+from aminator.utils import retry, mount, unmount, os_node_exists
 
 
 log = logging.getLogger(__name__)

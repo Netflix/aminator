@@ -28,8 +28,6 @@ from time import sleep
 
 import boto.utils
 
-from aminator.instanceinfo import this_instance
-
 
 log = logging.getLogger(__name__)
 
@@ -99,20 +97,6 @@ def unmount(dev):
         log.debug(cmd.output)
         return False
     return True
-
-
-def stale_attachment(dev):
-    """
-    :type dev: str
-    :param dev: device node to check
-    :rtype: bool
-    :return: True device appears stale. That is, if AWS thinks a volume is attached to dev
-             but the OS does see the device node.
-    """
-    block_devs = this_instance.block_devs
-    if dev in block_devs and not os_node_exists(dev):
-        return True
-    return False
 
 
 # Retry decorator with backoff

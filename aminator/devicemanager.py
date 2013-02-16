@@ -22,7 +22,9 @@ import fcntl
 import logging
 import os
 
-from aminator.utils import Flock, locked, stale_attachment
+from aminator.clouds.ec2.utils import stale_attachment
+from aminator.utils import Flock, locked
+
 
 log = logging.getLogger(__name__)
 # TODO: make configurable

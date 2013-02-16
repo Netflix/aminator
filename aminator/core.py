@@ -25,7 +25,7 @@ from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.ec2.image import Image
 from boto.utils import ShellCommand
 
-from aminator.clouds.ec2 import ec2connection
+from aminator.clouds.ec2.core import ec2connection
 from aminator.clouds.ec2.utils import default_block_device_map, ROOT_BLOCK_DEVICE
 from aminator.clouds.ec2.utils import register, add_tags
 from aminator.packagefetcher import PackageFetcher

@@ -24,21 +24,10 @@ import boto
 import boto.ec2
 import boto.utils
 
-from aminator.clouds.ec2 import ec2connection
-from aminator.utils import memoize
+from aminator.clouds.ec2.core import ec2connection, is_ec2_instance
 
 
 log = logging.getLogger(__name__)
-
-
-@memoize
-def _is_ec2_instance():
-    """
-    :rtype: bool
-    :return: True if the ec2 instance meta-data url is accessible, Return true, else False.
-    """
-    is_instance = boto.utils.get_instance_metadata(timeout=2)
-    return is_instance is not None
 
 
 class InstanceInfo(boto.ec2.instance.Instance):
@@ -79,4 +68,3 @@ class InstanceInfo(boto.ec2.instance.Instance):
         return boto.utils.get_instance_metadata(timeout=5)['network']['interfaces']['macs'].values()[0]['owner-id']
 
 this_instance = InstanceInfo()
-is_ec2_instance = _is_ec2_instance()
