@@ -42,7 +42,7 @@ sdd = '/dev/sdd'
 sde = '/dev/sde'
 
 
-def logging_init(executor=None):
+def logging_init():
 
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(logging.Formatter('%(asctime)s - %(message)s', '%F %T'))
