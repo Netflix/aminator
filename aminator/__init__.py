@@ -34,4 +34,4 @@ except ImportError:
         def emit(self, record):
             pass
 
-logging.getLogger(__name__).addFilter(NullHandler())
+logging.getLogger(__name__).addHandler(NullHandler())
