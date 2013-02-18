@@ -1,4 +1,5 @@
-#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -18,16 +19,13 @@
 #
 
 import logging
+
 import botocore.session
 
-from aminator import NullHandler
-
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
 
-_session = botocore.session.Session()
-_ec2_data = {operation['name']: operation for operation in _session.get_service_data('ec2')['operations']}
+_ec2_operations = botocore.session.Session().get_service_data('ec2')['operations']
+_ec2_data = {operation['name']: operation for operation in _ec2_operations}
 
 
 def _find_state_enum(dictionary, path="", search_key='State'):
@@ -58,8 +56,3 @@ ec2_obj_states = {'Image': ec2_op_states('DescribeImages'),
 
 ec2_obj_states['Image'].append('pending')
 ec2_obj_states['Snapshot'].append('100%')
-
-
-if __name__ == '__main__':
-    for obj in ec2_obj_states:
-        print '%s: %s' % (obj, ' | '.join(ec2_obj_states[obj]))
