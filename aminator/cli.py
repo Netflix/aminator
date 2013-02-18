@@ -48,6 +48,7 @@ def logging_init():
 
     # CLI module will spew to stdout
     log.addHandler(console)
+    logging.getLogger('aminator.core').addHandler(console)
 
     # hook up the rest to syslog (including the CLI)
     logging.getLogger('aminator').addHandler(syslog)
@@ -112,7 +113,7 @@ def run():
         log.error('could not locate the base AMI named {}'.format(base_ami_name))
         sys.exit(1)
 
-    aminate_request = AminateRequest(pkg, baseami, ami_suffix, executor, name=ami_name)
+    aminate_request = AminateRequest(pkg, baseami, ami_suffix, executor, ami_name=ami_name)
     if not aminate_request.aminate():
         sys.exit(1)
     return(sys.exit(0))

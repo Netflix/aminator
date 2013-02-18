@@ -36,8 +36,7 @@ log = logging.getLogger(__name__)
 
 
 class AminateRequest(object):
-    def __init__(self, pkg, baseami, ami_suffix, creator, wants_ebs=True, ami_name=None,
-                       virtualization_type=None):
+    def __init__(self, pkg, baseami, ami_suffix, creator, wants_ebs=True, ami_name=None):
         log.info('looking up package %s' % pkg)
         self.fetcher = PackageFetcher(pkg)
         self.base = baseami
@@ -58,7 +57,7 @@ class AminateRequest(object):
                     (self.fetcher.rpmfile, vol.ami.name, vol.id, vol.dev, vol.mnt))
             self.vol = vol
             self.mnt = vol.mnt
-            if self._install() is not True:
+            if self.install() is not True:
                 log.error('package installation failed.')
                 return False
             log.info('%s installation complete.' % self.fetcher.rpmfile)
@@ -66,7 +65,7 @@ class AminateRequest(object):
             log.info('creating snapshot')
             vol.add_snap(self.description)
             log.info('%s: snapshot complete' % vol.snapshot.id)
-            if self._finish() is not True:
+            if self.finish() is not True:
                 log.error('amination failed.')
                 return False
         if self.vol.deleted:

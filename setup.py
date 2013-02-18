@@ -59,5 +59,5 @@ setup(
     scripts=scripts,
     install_requires=requires,
     entry_points=entry_points,
-    license=open('LICENSE.TXT').read(),
+    license=open('LICENSE.txt').read(),
 )
