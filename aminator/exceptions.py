@@ -19,19 +19,15 @@
 #
 
 """
-aminator
-========
-Create images from packages for deployment in various cloud formations
+aminator.exceptions
+===================
+This module contains aminator's exceptions
 """
 
-__version__ = '0.9.0'
 
-import logging
-try:
-    from logging import NullHandler
-except ImportError:
-    class NullHandler(logging.Handler):
-        def emit(self, record):
-            pass
+class AminateError(StandardError):
+    pass
 
-logging.getLogger(__name__).addHandler(NullHandler())
+
+class VolumeError(StandardError):
+    pass
