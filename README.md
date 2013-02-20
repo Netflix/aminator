@@ -1,8 +1,26 @@
-AMInator -- A tool for creating EBS AMIs.
+## Description
 
+AMInator -- A tool for creating EBS AMIs.
 This tool currently works for CentOS/RedHat Linux images and is inteded to run on an EC2 instance.
 
-<pre>
+## Requirements
+
+* Python 2.6+ (Python 3.x support not yet available)
+* Linux or UNIX cloud instance (EC2 currently supported)
+
+## Installation
+
+Clone this repository and run 
+
+`python setup.py install`
+
+*or*
+
+`pip install git+https://github.com/Netflix/aminator.git#egg=aminator`
+
+## Usage
+
+```
 Usage: aminate [options]
 
 Options:
@@ -15,14 +33,28 @@ Options:
                         comma delmitted list of regions to copy resultant AMI
                         (unimplemented)
   -s SUFFIX             suffix of ami name, (default yyyymmddHHMM)
-  -e EXECUTOR           the name of the user invoking
-</pre>
+  -c CREATOR            the name of the user invoking aminate, resultant AMI 
+                        will receive a creator tag w/ this user
+```
+## Details
 
-How it Works
-============
+The rough amination workflow:
 
-* Create volume from the snapshot of the base AMI.
-* Attach and mount volume
-* Install package into mounted volume.
-* Create snapshot of volume.
-* Register snapshot as an AMI.
+1. Create a volume from the snapshot of the base AMI
+1. Attach and mount the volume
+1. Chroot into mounted volume and provision application
+1. Unmount the volume and create a snapshot
+1. Register the snapshot as an AMI
+
+## Documentation
+
+See the AMInator wiki at https://github.com/Netflix/aminator/wiki
+
+
+## License
+
+Copyright 2013 Netflix, Inc.
+
+Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
