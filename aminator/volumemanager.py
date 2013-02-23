@@ -29,7 +29,7 @@ from aminator.clouds.ec2.instanceinfo import this_instance
 from aminator.clouds.ec2.utils import snapshot_complete
 from aminator.devicemanager import DeviceManager
 from aminator.exceptions import VolumeError
-from aminator.utils import retry, mount, unmount, os_node_exists
+from aminator.utils import retry, chroot_mount, chroot_unmount, os_node_exists
 
 
 log = logging.getLogger(__name__)
@@ -111,6 +111,8 @@ class VolumeManager(boto.ec2.volume.Volume):
                 raise VolumeError("Timed out waiting for volume to attach")
         log.debug('{} attached to {}'.format(self.id, self.dev))
         self.mnt = os.path.join(ovenroot, os.path.basename(self.dev))
+        if not os.path.exists(self.mnt):
+            os.makedirs(self.mnt)
         return True
 
     @property
@@ -150,15 +152,15 @@ class VolumeManager(boto.ec2.volume.Volume):
             return True
 
     def _mount(self):
-        if not mount(self.dev, self.mnt):
+        if not chroot_mount(self.dev, self.mnt):
             raise VolumeError('%s: mount failure' % self.dev)
         log.debug('%s mounted on %s' % (self.id, self.mnt))
 
     @retry(VolumeError, tries=3, delay=1, backoff=2, logger=log)
     def _unmount(self):
         log.debug('unmounting %s from %s' % (self.dev, self.mnt))
-        if not unmount(self.dev):
-            raise VolumeError('%s: unmount failure' % self.dev)
+        if not chroot_unmount(self.mnt):
+            raise VolumeError('%s: unmount failure' % self.mnt)
         log.debug('%s unmounted from %s' % (self.id, self.mnt))
 
     def _delete(self):
