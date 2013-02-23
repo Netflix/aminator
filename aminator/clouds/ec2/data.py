@@ -25,7 +25,7 @@ import botocore.session
 log = logging.getLogger(__name__)
 
 _ec2_operations = botocore.session.Session().get_service_data('ec2')['operations']
-_ec2_data = {operation['name']: operation for operation in _ec2_operations}
+_ec2_data = dict((operation['name'], operation) for operation in _ec2_operations)
 
 
 def _find_state_enum(dictionary, path="", search_key='State'):

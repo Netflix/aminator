@@ -71,8 +71,8 @@ def argparse_init():
     optional.add_argument('-n', dest='name',
         help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs)')
     optional.add_argument('-s', dest='suffix', help='suffix of ami name, (default yyyymmddHHMM)')
-    optional.add_argument('-e', dest='executor', default='aminator',
-                        help='the name of the user invoking aminate')
+    optional.add_argument('-c', dest='creator', default='aminator',
+        help='the name of the user invoking aminate, resultant AMI will receive a creator tag w/ this user')
     # TODO: implement!
     """
     optional.add_argument('-r', dest='regions', default=None,
@@ -88,7 +88,7 @@ def run():
 
     base_ami_name = args.base_ami_name
     pkg = args.pkg
-    executor = args.executor
+    creator = args.creator
     ami_name = args.name
     ami_suffix = args.suffix
     if ami_suffix is None:
@@ -113,7 +113,7 @@ def run():
         log.error('could not locate the base AMI named {}'.format(base_ami_name))
         sys.exit(1)
 
-    aminate_request = AminateRequest(pkg, baseami, ami_suffix, executor, ami_name=ami_name)
+    aminate_request = AminateRequest(pkg, baseami, ami_suffix, creator, ami_name=ami_name)
     if not aminate_request.aminate():
         sys.exit(1)
     return(sys.exit(0))
