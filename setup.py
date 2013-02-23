@@ -52,6 +52,11 @@ try:
 except ImportError:
     requires.append('argparse')
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    requires.append('ordereddict')
+
 setup(
     name='aminator',
     version=aminator.__version__,

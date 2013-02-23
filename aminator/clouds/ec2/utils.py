@@ -25,7 +25,10 @@ wrappers for common ec2 operations
 """
 
 import logging
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 import boto
 from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
