@@ -17,24 +17,30 @@
 #
 #
 
-inc=${0%/*}
+inc_d=${0%/*}
 prog=${0##*/}
-. ${inc}/${prog%.sh}-funcs.sh
+inc_f=${inc_d}/${prog%.sh}-funcs.sh
+
+if [[ ! -f $inc_f ]]
+then
+    echo "$inc_f not found." >&2
+    exit 1
+fi
+
+source $inc_f
 
 parse_args "$@"
 
+logging_init
+
+
 case $action in
-    mount)
-    # mount volume
-    # install updates
-        mnt=$(mount_dev $action_args) || exit 1
-        install_updates $mnt || exit 1
-        configure_services $mnt || exit 1
-        ;;
-    unmount)
-        umount_dev $action_args || exit 1
-        ;;
     install)
+        inc_f=${inc_f/-/-$(distro_guess $action_args)-}
+        if [[ -f $inc_f ]]
+        then
+            source $inc_f
+        fi
         install_pkg $action_args || exit 1
         ;;
     *)

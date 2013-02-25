@@ -33,6 +33,7 @@ requires = [
 scripts = [
     'bin/aminator.sh',
     'bin/aminator-funcs.sh',
+    'bin/aminator-redhat-funcs.sh',
 ]
 
 entry_points = {

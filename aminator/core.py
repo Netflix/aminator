@@ -23,13 +23,12 @@ from datetime import datetime
 
 from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.ec2.image import Image
-from boto.utils import ShellCommand
 
 from aminator.clouds.ec2.core import ec2connection
 from aminator.clouds.ec2.utils import default_block_device_map, ROOT_BLOCK_DEVICE
 from aminator.clouds.ec2.utils import register, add_tags
 from aminator.packagefetcher import PackageFetcher
-from aminator.utils import pid
+from aminator.utils import shlog
 from aminator.volumemanager import VolumeManager
 
 log = logging.getLogger(__name__)
@@ -78,14 +77,7 @@ class AminateRequest(object):
         """ install self.pkg onto the file system rooted in self.mnt
         """
         self.fetcher.fetch("%s/var/cache" % (self.mnt))
-        cmd = ShellCommand("/usr/bin/aminator.sh -t %s -a install %s %s" % (pid,
-                                                                                       self.fetcher.rpmfilepath,
-                                                                                       self.mnt))
-        if cmd.getStatus() == 0:
-            return True
-        else:
-            log.debug(cmd.output)
-            return False
+        return shlog("/usr/bin/aminator.sh -a install {} {}".format(self.mnt, self.fetcher.rpmfilepath))
 
     def finish(self, block_device_map=None):
         # register the snapshot

@@ -94,7 +94,7 @@ def run():
     if ami_suffix is None:
         ami_suffix = datetime.utcnow().strftime('%Y%m%d%H%M')
 
-    log.info('executor   = {}'.format(executor))
+    log.info('creator   = {}'.format(creator))
     log.info('pkg        = {}'.format(pkg))
     log.info('ami_name   = {}'.format(ami_name))
     log.info('ami_suffix = {}'.format(ami_suffix))

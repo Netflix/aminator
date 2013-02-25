@@ -24,14 +24,13 @@ import logging
 import os
 import re
 import stat
+import envoy
 from time import sleep
-
-import boto.utils
 
 
 log = logging.getLogger(__name__)
-
 pid = os.getpid()
+bind_dirs = ['/dev', '/proc', '/sys']
 
 
 def mounted(dir=None):
@@ -69,7 +68,26 @@ def os_node_exists(dev=None):
     return stat.S_ISBLK(mode)
 
 
-def mount(dev, mnt):
+def sudo():
+    sudo = ''
+    if os.geteuid() > 0:
+        sudo = 'sudo '
+    return sudo
+
+
+def shlog(command):
+    log.debug(command)
+    ret = envoy.run(command)
+    for x in (ret.std_err + ret.std_out).splitlines():
+        log.debug(x)
+    return(ret.status_code == 0)
+
+
+def fsck(dev):
+    return shlog(sudo() + "fsck -y {}".format(dev))
+
+
+def mount(dev, mnt, opts=""):
     """shell command wrapper for mounting device to mount point
     :type dev: str
     :param dev: device node to mount
@@ -78,11 +96,7 @@ def mount(dev, mnt):
     :rtype: bool
     :return: True if mount succeeds.
     """
-    cmd = boto.utils.ShellCommand("/usr/bin/aminator.sh -t %s -a mount %s %s" % (pid, dev, mnt))
-    if cmd.getStatus() != 0:
-        log.debug(cmd.output)
-        return False
-    return True
+    return shlog(sudo() + "mount {} {} {}".format(opts, dev, mnt))
 
 
 def unmount(dev):
@@ -92,11 +106,44 @@ def unmount(dev):
     :rtype: bool
     :return: True if unmount succeeds.
     """
-    cmd = boto.utils.ShellCommand("/usr/bin/aminator.sh -t %s -a unmount %s" % (pid, dev))
-    if cmd.getStatus() != 0:
-        log.debug(cmd.output)
-        return False
+    return shlog(sudo() + "umount {}".format(dev))
+
+
+def busy_mount(mnt):
+    return shlog('lsof -X {}'.format(mnt))
+
+
+def chroot_mount(dev, mnt):
+    """mount dev on mnt with bind_dirs mounted to mnt/{bid_dirs}
+    :type dev: str
+    :param dev: device node to mount
+    :rtype: bool
+    :return: True if unmount succeeds.
+    """
+    if not mounted(mnt):
+        if not mount(dev, mnt):
+            return False
+    for _dir in bind_dirs:
+        bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
+        if not os.path.exists(bind_mnt):
+            log.debug(bind_mnt + " does not exist.")
+            return False
+        if not mounted(bind_mnt):
+            if not mount(_dir, bind_mnt, '--bind'):
+                return False
     return True
+
+
+def chroot_unmount(mnt):
+    if busy_mount(mnt):
+        return False
+    for _dir in bind_dirs:
+        bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
+        if not mounted(bind_mnt):
+            continue
+        if not unmount(bind_mnt):
+            return False
+    return unmount(mnt)
 
 
 # Retry decorator with backoff
