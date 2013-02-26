@@ -20,6 +20,7 @@
 
 import logging
 import os
+import re
 
 import boto
 import boto.ec2
@@ -29,7 +30,7 @@ from aminator.clouds.ec2.instanceinfo import this_instance
 from aminator.clouds.ec2.utils import snapshot_complete
 from aminator.devicemanager import DeviceManager
 from aminator.exceptions import VolumeError
-from aminator.utils import retry, chroot_mount, chroot_unmount, os_node_exists
+from aminator.utils import retry, chroot_mount, chroot_unmount, os_node_exists, native_device_prefix
 
 
 log = logging.getLogger(__name__)
@@ -101,14 +102,28 @@ class VolumeManager(boto.ec2.volume.Volume):
         # attachments time out after 255 seconds. we'll try this twice.
         self._newvol()
         with DeviceManager() as dev:
-            log.debug('attaching %s to %s:%s' % (self.id, this_instance.id, dev.node))
             self.dev = dev.node
-            self.attach(this_instance.id, dev.node)
+            dev_to_attach = dev.node
+
+            if native_device_prefix() == 'xvd':
+                dev_to_attach = re.sub('xvd', 'sd', dev.node)
+                attach_msg = 'attaching {} to {}:{} ({})'.format(self.id,
+                                                                 this_instance.id,
+                                                                 dev.node,
+                                                                 dev_to_attach)
+            else:
+                attach_msg = 'attaching {} to {}:{}'.format(self.id,
+                                                            this_instance.id,
+                                                            dev.node)
+            log.debug(attach_msg)
+            self.attach(this_instance.id, dev_to_attach)
+
             if not self.attached:
-                log.debug('{} attachment to {} timed out'.format(self.vol.id, self.dev))
+                log.debug('{} attachment to {} timed out'.format(self.vol.id, dev_to_attach))
                 self.vol.add_tag('status', value='used')
                 # this triggers the retry
                 raise VolumeError("Timed out waiting for volume to attach")
+
         log.debug('{} attached to {}'.format(self.id, self.dev))
         self.mnt = os.path.join(ovenroot, os.path.basename(self.dev))
         if not os.path.exists(self.mnt):

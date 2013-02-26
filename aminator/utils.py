@@ -68,6 +68,20 @@ def os_node_exists(dev=None):
     return stat.S_ISBLK(mode)
 
 
+def native_device_prefix():
+    sd_pat = re.compile('^sd[a-z]')
+    xvd_pat = re.compile('^xvd[a-z]')
+    sd = 'sd'
+    xvd = 'xvd'
+    block_devices = os.listdir('/sys/block')
+    if len(filter(lambda x: sd_pat.search(x), block_devices)) > 0:
+        return sd
+    elif len(filter(lambda x: xvd_pat.search(x), block_devices)) > 0:
+        return xvd
+    else:
+        return ''
+
+
 def sudo():
     sudo = ''
     if os.geteuid() > 0:
