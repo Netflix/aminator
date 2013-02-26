@@ -23,7 +23,7 @@ import logging
 import os
 
 from aminator.clouds.ec2.utils import stale_attachment
-from aminator.utils import Flock, locked
+from aminator.utils import Flock, locked, native_device_prefix
 
 
 log = logging.getLogger(__name__)
@@ -33,9 +33,10 @@ dev_alloc_lock = os.path.join(lockdir, 'dev_alloc')
 
 # make these configurables
 ALLOWED_MAJORS = 'fghijklmnop'
-DEVICE_FORMAT = '/dev/sd{0}{1}'
+DEVICE_PREFIX = native_device_prefix()
+DEVICE_FORMAT = '/dev/{0}{1}{2}'
 
-minor_devs = [DEVICE_FORMAT.format(major, minor) for major in 'fghijklmnop' for minor in xrange(1, 16)]
+minor_devs = [DEVICE_FORMAT.format(DEVICE_PREFIX, major, minor) for major in 'fghijklmnop' for minor in xrange(1, 16)]
 
 
 class DeviceManager(object):
