@@ -68,13 +68,6 @@ def os_node_exists(dev=None):
     return stat.S_ISBLK(mode)
 
 
-def sudo():
-    sudo = ''
-    if os.geteuid() > 0:
-        sudo = 'sudo '
-    return sudo
-
-
 def shlog(command):
     log.debug(command)
     ret = envoy.run(command)
@@ -84,7 +77,7 @@ def shlog(command):
 
 
 def fsck(dev):
-    return shlog(sudo() + "fsck -y {}".format(dev))
+    return shlog("fsck -y {}".format(dev))
 
 
 def mount(dev, mnt, opts=""):
@@ -96,7 +89,7 @@ def mount(dev, mnt, opts=""):
     :rtype: bool
     :return: True if mount succeeds.
     """
-    return shlog(sudo() + "mount {} {} {}".format(opts, dev, mnt))
+    return shlog("mount {} {} {}".format(opts, dev, mnt))
 
 
 def unmount(dev):
@@ -106,7 +99,7 @@ def unmount(dev):
     :rtype: bool
     :return: True if unmount succeeds.
     """
-    return shlog(sudo() + "umount {}".format(dev))
+    return shlog("umount {}".format(dev))
 
 
 def busy_mount(mnt):
