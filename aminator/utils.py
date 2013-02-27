@@ -78,6 +78,29 @@ def native_device_prefix():
         return None
 
 
+def device_prefix(source_device):
+    # strip off any incoming /dev/ foo
+    source_device_name = os.path.basename(source_device)
+    # if we have a subdevice/partition...
+    if source_device_name[-1].isdigit():
+        # then its prefix is the name minus the last TWO chars
+        return source_device_name[:-2:]
+    else:
+        # otherwise, just strip the last one
+        return source_device_name[:-1:]
+
+
+def native_block_device(source_device):
+    native_prefix = native_device_prefix()
+    source_device_prefix = device_prefix(source_device)
+    if source_device_prefix == native_prefix:
+        # we're okay, using the right name already, just return the same name
+        return source_device
+    else:
+        # sub out the bad prefix for the good
+        return source_device.replace(source_device_prefix, native_prefix)
+
+
 def sudo():
     sudo = ''
     if os.geteuid() > 0:
