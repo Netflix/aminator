@@ -30,7 +30,9 @@ from time import sleep
 
 log = logging.getLogger(__name__)
 pid = os.getpid()
-bind_dirs = ['/dev', '/proc', '/sys']
+# TODO: make configurable?
+BIND_DIRS = ('/dev', '/proc', '/sys')
+DEVICE_PREFIXES = ('sd', 'xvd')
 
 
 def mounted(dir=None):
@@ -69,17 +71,11 @@ def os_node_exists(dev=None):
 
 
 def native_device_prefix():
-    sd_pat = re.compile('^sd[a-z]')
-    xvd_pat = re.compile('^xvd[a-z]')
-    sd = 'sd'
-    xvd = 'xvd'
-    block_devices = os.listdir('/sys/block')
-    if len(filter(lambda x: sd_pat.search(x), block_devices)) > 0:
-        return sd
-    elif len(filter(lambda x: xvd_pat.search(x), block_devices)) > 0:
-        return xvd
+    for prefix in DEVICE_PREFIXES:
+        if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
+            return prefix
     else:
-        return ''
+        return None
 
 
 def sudo():
@@ -128,7 +124,7 @@ def busy_mount(mnt):
 
 
 def chroot_mount(dev, mnt):
-    """mount dev on mnt with bind_dirs mounted to mnt/{bid_dirs}
+    """mount dev on mnt with BIND_DIRS mounted to mnt/{bid_dirs}
     :type dev: str
     :param dev: device node to mount
     :rtype: bool
@@ -137,7 +133,7 @@ def chroot_mount(dev, mnt):
     if not mounted(mnt):
         if not mount(dev, mnt):
             return False
-    for _dir in bind_dirs:
+    for _dir in BIND_DIRS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not os.path.exists(bind_mnt):
             log.debug(bind_mnt + " does not exist.")
@@ -151,7 +147,7 @@ def chroot_mount(dev, mnt):
 def chroot_unmount(mnt):
     if busy_mount(mnt):
         return False
-    for _dir in bind_dirs:
+    for _dir in BIND_DIRS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not mounted(bind_mnt):
             continue
