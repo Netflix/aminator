@@ -25,6 +25,7 @@ wrappers for common ec2 operations
 """
 
 import logging
+import os
 try:
     from collections import OrderedDict
 except ImportError:
@@ -36,7 +37,7 @@ from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
 from aminator.clouds.ec2.data import ec2_obj_states
 from aminator.clouds.ec2.core import ec2connection
 from aminator.clouds.ec2.instanceinfo import this_instance
-from aminator.utils import retry, os_node_exists
+from aminator.utils import retry, os_node_exists, device_prefix
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ block_devices['sdc'] = '/dev/sdc'
 block_devices['sdd'] = '/dev/sdd'
 block_devices['sde'] = '/dev/sde'
 ROOT_BLOCK_DEVICE = '/dev/sda1'
+EC2_DEVICE_PREFIX = 'sd'
 
 
 # TODO: make this configurable?
@@ -167,3 +169,14 @@ def stale_attachment(dev):
     if dev in block_devs and not os_node_exists(dev):
         return True
     return False
+
+
+def ec2_block_device(source_device):
+    """translate source_device to be of a form acceptable by EC2 API.
+    That is, /dev/sd..."""
+    source_device_prefix = device_prefix(source_device)
+    if source_device_prefix != EC2_DEVICE_PREFIX:
+        # ec2 API only accepts 'sd' device names.
+        return source_device.replace(source_device_prefix, EC2_DEVICE_PREFIX)
+    else:
+        return source_device

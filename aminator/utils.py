@@ -30,7 +30,9 @@ from time import sleep
 
 log = logging.getLogger(__name__)
 pid = os.getpid()
-bind_dirs = ['/dev', '/proc', '/sys']
+# TODO: make configurable?
+BIND_DIRS = ('/dev', '/proc', '/sys')
+DEVICE_PREFIXES = ('sd', 'xvd')
 
 
 def mounted(dir=None):
@@ -66,6 +68,37 @@ def os_node_exists(dev=None):
     except OSError:
         return False
     return stat.S_ISBLK(mode)
+
+
+def native_device_prefix():
+    for prefix in DEVICE_PREFIXES:
+        if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
+            return prefix
+    else:
+        return None
+
+
+def device_prefix(source_device):
+    # strip off any incoming /dev/ foo
+    source_device_name = os.path.basename(source_device)
+    # if we have a subdevice/partition...
+    if source_device_name[-1].isdigit():
+        # then its prefix is the name minus the last TWO chars
+        return source_device_name[:-2:]
+    else:
+        # otherwise, just strip the last one
+        return source_device_name[:-1:]
+
+
+def native_block_device(source_device):
+    native_prefix = native_device_prefix()
+    source_device_prefix = device_prefix(source_device)
+    if source_device_prefix == native_prefix:
+        # we're okay, using the right name already, just return the same name
+        return source_device
+    else:
+        # sub out the bad prefix for the good
+        return source_device.replace(source_device_prefix, native_prefix)
 
 
 def shlog(command):
@@ -107,7 +140,7 @@ def busy_mount(mnt):
 
 
 def chroot_mount(dev, mnt):
-    """mount dev on mnt with bind_dirs mounted to mnt/{bid_dirs}
+    """mount dev on mnt with BIND_DIRS mounted to mnt/{bid_dirs}
     :type dev: str
     :param dev: device node to mount
     :rtype: bool
@@ -116,7 +149,7 @@ def chroot_mount(dev, mnt):
     if not mounted(mnt):
         if not mount(dev, mnt):
             return False
-    for _dir in bind_dirs:
+    for _dir in BIND_DIRS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not os.path.exists(bind_mnt):
             log.debug(bind_mnt + " does not exist.")
@@ -130,7 +163,7 @@ def chroot_mount(dev, mnt):
 def chroot_unmount(mnt):
     if busy_mount(mnt):
         return False
-    for _dir in bind_dirs:
+    for _dir in BIND_DIRS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not mounted(bind_mnt):
             continue
