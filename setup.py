@@ -25,7 +25,6 @@ from setuptools import setup, find_packages
 
 requires = [
     'boto>=2.7',
-    'botocore>=0.4.2',
     'requests',
     'envoy'
 ]
