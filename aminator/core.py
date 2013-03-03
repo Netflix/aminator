@@ -86,16 +86,16 @@ class AminateRequest(object):
             block_device_map = default_block_device_map()
 
         block_device_map[ROOT_BLOCK_DEVICE] = BlockDeviceType(snapshot_id=self.vol.snapshot.id,
-            delete_on_termination=True)
+                                                              delete_on_termination=True)
         ami = Image(ec2connection())
         ami_name = '{}-ebs'.format(self.name)
         ami = register(name=ami_name,
-            description=self.description,
-            architecture=self.vol.ami_metadata['arch'],
-            block_device_map=block_device_map,
-            root_device_name=ROOT_BLOCK_DEVICE,
-            kernel_id=self.vol.ami_metadata['aki'],
-            ramdisk_id=self.vol.ami_metadata['ari'])
+                       description=self.description,
+                       architecture=self.vol.ami_metadata['arch'],
+                       block_device_map=block_device_map,
+                       root_device_name=ROOT_BLOCK_DEVICE,
+                       kernel_id=self.vol.ami_metadata['aki'],
+                       ramdisk_id=self.vol.ami_metadata['ari'])
 
         if ami is not None:
             log.info('AMI registered: %s %s' % (ami.id, ami.name))

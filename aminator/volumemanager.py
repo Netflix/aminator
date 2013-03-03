@@ -31,11 +31,12 @@ from aminator.clouds.ec2.utils import snapshot_complete
 from aminator.devicemanager import DeviceManager
 from aminator.exceptions import VolumeError
 from aminator.utils import retry, chroot_mount, chroot_unmount, os_node_exists, native_device_prefix
+from aminator.config import config
 
 
 log = logging.getLogger(__name__)
-# TODO: this should be configurable
-ovenroot = '/aminator/oven'
+
+vol_root = config.volume_root
 pid = str(os.getpid())
 
 
@@ -70,7 +71,7 @@ class VolumeManager(boto.ec2.volume.Volume):
         """ Create a snapshot of this volume.
         """
         log.debug('creating snapshot from  %s with description %s' % (self.id, description))
-        self._unmount()
+        self.unmount()
         self.snapshot = self.create_snapshot(description)
         if not snapshot_complete(self.snapshot):
             raise VolumeError('time out waiting for %s to complete' % self.snapshot.id)
@@ -78,14 +79,14 @@ class VolumeManager(boto.ec2.volume.Volume):
         log.debug('%s created' % self.snapshot.id)
 
     def __enter__(self):
-        self._attach()
-        self._mount()
+        self.attach()
+        self.mount()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._unmount()
-        self._detach()
-        self._delete()
+        self.unmount()
+        self.detach()
+        self.delete()
 
     def _newvol(self):
         self.id = self.connection.create_volume(self.rootdev.size, this_instance.az, self.rootdev.snapshot_id).id
@@ -98,7 +99,7 @@ class VolumeManager(boto.ec2.volume.Volume):
         log.debug('%s created' % self.id)
 
     @retry(VolumeError, tries=2, delay=1, backoff=2, logger=log)
-    def _attach(self):
+    def attach(self):
         # attachments time out after 255 seconds. we'll try this twice.
         self._newvol()
         with DeviceManager() as dev:
@@ -125,7 +126,7 @@ class VolumeManager(boto.ec2.volume.Volume):
                 raise VolumeError("Timed out waiting for volume to attach")
 
         log.debug('{} attached to {}'.format(self.id, self.dev))
-        self.mnt = os.path.join(ovenroot, os.path.basename(self.dev))
+        self.mnt = os.path.join(vol_root, os.path.basename(self.dev))
         if not os.path.exists(self.mnt):
             os.makedirs(self.mnt)
         return True
@@ -149,7 +150,7 @@ class VolumeManager(boto.ec2.volume.Volume):
         else:
             return True
 
-    def _detach(self):
+    def detach(self):
         log.debug('detaching %s' % self.id)
         self.detach()
         if not self._detached():
@@ -166,19 +167,19 @@ class VolumeManager(boto.ec2.volume.Volume):
         else:
             return True
 
-    def _mount(self):
+    def mount(self):
         if not chroot_mount(self.dev, self.mnt):
             raise VolumeError('%s: mount failure' % self.dev)
         log.debug('%s mounted on %s' % (self.id, self.mnt))
 
     @retry(VolumeError, tries=3, delay=1, backoff=2, logger=log)
-    def _unmount(self):
+    def unmount(self):
         log.debug('unmounting %s from %s' % (self.dev, self.mnt))
         if not chroot_unmount(self.mnt):
             raise VolumeError('%s: unmount failure' % self.mnt)
         log.debug('%s unmounted from %s' % (self.id, self.mnt))
 
-    def _delete(self):
+    def delete(self):
         log.debug('deleting %s' % self.id)
         self.delete()
 
