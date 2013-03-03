@@ -39,6 +39,13 @@ volume_root: /aminator/volumes      # volumes mounted onto subdirs of this direc
 bind_mounts: [/dev, /proc, /sys]    # each of these are bind mounted to it's counterpart
                                     # under the root of the mounted volume.
 
+root_device: /dev/sda1
+ephemeral_devices:
+    - /dev/sdb
+    - /dev/sdc
+    - /dev/sdd
+    - /dev/sde
+
 # log_dir: destination for debug log files. Debug logs are interesting as they include all the
 # gory details of the aminate execution. Debug {logfile} names are constructued using the
 # command-line package and AMI suffix parameters and take the form: {package}-{suffix}.log
