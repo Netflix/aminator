@@ -121,8 +121,8 @@ class AminateRequest(object):
         self.tags['base_ami_version'] = self.vol.ami_metadata['base_ami_version']
         if self.name is None:
             self.name = "%s-%s-%s" % (self.fetcher.name_ver_rel, self.vol.ami_metadata['arch'], self.suffix)
-        self.description = "name=%s, arch=%s, ancestor_name=%s, ancestor_id=%s, ancestor_version=%s" % (
-                            self.name, self.vol.ami_metadata['arch'],
+        self.description = "name=%s, arch=%s, ancestor_name=%s, ancestor_id=%s, ancestor_version=%s" %\
+                           (self.name, self.vol.ami_metadata['arch'],
                             self.vol.ami_metadata['base_ami_name'],
                             self.vol.ami_metadata['base_ami_id'],
                             self.vol.ami_metadata['base_ami_version'])

@@ -21,6 +21,7 @@
 
 import argparse
 import logging
+import os
 import sys
 import urllib
 from datetime import datetime
@@ -80,7 +81,7 @@ def argparse_init():
     optional.add_argument('-s', dest='suffix', help='suffix of ami name, (default yyyymmddHHMM)')
     optional.add_argument('-c', dest='creator', default='aminator',
                           help='the name of the user invoking aminate, resultant AMI will receive a creator tag w/ this user')
-    optional.add_argument('-B', dest='logboto', default=False,
+    optional.add_argument('-B', dest='logboto', default=False, action='store_true',
                           help='log boto debug logs. See aminator.config.__doc__')
     # TODO: implement!
     """

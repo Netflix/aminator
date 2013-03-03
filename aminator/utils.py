@@ -26,7 +26,7 @@ import re
 import stat
 import envoy
 from time import sleep
-from aminator.config import conifg
+from aminator.config import config
 
 log = logging.getLogger(__name__)
 pid = os.getpid()
@@ -163,6 +163,8 @@ def chroot_mount(dev, mnt):
 def chroot_unmount(mnt):
     if busy_mount(mnt):
         return False
+    if not mounted(mnt):
+        return True
     for _dir in BIND_MOUNTS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not mounted(bind_mnt):

@@ -75,7 +75,6 @@ class VolumeManager(boto.ec2.volume.Volume):
         self.snapshot = self.create_snapshot(description)
         if not snapshot_complete(self.snapshot):
             raise VolumeError('time out waiting for %s to complete' % self.snapshot.id)
-        self._mount()
         log.debug('%s created' % self.snapshot.id)
 
     def __enter__(self):
@@ -117,7 +116,7 @@ class VolumeManager(boto.ec2.volume.Volume):
                                                             this_instance.id,
                                                             dev.node)
             log.debug(attach_msg)
-            self.attach(this_instance.id, dev_to_attach)
+            super(VolumeManager, self).attach(this_instance.id, dev_to_attach)
 
             if not self.attached:
                 log.debug('{} attachment to {} timed out'.format(self.vol.id, dev_to_attach))
@@ -152,7 +151,7 @@ class VolumeManager(boto.ec2.volume.Volume):
 
     def detach(self):
         log.debug('detaching %s' % self.id)
-        self.detach()
+        super(VolumeManager, self).detach()
         if not self._detached():
             raise VolumeError('time out waiting for %s to detach from %s' % (self.vol.id, self.dev))
         log.debug('%s detached' % self.id)
@@ -181,7 +180,7 @@ class VolumeManager(boto.ec2.volume.Volume):
 
     def delete(self):
         log.debug('deleting %s' % self.id)
-        self.delete()
+        super(VolumeManager, self).delete()
 
     @property
     def deleted(self):
