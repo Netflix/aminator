@@ -42,7 +42,7 @@ bind_mounts: [/dev, /proc, /sys]    # each of these are bind mounted to it's cou
 # log_dir: destination for debug log files. Debug logs are interesting as they include all the
 # gory details of the aminate execution. Debug {logfile} names are constructued using the
 # command-line package and AMI suffix parameters and take the form: {package}-{suffix}.log
-logdir: /var/log
+log_dir: /var/log
 
 # log_url_prefix: should include two formatting replacement fields to be replaced
 # with the public dns name (or ip address if in vpc) of the instance where aminate
@@ -56,7 +56,7 @@ log_url_prefix:
 # These logs can be quite verbose and will contain the account key. Therefore, boto debug logs
 # will be written only when the '-D' aminate option is passed and if boto_logdir is set with
 # an existing directory.
-boto_logdir:
+boto_log_dir:
 """
 
 

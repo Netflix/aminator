@@ -55,10 +55,10 @@ def logging_init(logfile, log_boto=False):
     logging.getLogger('aminator').setLevel(logging.DEBUG)
     log.root.setLevel(logging.DEBUG)
 
-    if config.boto_logdir and log_boto:
-        if not os.path.exists(config.boto_logdir):
+    if config.boto_log_dir and log_boto:
+        if not os.path.exists(config.boto_log_dir):
             return
-        boto_details = logging.FileHandler("{}/boto-{}".format(config.boto_logdir, logfile))
+        boto_details = logging.FileHandler("{}/boto-{}".format(config.boto_log_dir, logfile))
         boto_details.setFormatter(details.formatter)
         boto_details.setLevel(logging.DEBUG)
         logging.getLogger('boto').addHandler(boto_details)
