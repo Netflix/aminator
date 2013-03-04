@@ -24,24 +24,25 @@ import os
 
 from aminator.clouds.ec2.utils import stale_attachment
 from aminator.utils import Flock, locked, native_device_prefix
+from aminator.config import config
 
 
 log = logging.getLogger(__name__)
-# TODO: make configurable
-lockdir = '/var/lock'
+
+lockdir = config.lockdir
 dev_alloc_lock = os.path.join(lockdir, 'dev_alloc')
 
-# make these configurables
-ALLOWED_MAJORS = 'fghijklmnop'
+ALLOWED_MAJORS = config.nonpartitioned_device_letters
 DEVICE_PREFIX = native_device_prefix()
 DEVICE_FORMAT = '/dev/{0}{1}{2}'
 
-minor_devs = [DEVICE_FORMAT.format(DEVICE_PREFIX, major, minor) for major in 'fghijklmnop' for minor in xrange(1, 16)]
+minor_devs = [DEVICE_FORMAT.format(DEVICE_PREFIX, major, minor) for major in ALLOWED_MAJORS for minor in xrange(1, 16)]
 
 
 class DeviceManager(object):
-    """Provides device allocation. Intened to be used in a context manager, makes best effort to identify
-    an unused device node by serializing through '/var/lock/dev_alloc'
+    """Provides device allocation. If used in a context manager, makes best effort to identify
+    an unused device node by serializing through '{lockdir}/dev_alloc' and '{lockdir}/dev'
+
     with DeviceManager as dev:
         vol.attach(dev.node)
     """
@@ -50,11 +51,14 @@ class DeviceManager(object):
         self.fh = None
 
     def __enter__(self):
+        """Holds dev_alloc_lock until a free device is found, then hold {lockdir}/dev
+        throughout context."""
         with Flock(dev_alloc_lock):
             self._get_dev()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """release {lockdir}/dev"""
         fcntl.flock(self.fh, fcntl.LOCK_UN)
         self.fh.close()
 
