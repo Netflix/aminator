@@ -38,15 +38,15 @@ from aminator.clouds.ec2.data import ec2_obj_states
 from aminator.clouds.ec2.core import ec2connection
 from aminator.clouds.ec2.instanceinfo import this_instance
 from aminator.utils import retry, os_node_exists, device_prefix
+from aminator.config import config
 
 log = logging.getLogger(__name__)
 
 block_devices = OrderedDict()
-block_devices['sdb'] = '/dev/sdb'
-block_devices['sdc'] = '/dev/sdc'
-block_devices['sdd'] = '/dev/sdd'
-block_devices['sde'] = '/dev/sde'
-ROOT_BLOCK_DEVICE = '/dev/sda1'
+for dev in config.ephemeral_devices:
+    block_devices[os.path.basename(dev)] = dev
+
+ROOT_BLOCK_DEVICE = config.root_device
 EC2_DEVICE_PREFIX = 'sd'
 
 

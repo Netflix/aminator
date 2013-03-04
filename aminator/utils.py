@@ -26,13 +26,13 @@ import re
 import stat
 import envoy
 from time import sleep
-
+from aminator.config import config
 
 log = logging.getLogger(__name__)
 pid = os.getpid()
-# TODO: make configurable?
-BIND_DIRS = ('/dev', '/proc', '/sys')
-DEVICE_PREFIXES = ('sd', 'xvd')
+
+BIND_MOUNTS = config.bind_mounts
+DEVICE_PREFIXES = config.device_prefixes
 
 
 def mounted(dir=None):
@@ -140,7 +140,7 @@ def busy_mount(mnt):
 
 
 def chroot_mount(dev, mnt):
-    """mount dev on mnt with BIND_DIRS mounted to mnt/{bid_dirs}
+    """mount dev on mnt with BIND_MOUNTS mounted to mnt/{bid_dirs}
     :type dev: str
     :param dev: device node to mount
     :rtype: bool
@@ -149,7 +149,7 @@ def chroot_mount(dev, mnt):
     if not mounted(mnt):
         if not mount(dev, mnt):
             return False
-    for _dir in BIND_DIRS:
+    for _dir in BIND_MOUNTS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not os.path.exists(bind_mnt):
             log.debug(bind_mnt + " does not exist.")
@@ -163,7 +163,9 @@ def chroot_mount(dev, mnt):
 def chroot_unmount(mnt):
     if busy_mount(mnt):
         return False
-    for _dir in BIND_DIRS:
+    if not mounted(mnt):
+        return True
+    for _dir in BIND_MOUNTS:
         bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
         if not mounted(bind_mnt):
             continue
