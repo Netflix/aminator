@@ -1,7 +1,7 @@
 ## Description
 
 AMInator -- A tool for creating EBS AMIs.
-This tool currently works for CentOS/RedHat Linux images and is inteded to run on an EC2 instance.
+This tool currently works for CentOS/RedHat Linux images and is intended to run on an EC2 instance.
 
 ## Requirements
 
@@ -30,7 +30,7 @@ Options:
   -n NAME               name of resultant AMI (default package_name-version-
                         release-arch-yyyymmddHHMM-ebs)
   -r REGIONS, DEFAULT=NONE
-                        comma delmitted list of regions to copy resultant AMI
+                        comma delimited list of regions to copy resultant AMI
                         (unimplemented)
   -s SUFFIX             suffix of ami name, (default yyyymmddHHMM)
   -c CREATOR            the name of the user invoking aminate, resultant AMI 
