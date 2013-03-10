@@ -168,7 +168,7 @@ def chroot_unmount(mnt):
     for _mnt in lifo_mounts(mnt):
         if not unmount(_mnt):
             return False
-    return unmount(mnt)
+    return True
 
 
 def lifo_mounts(root=None):
