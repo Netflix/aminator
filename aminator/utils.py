@@ -165,13 +165,25 @@ def chroot_unmount(mnt):
         return False
     if not mounted(mnt):
         return True
-    for _dir in BIND_MOUNTS:
-        bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
-        if not mounted(bind_mnt):
-            continue
-        if not unmount(bind_mnt):
+    for _mnt in lifo_mounts(mnt):
+        if not unmount(_mnt):
             return False
-    return unmount(mnt)
+    return True
+
+
+def lifo_mounts(root=None):
+    """return list of mount points mounted on 'root'
+    and below in lifo order from /proc/mounts."""
+    ret = []
+    if root is None:
+        return ret
+    with open('/proc/mounts') as proc_mounts:
+        mount_entries = proc_mounts.readlines()
+        mount_entries.reverse()
+        for line in mount_entries:
+            if re.search(root + '( |/)', line):
+                ret.append(line.split()[1])
+    return ret
 
 
 # Retry decorator with backoff
