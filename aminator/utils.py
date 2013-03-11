@@ -24,15 +24,15 @@ import logging
 import os
 import re
 import stat
-import envoy
+from contextlib import contextmanager
 from time import sleep
+
+import envoy
+
 from aminator.config import config
 
-log = logging.getLogger(__name__)
-pid = os.getpid()
 
-BIND_MOUNTS = config.bind_mounts
-DEVICE_PREFIXES = config.device_prefixes
+log = logging.getLogger(__name__)
 
 
 def mounted(dir=None):
@@ -48,9 +48,9 @@ def mounted(dir=None):
     # strip trailing white space then add a single space
     # anchor to differentiate from, say, sdf1 and sdf11
     dir = dir.rstrip()
-    dir += " "
+    dir += ' '
     pattern = re.compile(dir)
-    with open("/proc/mounts") as mounts:
+    with open('/proc/mounts') as mounts:
         return any(pattern.search(mount) for mount in mounts)
 
 
@@ -71,7 +71,7 @@ def os_node_exists(dev=None):
 
 
 def native_device_prefix():
-    for prefix in DEVICE_PREFIXES:
+    for prefix in config.device_prefixes:
         if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
             return prefix
     else:
@@ -110,19 +110,32 @@ def shlog(command):
 
 
 def fsck(dev):
-    return shlog("fsck -y {}".format(dev))
+    return shlog("fsck -y {0}".format(dev))
 
 
-def mount(dev, mnt, opts=""):
-    """shell command wrapper for mounting device to mount point
+def mount(dev, mountpoint, fstype='', options=''):
+    """
+    wrapper for mount
     :type dev: str
     :param dev: device node to mount
-    :type mnt: str
-    :param mnt: directory mount point
+    :type mountpoint: str
+    :param mountpoint: directory mount point
     :rtype: bool
     :return: True if mount succeeds.
     """
-    return shlog("mount {} {} {}".format(opts, dev, mnt))
+    fstype_flag = ''
+    fstype_arg = ''
+    if fstype:
+        if fstype == 'bind':
+            fstype_flag = '-o'
+        else:
+            fstype_flag = '-t'
+        fstype_arg = '{0} {1}'.format(fstype_flag, fstype)
+    options_arg = options
+    if options:
+        options_arg = '-o ' + options
+    mount_cmd = 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, dev, mountpoint)
+    return shlog(mount_cmd)
 
 
 def unmount(dev):
@@ -132,69 +145,127 @@ def unmount(dev):
     :rtype: bool
     :return: True if unmount succeeds.
     """
-    return shlog("umount {}".format(dev))
+    return shlog("umount {0}".format(dev))
 
 
 def busy_mount(mnt):
-    return shlog('lsof -X {}'.format(mnt))
+    return shlog('lsof -X {0}'.format(mnt))
 
 
-def chroot_mount(dev, mnt):
-    """mount dev on mnt with BIND_MOUNTS mounted to mnt/{bid_dirs}
-    :type dev: str
-    :param dev: device node to mount
-    :rtype: bool
-    :return: True if unmount succeeds.
+@contextmanager
+def os_closing(fd):
     """
-    if not mounted(mnt):
-        if not mount(dev, mnt):
+    Intended to wrap os.open() and close the descriptor when done
+
+    :param fd: file descriptor from os.open
+    """
+    try:
+        yield fd
+    finally:
+        os.close(fd)
+
+
+@contextmanager
+def chroot(path):
+    """
+    Perform some actions from a chroot environment
+
+    :param path: The new root
+    :type path: str
+    """
+    if not path or not os.path.isdir(path):
+        raise IOError('chroot: path not provided or not found: {0}'.format(path))
+
+    if os.geteuid != 0:
+        raise OSError(13, 'Must be root')
+
+    with os_closing(os.open('/', os.O_RDONLY)) as real_root:
+        cwd = os.getcwd()
+        log.debug('cwd: {0}'.debug(cwd))
+        os.chroot(path)
+        os.chdir('/')
+        yield
+        os.fchdir(real_root)
+        os.chroot('.')
+        os.chdir(cwd)
+
+
+def chroot_setup(root, rootdev):
+    """
+    Takes mounts specified in configuration and lays them
+    on top of the chroot environment
+    :param root: chroot root path
+    :param rootdev: chroot root device
+    :return: True on successful setup, False if errors
+    """
+    if not mounted(root):
+        if not mount(rootdev, root):
+            log.error('Unable to mount chroot device {0} at {1}'.format(rootdev, root))
             return False
-    for _dir in BIND_MOUNTS:
-        bind_mnt = os.path.join(mnt, _dir.lstrip('/'))
-        if not os.path.exists(bind_mnt):
-            log.debug(bind_mnt + " does not exist.")
+
+    for device, fstype, mountpoint in config.chroot_mounts:
+        chroot_mountpoint = os.path.join(root, mountpoint.lstrip('/'))
+        if not os.path.exists(chroot_mountpoint):
+            log.error('{0} does not exist'.format(chroot_mountpoint))
             return False
-        if not mounted(bind_mnt):
-            if not mount(_dir, bind_mnt, '--bind'):
+        if not mounted(chroot_mountpoint):
+            if not mount(device, chroot_mountpoint, fstype):
+                log.error('Unable to mount {0} on {1} fstype {2}'.format(device, chroot_mountpoint,
+                                                                         fstype))
                 return False
-    return True
-
-
-def chroot_unmount(mnt):
-    if busy_mount(mnt):
-        return False
-    if not mounted(mnt):
         return True
-    for _mnt in lifo_mounts(mnt):
-        if not unmount(_mnt):
+
+
+def chroot_teardown(root):
+    """
+    Unmounts a chroot environment
+    :param root: chroot root path
+    :return: True if everything unmounts okay, False if errors
+    """
+    if busy_mount(root):
+        log.error('Unable to teardown {}, device busy'.format(root))
+        return False
+    if not mounted(root):
+        return True
+    # unmount in reverse order to account for layered mounts
+    for device, fstype, mountpoint in reversed(config.chroot_mounts):
+        chroot_mountpoint = os.path.join(root, mountpoint.lstrip('/'))
+        if not mounted(chroot_mountpoint):
+            continue
+        if not unmount(chroot_mountpoint):
+            log.error('Unable to unmount {0}'.format(chroot_mountpoint))
             return False
-    return True
+    for mountpoint in lifo_mounts(root):
+        if not unmount(mountpoint):
+            log.error('Unable to unmount {0}'.format(mountpoint))
+            return False
+    return unmount(root)
 
 
-def lifo_mounts(root=None):
+def lifo_mounts(root):
     """return list of mount points mounted on 'root'
     and below in lifo order from /proc/mounts."""
-    ret = []
-    if root is None:
-        return ret
     with open('/proc/mounts') as proc_mounts:
-        mount_entries = proc_mounts.readlines()
-        mount_entries.reverse()
-        for line in mount_entries:
-            if re.search(root + '( |/)', line):
-                ret.append(line.split()[1])
-    return ret
+        # grab the mountpoint for each mount where we MIGHT match
+        mount_entries = [line.split(' ')[1] for line in proc_mounts if root in line]
+    if not mount_entries:
+        # return an empty list if we didn't match
+        return mount_entries
+    return [entry for entry in reversed(mount_entries)
+            if entry == root or entry.startswith(root+'/')]
 
 
 # Retry decorator with backoff
 # http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
 def retry(ExceptionToCheck, tries=3, delay=0.5, backoff=1, logger=None):
-    '''Retries a function or method until it returns True.
+    """
+    Retries a function or method until it returns True.
 
     delay sets the initial delay in seconds, and backoff sets the factor by which
     the delay should lengthen after each failure. backoff must be greater than 1,
     or else it isn't really a backoff. tries must be at least 0, and delay
-    greater than 0.'''
+    greater than 0.
+    """
     if logger is None:
         logger = log
 
@@ -254,38 +325,29 @@ def copy_image(src, dst):
     return True
 
 
-class Flock(object):
+@contextmanager
+def flock(filename):
     """simple blocking exclusive file locker
        eg:
-       with Flock(lockfilepath):
+       with flock(lockfilepath):
            ...
     """
-    def __init__(self, file=""):
-        if not os.path.exists(os.path.dirname(file)):
-            raise(Exception)
-        self.fh = open(file, 'a')
-
-    def __enter__(self):
-        fcntl.flock(self.fh, fcntl.LOCK_EX)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        fcntl.flock(self.fh, fcntl.LOCK_UN)
-        self.fh.close()
+    with open(filename, 'a') as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        yield
+        fcntl.flock(fh, fcntl.LOCK_UN)
 
 
-def locked(file=""):
+def locked(filename):
     """
+    :param filename:
     :return: True if file is locked.
     """
-    if not os.path.exists(os.path.dirname(file)):
-        raise(Exception)
-    fh = open(file, 'a')
-    try:
-        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        ret = False
-    except IOError as e:
-        log.debug("%s is locked: %s" % (file, e))
-        ret = True
-    fh.close()
+    with open(filename, 'a') as fh:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            ret = False
+        except IOError as e:
+            log.debug('{0} is locked: {1}'.format(filename, e))
+            ret = True
     return ret

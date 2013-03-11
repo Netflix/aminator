@@ -16,18 +16,27 @@
 #
 #
 
+import sys
+major, minor = sys.version_info[0:2]
+if major != 2 or minor < 6:
+    print 'Aminator requires Python 2.6.x or 2.7.x'
+    sys.exit(1)
+
+try:
+    from setuptools import setup, find_packages
+except ImportError:
+    try:
+        from distribute_setup import use_setuptools
+        use_setuptools()
+    except ImportError:
+        print 'Aminator requires distribute for installation'
+        print 'http://pythonhosted.org/distribute/'
+        sys.exit(1)
+
 import aminator
 
-from distribute_setup import use_setuptools
-use_setuptools()
-
-from setuptools import setup, find_packages
-
-requires = [
-    'boto>=2.7',
-    'requests',
-    'envoy'
-]
+with open('requirements.txt') as fh:
+    requires = [requirement.strip() for requirement in fh]
 
 scripts = [
     'bin/aminator.sh',
@@ -46,6 +55,12 @@ exclude_packages = [
     'tests.*',
 ]
 
+package_data = {
+    '': [
+        'LICENSE.txt',
+    ],
+}
+
 # py2.6 compatibility
 try:
     import argparse
@@ -60,9 +75,30 @@ except ImportError:
 setup(
     name='aminator',
     version=aminator.__version__,
+    description='Aminator: Bring an AMI to life',
+    author='Netflix Engineering Tools',
+    author_email='talent@netflix.com',
+    url='https://github.com/netflix/aminator',
     packages=find_packages(exclude=exclude_packages),
+    package_data=package_data,
+    package_dir={'aminator': 'aminator',},
+    include_package_data=True,
+    zip_safe=False,
     scripts=scripts,
     install_requires=requires,
     entry_points=entry_points,
     license=open('LICENSE.txt').read(),
+    classifiers=(
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: Apache Software License',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: System :: Installation/Setup',
+        'Topic :: Utilities',
+    ),
 )

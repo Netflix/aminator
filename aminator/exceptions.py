@@ -26,8 +26,15 @@ This module contains aminator's exceptions
 
 
 class AminateError(StandardError):
+    """ Base Aminator Exception """
     pass
 
 
-class VolumeError(StandardError):
+class DeviceError(AminateError):
+    """ Errors during device allocation """
+    pass
+
+
+class VolumeError(AminateError):
+    """ Errors during volume allocation """
     pass
