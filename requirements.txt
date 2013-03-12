@@ -1,0 +1,5 @@
+distribute
+boto>=2.7
+requests
+envoy
+pyyaml

@@ -28,16 +28,13 @@ import boto.ec2
 from aminator.clouds.ec2.core import ec2connection
 from aminator.clouds.ec2.instanceinfo import this_instance
 from aminator.clouds.ec2.utils import snapshot_complete
-from aminator.devicemanager import DeviceManager
-from aminator.exceptions import VolumeError
-from aminator.utils import retry, chroot_mount, chroot_unmount, os_node_exists, native_device_prefix
 from aminator.config import config
+from aminator.device import device
+from aminator.exceptions import VolumeError
+from aminator.utils import retry, chroot_setup, chroot_teardown, os_node_exists, native_device_prefix
 
 
 log = logging.getLogger(__name__)
-
-vol_root = config.volume_root
-pid = str(os.getpid())
 
 
 class VolumeManager(boto.ec2.volume.Volume):
@@ -101,20 +98,20 @@ class VolumeManager(boto.ec2.volume.Volume):
     def attach(self):
         # attachments time out after 255 seconds. we'll try this twice.
         self._newvol()
-        with DeviceManager() as dev:
-            self.dev = dev.node
-            dev_to_attach = dev.node
+        with device() as dev:
+            self.dev = dev
+            dev_to_attach = dev
 
             if native_device_prefix() == 'xvd':
                 dev_to_attach = re.sub('xvd', 'sd', dev.node)
                 attach_msg = 'attaching {} to {}:{} ({})'.format(self.id,
                                                                  this_instance.id,
-                                                                 dev.node,
+                                                                 dev,
                                                                  dev_to_attach)
             else:
                 attach_msg = 'attaching {} to {}:{}'.format(self.id,
                                                             this_instance.id,
-                                                            dev.node)
+                                                            dev)
             log.debug(attach_msg)
             super(VolumeManager, self).attach(this_instance.id, dev_to_attach)
 
@@ -125,7 +122,7 @@ class VolumeManager(boto.ec2.volume.Volume):
                 raise VolumeError("Timed out waiting for volume to attach")
 
         log.debug('{} attached to {}'.format(self.id, self.dev))
-        self.mnt = os.path.join(vol_root, os.path.basename(self.dev))
+        self.mnt = os.path.join(config.volume_root, os.path.basename(self.dev))
         if not os.path.exists(self.mnt):
             os.makedirs(self.mnt)
         return True
@@ -167,14 +164,14 @@ class VolumeManager(boto.ec2.volume.Volume):
             return True
 
     def mount(self):
-        if not chroot_mount(self.dev, self.mnt):
-            raise VolumeError('%s: mount failure' % self.dev)
+        if not chroot_setup(self.mnt, self.dev):
+            raise VolumeError('Mount failure for {0}({1})'.format(self.mnt, self.dev))
         log.debug('%s mounted on %s' % (self.id, self.mnt))
 
     @retry(VolumeError, tries=3, delay=1, backoff=2, logger=log)
     def unmount(self):
         log.debug('unmounting %s from %s' % (self.dev, self.mnt))
-        if not chroot_unmount(self.mnt):
+        if not chroot_teardown(self.mnt):
             raise VolumeError('%s: unmount failure' % self.mnt)
         log.debug('%s unmounted from %s' % (self.id, self.mnt))
 
