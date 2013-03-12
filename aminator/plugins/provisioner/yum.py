@@ -19,22 +19,17 @@
 #
 
 """
-aminator.exceptions
-===================
-aminator's exceptions
+aminator.plugins.provisioner.yum
+================================
+basic yum provisioner
 """
+import logging
+
+from aminator.plugins.base import BaseProvisionerPlugin
 
 
-class AminateError(StandardError):
-    """ Base Aminator Exception """
-    pass
+log = logging.getLogger(__name__)
 
 
-class DeviceError(AminateError):
-    """ Errors during device allocation """
-    pass
-
-
-class VolumeError(AminateError):
-    """ Errors during volume allocation """
+class YumProvisioner(BaseProvisionerPlugin):
     pass

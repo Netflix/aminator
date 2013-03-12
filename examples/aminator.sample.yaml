@@ -1,0 +1,105 @@
+# aminator default configuration settings
+# This document is processed by yaml and formatted per
+# http://pyyaml.org/wiki/PyYAMLDocumentation#Documents
+
+# defaults can be overridden in these yaml files
+config_files:
+    - /etc/aminator.yaml
+    - ~/.aminator.yaml
+
+# lock file directory
+lockdir: /var/lock
+
+# volumes mounted onto subdirs of this directory.
+volume_root: /aminator/volumes
+
+# root_only: must Aminator run as root?
+root_only: True
+
+# some day this might become a dictConfig...
+logging:
+    dir: /var/log/aminator
+    dir_create: True
+    url_prefix:
+
+    formatters:
+        simple:
+            class: logging.Formatter
+            time_format: '%F %T'
+            format: '%(asctime)s [%(levelname)s] %(message)s'
+        detail:
+            class: logging.Formatter
+            time_format: '%F %T'
+            format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+    handlers:
+        console:
+            class: logging.StreamHandler
+            stream: sys.stdout
+            formatter: simple
+            level: logging.INFO
+        logfile:
+            class: logging.FileHandler
+            formatter: detail
+            level: logging.DEBUG
+            filename_from_config: package
+            filename_format: '{0}-{1:%Y%m%d%H%M}'
+    loggers:
+        aminator:
+            level: logging.DEBUG
+            handlers: [console, logfile]
+        root:
+            level: logging.DEBUG
+            handlers: []
+
+# plugins: plugin configuration
+plugins:
+    # plugin_paths: Directory where one can install plugin modules
+    plugin_paths: /usr/share/aminator/plugins
+    cloud:
+        ec2:
+            enabled: true
+            root_device: /dev/sda1
+            ephemeral_devices:
+                - /dev/sdb
+                - /dev/sdc
+                - /dev/sdd
+                - /dev/sde
+    provisioner:
+        yum:
+            enabled: true
+            short_circuit_sbin_service: true
+        apt:
+            enabled: true
+    volume_manager:
+        linux:
+            enabled: true
+            chroot_mounts:
+                # fstab-esque list of mounts for a chroot environment. ordered.
+                # device, type, mount point
+                - [proc, proc, /proc]
+                - [sysfs, sysfs, /sys]
+                - [/dev, bind, /dev]
+                - [devpts, devpts, /dev/pts]
+                - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc]
+    device_manger:
+        linux:
+            enabled: true
+            # possible OS device prefixes
+            device_prefixes: [sd, xvd]
+            # think device_prefix + device letter (sda, sdb, xvda, etc)
+            device_letters: 'fghijklmnop'
+
+# ties everything together
+environment: ec2_yum_linux
+# mix and match
+environments:
+    ec2_yum_linux:
+        cloud: ec2
+        provisioner: yum
+        volume_allocator: linux
+        device_allocator: linux
+    ec2_apt_linux:
+        cloud: ec2
+        provisioner: apt
+        volume_allocator: linux
+        device_allocator: linux

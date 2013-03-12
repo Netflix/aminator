@@ -23,9 +23,6 @@ aminator
 ========
 Create images from packages for deployment in various cloud formations
 """
-
-__version__ = '0.9.0'
-
 import logging
 try:
     from logging import NullHandler
@@ -33,5 +30,12 @@ except ImportError:
     class NullHandler(logging.Handler):
         def emit(self, record):
             pass
+
+from aminator.cli import run
+
+
+__version__ = '0.9.0'
+__versioninfo__ = __version__.split('.')
+__all__ = ('run',)
 
 logging.getLogger(__name__).addHandler(NullHandler())

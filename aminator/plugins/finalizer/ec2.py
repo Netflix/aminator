@@ -19,22 +19,17 @@
 #
 
 """
-aminator.exceptions
-===================
-aminator's exceptions
+aminator.plugins.finalizer.ec2
+================================
+ec2 image finalizer
 """
+import logging
+
+from aminator.plugins.base import BaseFinalizerPlugin
 
 
-class AminateError(StandardError):
-    """ Base Aminator Exception """
-    pass
+log = logging.getLogger(__name__)
 
 
-class DeviceError(AminateError):
-    """ Errors during device allocation """
-    pass
-
-
-class VolumeError(AminateError):
-    """ Errors during volume allocation """
+class EC2Finalizer(BaseFinalizerPlugin):
     pass

@@ -28,6 +28,7 @@ except ImportError:
     try:
         from distribute_setup import use_setuptools
         use_setuptools()
+        from setuptools import setup, find_packages
     except ImportError:
         print 'Aminator requires distribute for installation'
         print 'http://pythonhosted.org/distribute/'
@@ -38,16 +39,26 @@ import aminator
 with open('requirements.txt') as fh:
     requires = [requirement.strip() for requirement in fh]
 
-scripts = [
-    'bin/aminator.sh',
-    'bin/aminator-funcs.sh',
-    'bin/aminator-redhat-funcs.sh',
-]
-
 entry_points = {
     'console_scripts': [
-        'aminate = aminator.cli:run',
-    ]
+        'aminate = aminator:run',
+    ],
+    'aminator.plugins.cloud': [
+        'ec2 = aminator.plugins.cloud.ec2:EC2Cloud',
+    ],
+    'aminator.plugins.provisioner': [
+        'yum = aminator.plugins.provisioner.yum:YumProvisioner',
+        'apt = aminator.plugins.provisioner.apt:AptProvisioner',
+    ],
+    'aminator.plugins.volume_manager': [
+        'linux = aminator.plugins.volume_manager.linux:LinuxVolumeManager',
+    ],
+    'aminator.plugins.device_manager': [
+        'linux = aminator.plugins.device_manager.linux:LinuxDeviceManager',
+    ],
+    'aminator.plugins.finalizer': [
+        'ec2 = aminator.plugins.finalizers.ec2:EC2Finalizer',
+    ],
 }
 
 exclude_packages = [
@@ -81,10 +92,9 @@ setup(
     url='https://github.com/netflix/aminator',
     packages=find_packages(exclude=exclude_packages),
     package_data=package_data,
-    package_dir={'aminator': 'aminator',},
+    package_dir={'aminator': 'aminator'},
     include_package_data=True,
     zip_safe=False,
-    scripts=scripts,
     install_requires=requires,
     entry_points=entry_points,
     license=open('LICENSE.txt').read(),

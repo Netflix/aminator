@@ -19,22 +19,35 @@
 #
 
 """
-aminator.exceptions
-===================
-aminator's exceptions
+aminator.plugins.manager
+========================
+plugin managers for finding , loading, configuring, plugging...
 """
+import logging
+
+from pkg_resources import iter_entry_points
 
 
-class AminateError(StandardError):
-    """ Base Aminator Exception """
-    pass
+log = logging.getLogger(__name__)
 
 
-class DeviceError(AminateError):
-    """ Errors during device allocation """
-    pass
+class PluginManager(object):
+    def __init__(self, config, parsers):
+        self.config = config
+        self.parsers = parsers
+
+    def find_plugins(self):
+        pass
+
+    def add_plugins(self, plugins=()):
+        pass
+
+    def add_plugin(self, plugin):
+        pass
+
+    def configure_plugins(self):
+        pass
 
 
-class VolumeError(AminateError):
-    """ Errors during volume allocation """
+class EntrypointsPluginManager(PluginManager):
     pass

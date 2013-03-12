@@ -18,6 +18,13 @@
 #
 #
 
+"""
+aminator.utils
+=====================
+Utility functions, classes, things that make life easier
+"""
+
+import errno
 import fcntl
 import functools
 import logging
@@ -68,37 +75,6 @@ def os_node_exists(dev=None):
     except OSError:
         return False
     return stat.S_ISBLK(mode)
-
-
-def native_device_prefix():
-    for prefix in config.device_prefixes:
-        if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
-            return prefix
-    else:
-        return None
-
-
-def device_prefix(source_device):
-    # strip off any incoming /dev/ foo
-    source_device_name = os.path.basename(source_device)
-    # if we have a subdevice/partition...
-    if source_device_name[-1].isdigit():
-        # then its prefix is the name minus the last TWO chars
-        return source_device_name[:-2:]
-    else:
-        # otherwise, just strip the last one
-        return source_device_name[:-1:]
-
-
-def native_block_device(source_device):
-    native_prefix = native_device_prefix()
-    source_device_prefix = device_prefix(source_device)
-    if source_device_prefix == native_prefix:
-        # we're okay, using the right name already, just return the same name
-        return source_device
-    else:
-        # sub out the bad prefix for the good
-        return source_device.replace(source_device_prefix, native_prefix)
 
 
 def shlog(command):
@@ -252,7 +228,7 @@ def lifo_mounts(root):
         # return an empty list if we didn't match
         return mount_entries
     return [entry for entry in reversed(mount_entries)
-            if entry == root or entry.startswith(root+'/')]
+            if entry == root or entry.startswith(root + '/')]
 
 
 # Retry decorator with backoff
@@ -351,3 +327,13 @@ def locked(filename):
             log.debug('{0} is locked: {1}'.format(filename, e))
             ret = True
     return ret
+
+
+def root_check():
+    """
+    Simple root gate
+    :return: errno.EACCESS if not running as root, None if running as root
+    """
+    if os.geteuid() != 0:
+        return errno.EACCESS
+    return None
