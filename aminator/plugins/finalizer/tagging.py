@@ -19,21 +19,21 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.finalizer.tagging
+==================================
+tagging image finalizer
 """
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.finalizer.base import BaseFinalizerPlugin
 
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('TaggingFinalizerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
+class TaggingFinalizerPlugin(BaseFinalizerPlugin):
+    _name = 'tagging'
 
     def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+        super(TaggingFinalizerPlugin, self).configure(config, parser)

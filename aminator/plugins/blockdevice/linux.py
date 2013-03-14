@@ -19,17 +19,27 @@
 #
 
 """
-aminator.plugins.finalizer.ec2
-================================
-ec2 image finalizer
+aminator.plugins.blockdevice.linux
+==================================
+basic linux block device manager
 """
 import logging
 
-from aminator.plugins.base import BaseFinalizerPlugin
+from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
 
 
+__all__ = ('LinuxBlockDevicePlugin',)
 log = logging.getLogger(__name__)
 
 
-class EC2Finalizer(BaseFinalizerPlugin):
-    pass
+class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
+    _name = 'linux'
+
+    def configure(self, config, parser):
+        super(LinuxBlockDevicePlugin, self).configure(config, parser)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, trace):
+        pass

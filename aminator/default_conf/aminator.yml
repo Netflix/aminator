@@ -1,0 +1,33 @@
+# aminator default configuration settings
+config_root: /etc/aminator
+# files without a leading / or ~ are relative to confg_root
+config_files:
+    main: [aminator.yml, ~/.aminator/aminator.yml]
+    logging: [logging.yml, ~/.aminator/logging.yml]
+    environments: [environments.yml, ~/.aminator/environments.yml]
+
+# aminator working dir (state, locks, etc)
+aminator_root: /var/aminator
+volume_root: volumes # relative to aminator_root
+lockdir: lock # relative to aminator_root
+
+plugins:
+    config_root: plugins # relative to top-level config_root
+    managers:
+        aminator.plugins.blockdevice:
+            kind: blockdevice
+            class: BlockDevicePluginManager
+        aminator.plugins.cloud:
+            kind: cloud
+            class: CloudPluginManager
+        aminator.plugins.finalizer:
+            kind: finalizer
+            class: FinalizerPluginManager
+        aminator.plugins.provisioner:
+            kind: provisioner
+            class: ProvisionerPluginManager
+        aminator.plugins.volume:
+            kind: volume
+            class: VolumePluginManager
+
+default_environment: ec2_yum_linux

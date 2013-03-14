@@ -21,33 +21,35 @@
 """
 aminator.plugins.manager
 ========================
-plugin managers for finding , loading, configuring, plugging...
+Base plugin manager(s) and utils
 """
+import abc
 import logging
 
-from pkg_resources import iter_entry_points
+from stevedore.dispatch import NameDispatchExtensionManager
 
 
 log = logging.getLogger(__name__)
 
 
-class PluginManager(object):
-    def __init__(self, config, parsers):
-        self.config = config
-        self.parsers = parsers
+class BasePluginManager(NameDispatchExtensionManager):
+    """ Base plugin manager that all managers should inherit from """
+    __metaclass__ = abc.ABCMeta
 
-    def find_plugins(self):
-        pass
+    def __init__(self, check_func=lambda x: True, invoke_on_load=True,
+                 invoke_args=(), invoke_kwds={}):
+        super(BasePluginManager, self).__init__(namespace=self.entry_point,
+                                                check_func=check_func,
+                                                invoke_on_load=invoke_on_load,
+                                                invoke_args=invoke_args,
+                                                invoke_kwds=invoke_kwds)
 
-    def add_plugins(self, plugins=()):
-        pass
+    @abc.abstractproperty
+    def entry_point(self):
+        return self._entry_point
 
-    def add_plugin(self, plugin):
-        pass
-
-    def configure_plugins(self):
-        pass
-
-
-class EntrypointsPluginManager(PluginManager):
-    pass
+    @staticmethod
+    @abc.abstractmethod
+    def check_func(plugin):
+        """ determine whether a given plugin should be enabled """
+        return True

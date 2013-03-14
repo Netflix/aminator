@@ -19,126 +19,105 @@
 #
 
 """
-aminator.utils
-=====================
-Utility functions, classes, things that make life easier
+aminator.util.linux
+===================
+Linux utility functions
 """
 
 import errno
 import fcntl
-import functools
 import logging
 import os
-import re
 import stat
+from collections import namedtuple
 from contextlib import contextmanager
-from time import sleep
 
 import envoy
-
-from aminator.config import config
+from decorator import decorator
 
 
 log = logging.getLogger(__name__)
+MountSpec = namedtuple('MountSpec', 'dev mountpoint fstype options')
+CommandResult = namedtuple('CommandResult', 'success result')
 
 
-def mounted(dir=None):
+def command(timeout=None, data=None, *cargs, **ckwargs):
     """
-    :type dir: str
-    :param dir: device or mount point to look for in /proc/mounts
-
-    :rtype: bool
-    :return: True if dir is found in /proc/mounts.
+    decorator used to define shell commands to be executed via envoy.run
+    decorated function should return a simple string representing the command to be executed
+    decorated function should return None if a guard fails
     """
-    if dir is None:
-        return False
-    # strip trailing white space then add a single space
-    # anchor to differentiate from, say, sdf1 and sdf11
-    dir = dir.rstrip()
-    dir += ' '
-    pattern = re.compile(dir)
+    @decorator
+    def _run(f, *args, **kwargs):
+        _cmd = f(*args, **kwargs)
+        if _cmd is None:
+            return CommandResult(False, None)
+        log.debug('command: {0}'.format(_cmd))
+        res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
+        log.debug('stdout:\n{0}'.format(res.std_out))
+        log.debug('stderr:\n{0}'.format(res.std_err))
+        return CommandResult(res.status_code == 0, res)
+    return _run
+
+
+def mounted(path):
+    pat = path.strip() + ' '
     with open('/proc/mounts') as mounts:
-        return any(pattern.search(mount) for mount in mounts)
+        return any(pat in mount for mount in mounts)
 
 
-def os_node_exists(dev=None):
-    """
-    :type dev: str
-    :param dev: path to device node, eg. /dev/sdf1
-    :rtype: bool
-    :return: True if dev is a device node
-    """
-    if dev is None:
-        return False
+def os_node_exists(dev):
     try:
         mode = os.stat(dev).st_mode
     except OSError:
         return False
     return stat.S_ISBLK(mode)
 
-
-def shlog(command):
-    log.debug(command)
-    ret = envoy.run(command)
-    for x in (ret.std_err + ret.std_out).splitlines():
-        log.debug(x)
-    return(ret.status_code == 0)
-
-
+@command()
 def fsck(dev):
-    return shlog("fsck -y {0}".format(dev))
+    return 'fsck -y {0}'.format(dev)
 
 
-def mount(dev, mountpoint, fstype='', options=''):
-    """
-    wrapper for mount
-    :type dev: str
-    :param dev: device node to mount
-    :type mountpoint: str
-    :param mountpoint: directory mount point
-    :rtype: bool
-    :return: True if mount succeeds.
-    """
-    fstype_flag = ''
-    fstype_arg = ''
-    if fstype:
-        if fstype == 'bind':
+@command()
+def mount(mountspec):
+    if not any((mountspec.dev, mountspec.mountpoint)):
+        log.error('Must provide dev or mountpoint')
+        return None
+
+    fstype_arg = options_arg = ''
+
+    if mountspec.fstype:
+        if mountspec.fstype == 'bind':
             fstype_flag = '-o'
         else:
             fstype_flag = '-t'
-        fstype_arg = '{0} {1}'.format(fstype_flag, fstype)
-    options_arg = options
-    if options:
-        options_arg = '-o ' + options
-    mount_cmd = 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, dev, mountpoint)
-    return shlog(mount_cmd)
+        fstype_arg = '{0} {1}'.format(fstype_flag, mountspec.fstype)
+
+    if mountspec.options:
+        options_arg = '-o ' + mountspec.options
+
+    return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
 
 
+@command()
 def unmount(dev):
-    """shell command wrapper for unmounting device
-    :type dev: str
-    :param dev: device node to mount
-    :rtype: bool
-    :return: True if unmount succeeds.
-    """
-    return shlog("umount {0}".format(dev))
+    return 'unmount {0}'.format(dev)
 
 
-def busy_mount(mnt):
-    return shlog('lsof -X {0}'.format(mnt))
+@command()
+def busy_mount(mountpoint):
+    return 'lsof -X {0}'.format(mountpoint)
 
 
 @contextmanager
-def os_closing(fd):
+def os_closing(fh):
     """
     Intended to wrap os.open() and close the descriptor when done
-
-    :param fd: file descriptor from os.open
     """
     try:
-        yield fd
+        yield fh
     finally:
-        os.close(fd)
+        os.close(fh)
 
 
 @contextmanager
@@ -147,13 +126,9 @@ def chroot(path):
     Perform some actions from a chroot environment
 
     :param path: The new root
-    :type path: str
     """
     if not path or not os.path.isdir(path):
         raise IOError('chroot: path not provided or not found: {0}'.format(path))
-
-    if os.geteuid != 0:
-        raise OSError(13, 'Must be root')
 
     with os_closing(os.open('/', os.O_RDONLY)) as real_root:
         cwd = os.getcwd()
@@ -166,36 +141,31 @@ def chroot(path):
         os.chdir(cwd)
 
 
-def chroot_setup(root, rootdev):
+def chroot_setup(root, mounts):
     """
-    Takes mounts specified in configuration and lays them
-    on top of the chroot environment
+    Takes a root path and overlays special mounts on top
     :param root: chroot root path
-    :param rootdev: chroot root device
+    :param mounts: iterable collection of MountSpec tuples
+    :type mounts: list
     :return: True on successful setup, False if errors
     """
-    if not mounted(root):
-        if not mount(rootdev, root):
-            log.error('Unable to mount chroot device {0} at {1}'.format(rootdev, root))
+    for mountspec in mounts:
+        rootpath = os.path.join(root, mountspec.mountpoint)
+        if not os.path.exists(rootpath):
+            log.error('{0} does not exist'.format(rootpath))
             return False
-
-    for device, fstype, mountpoint in config.chroot_mounts:
-        chroot_mountpoint = os.path.join(root, mountpoint.lstrip('/'))
-        if not os.path.exists(chroot_mountpoint):
-            log.error('{0} does not exist'.format(chroot_mountpoint))
+        if not mount(mountspec).success:
+            log.error('Unable to mount {0} on {1} fstype {2}'.format(device, chroot_mountpoint,
+                                                                     fstype))
             return False
-        if not mounted(chroot_mountpoint):
-            if not mount(device, chroot_mountpoint, fstype):
-                log.error('Unable to mount {0} on {1} fstype {2}'.format(device, chroot_mountpoint,
-                                                                         fstype))
-                return False
         return True
 
 
-def chroot_teardown(root):
+def chroot_teardown(root, mounts):
     """
     Unmounts a chroot environment
     :param root: chroot root path
+    :param mounts: tuple of tuples of dev,fstype,mountpoint
     :return: True if everything unmounts okay, False if errors
     """
     if busy_mount(root):
@@ -204,7 +174,7 @@ def chroot_teardown(root):
     if not mounted(root):
         return True
     # unmount in reverse order to account for layered mounts
-    for device, fstype, mountpoint in reversed(config.chroot_mounts):
+    for device, fstype, mountpoint in reversed(mounts):
         chroot_mountpoint = os.path.join(root, mountpoint.lstrip('/'))
         if not mounted(chroot_mountpoint):
             continue
@@ -215,10 +185,10 @@ def chroot_teardown(root):
         if not unmount(mountpoint):
             log.error('Unable to unmount {0}'.format(mountpoint))
             return False
-    return unmount(root)
+    return unmount(root).success
 
 
-def lifo_mounts(root):
+def lifo_mounts(root=None):
     """return list of mount points mounted on 'root'
     and below in lifo order from /proc/mounts."""
     with open('/proc/mounts') as proc_mounts:
@@ -231,49 +201,7 @@ def lifo_mounts(root):
             if entry == root or entry.startswith(root + '/')]
 
 
-# Retry decorator with backoff
-# http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
-def retry(ExceptionToCheck, tries=3, delay=0.5, backoff=1, logger=None):
-    """
-    Retries a function or method until it returns True.
-
-    delay sets the initial delay in seconds, and backoff sets the factor by which
-    the delay should lengthen after each failure. backoff must be greater than 1,
-    or else it isn't really a backoff. tries must be at least 0, and delay
-    greater than 0.
-    """
-    if logger is None:
-        logger = log
-
-    def deco_retry(f):
-        def f_retry(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 0:
-                try:
-                    return f(*args, **kwargs)
-                except ExceptionToCheck, e:
-                    logger.debug(e)
-                    sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return f(*args, **kwargs)
-        return f_retry  # true decorator
-    return deco_retry
-
-
-# http://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
-def memoize(obj):
-    cache = obj.cache = {}
-
-    @functools.wraps(obj)
-    def memoizer(*args, **kwargs):
-        if args not in cache:
-            cache[args] = obj(*args, **kwargs)
-        return cache[args]
-    return memoizer
-
-
-def copy_image(src, dst):
+def copy_image(src=None, dst=None):
     """dd like utility for copying image files.
        eg.
        copy_image('/dev/sdf1','/mnt/bundles/ami-name.img')
@@ -293,16 +221,16 @@ def copy_image(src, dst):
                 break
             out = os.write(dst_fd, buf)
             if out < blksize:
-                log.debug("wrote %d bytes." % (out))
+                log.debug('wrote {0} bytes.'.format(out))
             blks += 1
-    except os.OSError as e:
+    except OSError as e:
         log.debug("%s: errno[%d]: %s." % (e.filename, e.errno, e.strerror))
         return False
     return True
 
 
 @contextmanager
-def flock(filename):
+def flock(filename=None):
     """simple blocking exclusive file locker
        eg:
        with flock(lockfilepath):
@@ -314,7 +242,7 @@ def flock(filename):
         fcntl.flock(fh, fcntl.LOCK_UN)
 
 
-def locked(filename):
+def locked(filename=None):
     """
     :param filename:
     :return: True if file is locked.

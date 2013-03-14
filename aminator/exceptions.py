@@ -25,16 +25,16 @@ aminator's exceptions
 """
 
 
-class AminateError(StandardError):
+class AminateException(Exception):
     """ Base Aminator Exception """
     pass
 
 
-class DeviceError(AminateError):
+class DeviceException(AminateException):
     """ Errors during device allocation """
     pass
 
 
-class VolumeError(AminateError):
+class VolumeException(AminateException):
     """ Errors during volume allocation """
     pass

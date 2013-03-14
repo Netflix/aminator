@@ -25,39 +25,23 @@ aminator core amination logic
 """
 import logging
 
-from aminator.config import config, argparsers, init_logging
-from aminator.plugins.manager import PluginManager
+from aminator.config import init_defaults
 from aminator.environment import Environment
-from aminator.utils import root_check
+from aminator.plugins import PluginManager
 
-
-__all__ = ('Aminator,')
+__all__ = ('Aminator', )
 log = logging.getLogger(__name__)
 
 
 class Aminator(object):
-    def __init__(self, config=config, parsers=None, plugins=PluginManager,
+    def __init__(self, config=init_defaults,
+                 plugin_manager=PluginManager,
                  environment=Environment):
-        self.config = config()
-
-        if self.config.root_only:
-            root = root_check()
-            if not root:
-                raise OSError(root, 'This library is configured to run only as root')
-
-        self.parsers = parsers
-        if not self.parsers:
-            self.parsers = argparsers(config)
-        self.parsers['main'].parse_known_args()
-
-        init_logging(config)
-
-        self.plugins = plugins(self.config, self.parsers)
-        if self.parsers:
-            self.parsers['main'].parse_args()
-        self.environment = environment
+        config, parser = config()
+        plugin_manager = plugin_manager(config, parser)
+        self.environment = environment(config, plugin_manager)
 
     def aminate(self):
-        with self.environment(self.config, self.plugins) as env:
+        with self.environment as env:
             status = env.provision()
         return status

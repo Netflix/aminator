@@ -19,21 +19,34 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.volume.base
+====================================
+Base class(es) for volume plugins
 """
+import abc
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.base import BasePlugin
 
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('BaseVolumePlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
+class BaseVolumePlugin(BasePlugin):
+    __metaclass__ = abc.ABCMeta
+    _entry_point = 'aminator.plugins.volume'
 
-    def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+    @abc.abstractmethod
+    def __enter__(self):
+        """
+        Volume plugins are context managers
+        __enter__ should return a volume object or identifier
+        """
+
+    @abc.abstractmethod
+    def __exit__(self):
+        """
+        exit point for volume context
+        cleanup locks, detach volumes, recycle, etc
+        """

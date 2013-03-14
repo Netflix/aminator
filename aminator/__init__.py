@@ -27,15 +27,11 @@ import logging
 try:
     from logging import NullHandler
 except ImportError:
-    class NullHandler(logging.Handler):
-        def emit(self, record):
-            pass
+    # py26
+    from logutils import NullHandler
 
-from aminator.cli import run
-
-
-__version__ = '0.9.0'
+__version__ = '1.0.0'
 __versioninfo__ = __version__.split('.')
-__all__ = ('run',)
+__all__ = ()
 
 logging.getLogger(__name__).addHandler(NullHandler())

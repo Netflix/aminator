@@ -1,5 +1,9 @@
-distribute
 boto>=2.7
-requests
+bunch
+decorator
+distribute
 envoy
+logutils
 pyyaml
+requests
+stevedore

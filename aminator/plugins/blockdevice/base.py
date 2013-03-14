@@ -19,21 +19,34 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.blockdevice.base
+=================================
+Base class(es) for block device manager plugins
 """
+import abc
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.base import BasePlugin
 
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('BaseDeviceManagerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
+class BaseBlockDevicePlugin(BasePlugin):
+    __metaclass__ = abc.ABCMeta
+    _entry_point = 'aminator.plugins.blockdevice'
 
-    def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+    @abc.abstractmethod
+    def __enter__(self):
+        """
+        Block device plugins are context managers
+        __enter__ should return a device string after allocation
+        """
+
+    @abc.abstractmethod
+    def __exit__(self):
+        """
+        exit point for block device context
+        cleanup locks and such here
+        """

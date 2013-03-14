@@ -20,16 +20,20 @@
 
 """
 aminator.plugins.cloud.ec2
-================================
+==========================
 ec2 cloud provider
 """
 import logging
 
-from aminator.plugins.base import BaseCloudPlugin
+from aminator.plugins.cloud.base import BaseCloudPlugin
 
 
+__all__ = ('EC2Cloud',)
 log = logging.getLogger(__name__)
 
 
-class EC2Cloud(BaseCloudPlugin):
-    pass
+class EC2CloudPlugin(BaseCloudPlugin):
+    _name = 'ec2'
+
+    def configure(self, config, parser):
+        super(EC2CloudPlugin, self).configure(config, parser)

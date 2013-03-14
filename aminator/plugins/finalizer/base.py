@@ -19,21 +19,20 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.finalizer.base
+===============================
+Base class(es) for finalizer plugins
 """
+import abc
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.base import BasePlugin
 
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('BaseFinalizerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
-
-    def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+class BaseFinalizerPlugin(BasePlugin):
+    __metaclass__ = abc.ABCMeta
+    _entry_point = 'aminator.plugins.finalizer'

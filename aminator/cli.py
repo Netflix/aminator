@@ -26,6 +26,7 @@ command-line entry
 import logging
 import sys
 
+import aminator.config
 import aminator.core
 
 

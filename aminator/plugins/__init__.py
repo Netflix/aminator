@@ -25,7 +25,7 @@ plugin support for aminator
 
 Aminator currently provides the following major plugin points:
 - clouds (interfaces to cloud providers)
-- device allocators (components that reserve and provide OS devices to volume managers)
+- block device allocators (components that reserve and provide OS devices to volume managers)
 - volume managers (components that attach cloud volumes and prepare them for amination)
 - provisioners (components that deploy applications into the volumes provided by volume managers)
 - finalizers (components that tag and register the resultant image)
@@ -33,3 +33,28 @@ Aminator currently provides the following major plugin points:
 Plugins may be discovered through setuptools/distribute's entry_points mechanism
 or registered by placing modules on a configurable plugin path for discovery.
 """
+import logging
+
+
+log = logging.getLogger(__name__)
+
+
+class PluginManager(object):
+    _registry = {}
+
+    def __init__(self, config, parser):
+        for entry_point, manager in config.plugins.managers.iteritems():
+            plugin_module = __import__(entry_point + '.manager', globals=globals(), locals=locals(),
+                                       fromlist=(manager['class'],))
+            cls = getattr(plugin_module, manager['class'])
+            self._registry[entry_point] = cls()
+            self._registry[manager['kind']] = self._registry[entry_point]
+            for plugin_name in self._registry[entry_point].names():
+                plugin = self._registry[entry_point].by_name[plugin_name].obj
+                plugin.configure(config, parser)
+
+    def find_by_namespace(self, namespace, name):
+        return self._registry[namespace].by_name[name]
+
+    def find_by_kind(self, kind, name):
+        return self._registry[kind].by_name[name]

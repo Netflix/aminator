@@ -18,13 +18,33 @@
 #
 #
 
-ec2_obj_states = {
-    'Image': ['available', 'deregistered', 'pending'],
-    'Instance': ['pending',
-                 'running',
-                 'shutting-down',
-                 'terminated',
-                 'stopping',
-                 'stopped'],
-    'Snapshot': ['pending', 'completed', 'error', '100%'],
-    'Volume': ['creating', 'available', 'in-use', 'deleting', 'error']}
+"""
+aminator.plugins.cloud.base
+===========================
+Base class(es) for cloud plugins
+"""
+import abc
+import logging
+
+from aminator.plugins.base import BasePlugin
+
+
+__all__ = ('BaseCloudPlugin',)
+log = logging.getLogger(__name__)
+
+
+class BaseCloudPlugin(BasePlugin):
+    __metaclass__ = abc.ABCMeta
+    _entry_point = 'aminator.plugins.cloud'
+
+    @abc.abstractmethod
+    def attach_volume_to_instance(self, blockdevice):
+        pass
+
+    @abc.abstractmethod
+    def detach_volume_from_instance(self):
+        pass
+
+    @abc.abstractmethod
+    def register_image(self):
+        pass

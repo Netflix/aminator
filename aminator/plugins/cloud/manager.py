@@ -19,21 +19,22 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.cloud.manager
+==============================
+Cloud plugin manager(s) and utils
 """
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.manager import BasePluginManager
 
 
-__all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
+class CloudPluginManager(BasePluginManager):
+    """ Cloud Plugin Manager """
+    _entry_point = 'aminator.plugins.cloud'
 
-    def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+    @property
+    def entry_point(self):
+        return self._entry_point

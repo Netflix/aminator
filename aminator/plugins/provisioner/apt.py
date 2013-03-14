@@ -25,11 +25,15 @@ basic apt provisioner
 """
 import logging
 
-from aminator.plugins.base import BaseProvisionerPlugin
+from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 
 
+__all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class AptProvisioner(BaseProvisionerPlugin):
-    pass
+class AptProvisionerPlugin(BaseProvisionerPlugin):
+    _name = 'apt'
+
+    def configure(self, config, parser):
+        super(AptProvisionerPlugin, self).configure(config, parser)

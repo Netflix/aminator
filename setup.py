@@ -41,23 +41,23 @@ with open('requirements.txt') as fh:
 
 entry_points = {
     'console_scripts': [
-        'aminate = aminator:run',
+        'aminate = aminator.cli:run',
     ],
     'aminator.plugins.cloud': [
-        'ec2 = aminator.plugins.cloud.ec2:EC2Cloud',
+        'ec2 = aminator.plugins.cloud.ec2:EC2CloudPlugin',
     ],
     'aminator.plugins.provisioner': [
-        'yum = aminator.plugins.provisioner.yum:YumProvisioner',
-        'apt = aminator.plugins.provisioner.apt:AptProvisioner',
+        'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
+        'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
     ],
-    'aminator.plugins.volume_manager': [
-        'linux = aminator.plugins.volume_manager.linux:LinuxVolumeManager',
+    'aminator.plugins.target': [
+        'linux = aminator.plugins.target.linux:LinuxTargetVolume',
     ],
-    'aminator.plugins.device_manager': [
-        'linux = aminator.plugins.device_manager.linux:LinuxDeviceManager',
+    'aminator.plugins.blockdevice': [
+        'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',
     ],
     'aminator.plugins.finalizer': [
-        'ec2 = aminator.plugins.finalizers.ec2:EC2Finalizer',
+        'tagging = aminator.plugins.finalizer.tagging:TaggingFinalizerPlugin',
     ],
 }
 
@@ -66,11 +66,7 @@ exclude_packages = [
     'tests.*',
 ]
 
-package_data = {
-    '': [
-        'LICENSE.txt',
-    ],
-}
+package_data = {'': ['default_conf/*.yml']}
 
 # py2.6 compatibility
 try:

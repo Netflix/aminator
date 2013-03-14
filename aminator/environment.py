@@ -21,7 +21,7 @@
 """
 aminator.environment
 ====================
-A proxy into clouds, devices, etc
+The orchestrator
 """
 import logging
 
@@ -30,15 +30,18 @@ log = logging.getLogger(__name__)
 
 
 class Environment(object):
-    def __init__(self, config, plugins):
+    """ The environment and orchetrator for amination """
+    # TODO: given that this represents a workflow, this should possibly be an entry point
+
+    def __init__(self, config, plugin_manager):
         self.config = config
-        self.plugins = plugins
-        self.name = self.config.environment
+        self.plugin_manager = plugin_manager
+        self.name = self.config.get('environment', self.config.default_environment)
 
     def provision(self):
-        with self.volume_manager(self.device_manager) as volume:
-            with self.provisioner as provisioner:
-                error = provisioner(volume)
+        with self.volume(self.blockdevice, self.cloud) as volume:
+            with self.provisioner(volume) as provisioner:
+                error = provisioner.provision()
                 if error:
                     return error
         error = self.finalizer()
@@ -47,11 +50,18 @@ class Environment(object):
         return None
 
     def __enter__(self):
-        self.cloud = self.plugins.cloud
-        self.device_manager = self.plugins.device_manager
-        self.volume_manager = self.plugins.volume_manager
-        self.provisioner = self.plugins.provisioner
-        self.finalizer = self.plugins.finalizer
+        env = self.config.environments[self.name]
+        cloud_plugin_name = env.cloud
+        blockdevice_plugin_name = env.blockdevice
+        volume_plugin_name = env.volume
+        provisioner_plugin_name = env.provisioner
+        finalizer_plugin_name = env.finalizer
+
+        self.cloud = self.plugins.find_by_kind('cloud', cloud_plugin_name)
+        self.blockdevice = self.plugins.find_by_kind('blockdevice', blockdevice_plugin_name)
+        self.volume = self.plugins.by_kind('volume', volume_plugin_name)
+        self.provisioner = self.plugins.find_by_kind('provisioner', provisioner_plugin_name)
+        self.finalizer = self.plugins.find_by_kind('finalizer', finalizer_plugin_name)
         return self
 
     def __exit__(self, exc_type, exc_value, trc):

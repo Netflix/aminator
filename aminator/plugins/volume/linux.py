@@ -19,21 +19,21 @@
 #
 
 """
-aminator.plugins.provisioner.yum
-================================
-basic yum provisioner
+aminator.plugins.volume.linux
+=============================
+basic linux volume allocator
 """
 import logging
 
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.plugins.volume.base import BaseVolumePlugin
 
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('LinuxVolumePlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseProvisionerPlugin):
-    _name = 'yum'
+class LinuxVolumePlugin(BaseVolumePlugin):
+    _name = 'linux'
 
     def configure(self, config, parser):
-        super(YumProvisionerPlugin, self).configure(config, parser)
+        super(LinuxVolumePlugin, self).configure(config, parser)
