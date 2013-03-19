@@ -27,6 +27,8 @@ import functools
 import logging
 from time import sleep
 
+from decorator import decorator
+
 
 log = logging.getLogger(__name__)
 
@@ -44,20 +46,20 @@ def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
     if logger is None:
         logger = log
 
-    def deco_retry(f):
-        def f_retry(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 0:
-                try:
-                    return f(*args, **kwargs)
-                except ExceptionToCheck, e:
-                    logger.debug(e)
-                    sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return f(*args, **kwargs)
-        return f_retry  # true decorator
-    return deco_retry
+    @decorator
+    def _retry(f, *args, **kwargs):
+        _tries, _delay = tries, delay
+
+        while _tries > 0:
+            try:
+                return f(*args, **kwargs)
+            except ExceptionToCheck, e:
+                logger.debug(e)
+                sleep(_delay)
+                _tries -= 1
+                _delay *= backoff
+        return f(*args, **kwargs)
+    return _retry
 
 
 def memoize(obj=None):

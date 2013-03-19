@@ -1,31 +1,67 @@
-version: 1
-formatters:
-  simple:
-    format: '%(asctime)s [%(levelname)s] %(message)s'
-    datefmt: '%F %T'
-  detailed:
-    format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
-    datefmt: '%F %T'
-handlers:
-  console:
-    class: logging.StreamHandler
-    formatter: simple
-    level: INFO
-    stream: ext://sys.stdout
-  per_package_file:
-    class: logging.FileHandler
-    formatter: detailed
-    level: DEBUG
-    filename_format: '/var/log/aminator/per_package/{0[package]}-{0[now]:%Y%m%d%H%M}.log' 
-  main_file:
-    class: logging.handlers.TimedRotatingFileHandler
-    formatter: detailed
-    level: DEBUG
-    filename: /var/log/aminator/aminator.log
-    when: 'midnight'
-    backupCount: 7
-    utc: True
-loggers:
-  aminator:
-    level: DEBUG
-    handlers: [console, main_file, per_package_file]
+# each dict will be pulled in and set up with dictConfig. Obey the dictConfig schema.
+base:
+  enabled: true
+  config:
+    version: 1
+    disable_existing_loggers: false
+    formatters:
+      simple:
+        format: '%(asctime)s [%(levelname)s] %(message)s'
+        datefmt: '%F %T'
+      detailed:
+        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        datefmt: '%F %T'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        level: DEBUG
+        stream: ext://sys.stdout
+    root:
+      handlers: [console]
+per_package:
+  enabled: false
+  config:
+    version: 1
+    disable_existing_loggers: false
+    incremental: false
+    formatters:
+      simple:
+        format: '%(asctime)s [%(levelname)s] %(message)s'
+        datefmt: '%F %T'
+      detailed:
+        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        datefmt: '%F %T'
+    handlers:
+      per_package:
+        filename_format: '{0}-{1:%Y%m%d%H%M}.log'
+        class: logging.FileHandler
+        formatter: detailed
+        level: DEBUG
+        # filename: to be filled in at runtime
+    root:
+      level: DEBUG
+      handlers: [per_package]
+boto:
+  enabled: false
+  config:
+    version: 1
+    disable_existing_loggers: false
+    incremental: false
+    formatters:
+      simple:
+        format: '%(asctime)s [%(levelname)s] %(message)s'
+        datefmt: '%F %T'
+      detailed:
+        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        datefmt: '%F %T'
+    handlers:
+      boto:
+        filename_format: 'boto-{0}-{1:%Y%m%d%H%M}.log'
+        class: logging.FileHandler
+        formatter: detailed
+        level: DEBUG
+    loggers:
+      boto:
+        level: DEBUG
+        handlers: [boto]

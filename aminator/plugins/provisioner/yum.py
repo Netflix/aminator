@@ -37,3 +37,16 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
 
     def configure(self, config, parser):
         super(YumProvisionerPlugin, self).configure(config, parser)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, trace):
+        pass
+
+    def __call__(self, volume):
+        self.volume = volume
+        return self
+
+    def provision(self):
+        pass

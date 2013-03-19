@@ -1,0 +1,5 @@
+enabled: true
+name:
+name_format: '{0.name}-{0.version}-{0.release}-{0.arch}-{1:%Y%m%d%H%M}-{2}-ebs'
+suffix_format: '{0:%Y%m%d%H%M}'
+creator: aminator

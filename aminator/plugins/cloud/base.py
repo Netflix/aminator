@@ -37,14 +37,34 @@ class BaseCloudPlugin(BasePlugin):
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.cloud'
 
-    @abc.abstractmethod
-    def attach_volume_to_instance(self, blockdevice):
-        pass
+    def __init__(self, *args, **kwargs):
+        self._connection = None
+        super(BaseCloudPlugin, self).__init__(*args, **kwargs)
 
     @abc.abstractmethod
-    def detach_volume_from_instance(self):
-        pass
+    def connect(self, *args, **kwargs):
+        """ Instructs a cloud provider to establish a connection """
 
     @abc.abstractmethod
-    def register_image(self):
-        pass
+    def attach_volume_to_instance(self, *args, **kwargs):
+        """ Instructs the cloud provider to attach some sort of volume to the instance on a given block device """
+
+    @abc.abstractmethod
+    def detach_volume_from_instance(self, *args, **kwargs):
+        """ Instructs the cloud provider to detach a given volume from the instance """
+
+    @abc.abstractmethod
+    def register_image(self, *args, **kwargs):
+        """ Instructs the cloud provider to register a finalized image for launching """
+
+    @abc.abstractmethod
+    def __enter__(self):
+        """
+        Cloud plugins are context managers
+        """
+
+    @abc.abstractmethod
+    def __exit__(self, exc_type, exc_value, trace):
+        """
+        exit point for cloud context
+        """

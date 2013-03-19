@@ -36,11 +36,16 @@ log = logging.getLogger(__name__)
 
 class BasePlugin(object):
     """ Base class for plugins """
-
     __metaclass__ = abc.ABCMeta
+    _entry_point = None
+    _name = None
+    _enabled = True
 
     def __init__(self, *args, **kwargs):
-        self._enabled = True
+        if self._entry_point is None:
+            raise AttributeError('Plugins must declare their entry point namespace in a _entry_point class attribute')
+        if self._name is None:
+            raise AttributeError('Plugins must declare their entry point name in a _name class attribute')
 
     @property
     def enabled(self):
@@ -58,13 +63,24 @@ class BasePlugin(object):
     def name(self):
         return self._name
 
-    @abc.abstractmethod
+    @property
+    def full_name(self):
+        return '{0}.{1}'.format(self.entry_point, self.name)
+
     def configure(self, config, parser):
         """ Configure the plugin and contribute to command line args """
         log.debug("Configuring plugin {0} for entry point {1}".format(self.name, self.entry_point))
         self.config = config
         self.parser = parser
         self.load_plugin_config()
+        if self._enabled:
+            self.add_plugin_args()
+
+    def add_plugin_args(self):
+        """
+        May be overridden by plugin implementations to contribute arguments to the arg parser
+        """
+        pass
 
     def load_plugin_config(self):
         entry_point = self.entry_point

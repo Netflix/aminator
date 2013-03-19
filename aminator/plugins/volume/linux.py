@@ -37,3 +37,14 @@ class LinuxVolumePlugin(BaseVolumePlugin):
 
     def configure(self, config, parser):
         super(LinuxVolumePlugin, self).configure(config, parser)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, trace):
+        pass
+
+    def __call__(self, cloud, blockdevice):
+        self.cloud = cloud
+        self.blockdevice = blockdevice
+        return self

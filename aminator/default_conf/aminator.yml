@@ -1,6 +1,8 @@
 # aminator default configuration settings
+# any sort of paths that do not start with a / or ~ may
+# end up relative to another directory, beware!
 config_root: /etc/aminator
-# files without a leading / or ~ are relative to confg_root
+# lack of leading ~ or / makes these relative to config_root
 config_files:
     main: [aminator.yml, ~/.aminator/aminator.yml]
     logging: [logging.yml, ~/.aminator/logging.yml]
@@ -8,26 +10,31 @@ config_files:
 
 # aminator working dir (state, locks, etc)
 aminator_root: /var/aminator
-volume_root: volumes # relative to aminator_root
-lockdir: lock # relative to aminator_root
+# lack of leading ~ or / makes these relative to aminator_root
+volume_dir: volumes
+lock_dir: lock
+
+log_root: /var/log/aminator
 
 plugins:
-    config_root: plugins # relative to top-level config_root
-    managers:
-        aminator.plugins.blockdevice:
-            kind: blockdevice
-            class: BlockDevicePluginManager
-        aminator.plugins.cloud:
-            kind: cloud
-            class: CloudPluginManager
-        aminator.plugins.finalizer:
-            kind: finalizer
-            class: FinalizerPluginManager
-        aminator.plugins.provisioner:
-            kind: provisioner
-            class: ProvisionerPluginManager
-        aminator.plugins.volume:
-            kind: volume
-            class: VolumePluginManager
+    config_root: /etc/aminator/plugins
+    entry_points:
+      blockdevice:
+        entry_point: aminator.plugins.blockdevice
+        class: BlockDevicePluginManager
+      cloud:
+        entry_point: aminator.plugins.cloud
+        class: CloudPluginManager
+      finalizer:
+        entry_point: aminator.plugins.finalizer
+        class: FinalizerPluginManager
+      provisioner:
+        entry_point: aminator.plugins.provisioner
+        class: ProvisionerPluginManager
+      volume:
+        entry_point: aminator.plugins.volume
+        class: VolumePluginManager
 
-default_environment: ec2_yum_linux
+context:
+  package:
+    arg:

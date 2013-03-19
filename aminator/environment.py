@@ -33,36 +33,39 @@ class Environment(object):
     """ The environment and orchetrator for amination """
     # TODO: given that this represents a workflow, this should possibly be an entry point
 
-    def __init__(self, config, plugin_manager):
-        self.config = config
-        self.plugin_manager = plugin_manager
-        self.name = self.config.get('environment', self.config.default_environment)
+    def attach_plugins(self):
+        log.debug('Attaching plugins to environment {0}'.format(self.name))
+        env_config = self.config.environments[self.name]
+        for kind, name in env_config.iteritems():
+            log.debug('Attaching plugin {0} for {1}'.format(name, kind))
+            plugin = self.plugin_manager.find_by_kind(kind, name)
+            setattr(self, kind, plugin.obj)
+            log.debug('Attached: {0}'.format(getattr(self, kind)))
 
     def provision(self):
-        with self.volume(self.blockdevice, self.cloud) as volume:
-            with self.provisioner(volume) as provisioner:
-                error = provisioner.provision()
-                if error:
-                    return error
-        error = self.finalizer()
-        if error:
-            return error
+        log.info('Beginning amination! Package: {0}'.format(self.config.package))
+        with self.cloud as cloud:
+            with self.finalizer(cloud) as finalizer:
+                with self.volume(self.cloud, self.blockdevice) as volume:
+                    with self.provisioner(volume) as provisioner:
+                        error = provisioner.provision()
+                        if error:
+                            return error
+                    error = finalizer.finalize(volume)
+                    if error:
+                        return error
         return None
 
     def __enter__(self):
-        env = self.config.environments[self.name]
-        cloud_plugin_name = env.cloud
-        blockdevice_plugin_name = env.blockdevice
-        volume_plugin_name = env.volume
-        provisioner_plugin_name = env.provisioner
-        finalizer_plugin_name = env.finalizer
-
-        self.cloud = self.plugins.find_by_kind('cloud', cloud_plugin_name)
-        self.blockdevice = self.plugins.find_by_kind('blockdevice', blockdevice_plugin_name)
-        self.volume = self.plugins.by_kind('volume', volume_plugin_name)
-        self.provisioner = self.plugins.find_by_kind('provisioner', provisioner_plugin_name)
-        self.finalizer = self.plugins.find_by_kind('finalizer', finalizer_plugin_name)
         return self
 
     def __exit__(self, exc_type, exc_value, trc):
         pass
+
+    def __call__(self, config, plugin_manager):
+        self.config = config
+        self.plugin_manager = plugin_manager
+        self.name = self.config.get('environment', self.config.environments.default)
+        log.debug('Environment: {0}'.format(self.name))
+        self.attach_plugins()
+        return self

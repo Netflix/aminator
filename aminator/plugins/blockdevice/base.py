@@ -45,7 +45,7 @@ class BaseBlockDevicePlugin(BasePlugin):
         """
 
     @abc.abstractmethod
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, trace):
         """
         exit point for block device context
         cleanup locks and such here

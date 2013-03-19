@@ -33,23 +33,35 @@ log = logging.getLogger(__name__)
 
 
 class BasePluginManager(NameDispatchExtensionManager):
-    """ Base plugin manager that all managers should inherit from """
+    """
+    Base plugin manager from which all managers *should* inherit
+    Descendents *must* define a _entry_point class attribute
+    Descendents *may* define a _check_func class attribute holding a function that determines whether a
+    given plugin should or should not be enabled
+    """
     __metaclass__ = abc.ABCMeta
+    _entry_point = None
+    _check_func = None
 
-    def __init__(self, check_func=lambda x: True, invoke_on_load=True,
-                 invoke_args=(), invoke_kwds={}):
-        super(BasePluginManager, self).__init__(namespace=self.entry_point,
-                                                check_func=check_func,
-                                                invoke_on_load=invoke_on_load,
-                                                invoke_args=invoke_args,
+    def __init__(self, check_func=None, invoke_on_load=True, invoke_args=None, invoke_kwds=None):
+        invoke_args = invoke_args or ()
+        invoke_kwds = invoke_kwds or {}
+
+        if self._entry_point is None:
+            raise AttributeError('Plugin managers must declare their entry point in a class attribute _entry_point')
+
+        check_func = check_func or self._check_func
+        if check_func is None:
+            check_func = lambda x: True
+
+        super(BasePluginManager, self).__init__(namespace=self.entry_point, check_func=check_func,
+                                                invoke_on_load=invoke_on_load, invoke_args=invoke_args,
                                                 invoke_kwds=invoke_kwds)
 
-    @abc.abstractproperty
+    @property
     def entry_point(self):
+        """
+        Base plugins for each plugin type must set a _entry_point class attribute to the entry point they
+        are responsible for
+        """
         return self._entry_point
-
-    @staticmethod
-    @abc.abstractmethod
-    def check_func(plugin):
-        """ determine whether a given plugin should be enabled """
-        return True

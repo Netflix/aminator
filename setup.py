@@ -50,14 +50,14 @@ entry_points = {
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
     ],
-    'aminator.plugins.target': [
-        'linux = aminator.plugins.target.linux:LinuxTargetVolume',
+    'aminator.plugins.volume': [
+        'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',
     ],
     'aminator.plugins.blockdevice': [
         'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',
     ],
     'aminator.plugins.finalizer': [
-        'tagging = aminator.plugins.finalizer.tagging:TaggingFinalizerPlugin',
+        'tagging = aminator.plugins.finalizer.tagging_ebs:TaggingEBSFinalizerPlugin',
     ],
 }
 

@@ -60,21 +60,27 @@ RSRC_DEFAULT_CONFS = {
 }
 
 
-def init_defaults(argv=None):
-    argv = argv or sys.argv[:]
+def init_defaults(argv=None, debug=False):
+    argv = argv or sys.argv[1:]
     config = Config.from_defaults()
     config = config.dict_merge(config, Config.from_files(config.config_files.main))
-    parser = Argparser(argv=argv, config=config)
+    main_parser = Argparser(argv=argv, description='Aminator: bringing AMIs to life', add_help=False,
+                            argument_default=argparse.SUPPRESS)
     config.logging = LoggingConfig.from_defaults()
-    config.logging = config.dict_merge(config.logging,
-                                       LoggingConfig.from_files(config.config_files.logging))
-    LoggingConfig.format_handler_filenames(config)
+    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging))
     config.environments = EnvironmentConfig.from_defaults()
     config.environments = config.dict_merge(config.environments,
                                             EnvironmentConfig.from_files(config.config_files.environments))
-    dictConfig(config.logging.toDict())
+
+    if config.logging.base.enabled:
+        dictConfig(config.logging.base.config.toDict())
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    add_base_arguments(parser=main_parser, config=config)
+    plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS,
+                              parents=[main_parser])
     log.info('Aminator {0} default configuration loaded'.format(aminator.__version__))
-    return config, parser
+    return config, plugin_parser
 
 
 class Config(bunch.Bunch):
@@ -83,39 +89,39 @@ class Config(bunch.Bunch):
     resource_default = RSRC_DEFAULT_CONFS['main']
 
     @classmethod
-    def from_yaml(cls, yaml_data, Loader=Loader):
-        return cls(cls.fromYAML(yaml_data, Loader=Loader))
+    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs):
+        return cls(cls.fromYAML(yaml_data, Loader=Loader, *args, **kwargs))
 
     @classmethod
-    def from_pkg_resource(cls, namespace, name):
+    def from_pkg_resource(cls, namespace, name, *args, **kwargs):
         config = resource_string(namespace, name)
         if len(config):
-            return cls.from_yaml(config, Loader=Loader)
+            return cls.from_yaml(config, *args, **kwargs)
         else:
             log.warn('Resource for {0}.{1} is empty, returning empty config'.format(namespace, name))
 
     @classmethod
-    def from_file(cls, yaml_file, Loader=Loader):
+    def from_file(cls, yaml_file, *args, **kwargs):
         if not os.path.exists(yaml_file):
             log.warn('File {0} not found, returning empty config'.format(yaml_file))
             return cls()
         with open(yaml_file) as f:
-            _config = cls.from_yaml(f, Loader=Loader)
+            _config = cls.from_yaml(f, *args, **kwargs)
         return _config
 
     @classmethod
-    def from_files(cls, files, Loader=Loader):
+    def from_files(cls, files, *args, **kwargs):
         _files = [os.path.expanduser(filename) for filename in files]
         _files = [filename for filename in _files if os.path.exists(filename)]
         _config = cls()
         for filename in _files:
-            _new = cls.from_file(filename, Loader=Loader)
+            _new = cls.from_file(filename, *args, **kwargs)
             _config = cls.dict_merge(_config, _new)
         return _config
 
     @classmethod
-    def from_defaults(cls, namespace=None, name=None, Loader=Loader):
-        if (namespace and name and resource_exists(namespace, name)):
+    def from_defaults(cls, namespace=None, name=None, *args, **kwargs):
+        if namespace and name and resource_exists(namespace, name):
             _namespace = namespace
             _name = name
         elif (cls.resource_package and cls.resource_default
@@ -124,8 +130,8 @@ class Config(bunch.Bunch):
             _name = cls.resource_default
         else:
             log.warn('No class resource attributes and no namespace info, returning empty config')
-            return cls()
-        return cls.from_pkg_resource(_namespace, _name)
+            return cls(*args, **kwargs)
+        return cls.from_pkg_resource(_namespace, _name, *args, **kwargs)
 
     @staticmethod
     def dict_merge(old, new):
@@ -138,22 +144,21 @@ class Config(bunch.Bunch):
         return res
 
     def __call__(self):
-        return self
+        return
 
 
 class LoggingConfig(Config):
     """ Logging config class """
     resource_default = RSRC_DEFAULT_CONFS['logging']
 
-    @staticmethod
-    def format_handler_filenames(config):
-        if 'handlers' in config.logging:
-            for name, handler in config.logging.handlers.iteritems():
-                if 'filename_format' not in handler:
-                    continue
-                context = {'package': config.package, 'now': datetime.utcnow()}
-                handler.filename = handler.filename_format.format(context)
-                del handler['filename_format']
+
+def log_per_package(config, logger):
+    per_package_config = config.logging[logger].config
+    filename_format = per_package_config.handlers[logger].pop('filename_format')
+    filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
+    per_package_config.handlers[logger].filename = filename
+    log.debug('Detailed {0} output to {1}'.format(logger, per_package_config.handlers[logger].filename))
+    dictConfig(per_package_config.toDict())
 
 
 class EnvironmentConfig(Config):
@@ -166,42 +171,37 @@ class PluginConfig(Config):
     resource_package = resource_default = None
 
     @classmethod
-    def from_defaults(cls, namespace, name, Loader=Loader):
+    def from_defaults(cls, namespace=None, name=None, *args, **kwargs):
+        if not all((namespace, name)):
+            raise ValueError('Plugins must specify a namespace and name')
         resource_file = '.'.join((namespace, name, 'yml'))
         resource_path = os.path.join(RSRC_DEFAULT_CONF_DIR, resource_file)
-        return super(PluginConfig, cls).from_defaults(namespace=namespace, name=resource_path,
-                                                      Loader=Loader)
+        return super(PluginConfig, cls).from_defaults(namespace=namespace, name=resource_path, *args, **kwargs)
 
 
 class Argparser(object):
     """ Argument parser class. Holds the keys to argparse """
-    def __init__(self, argv=None, config=None, *args, **kwargs):
-        log.debug('Initializing argparser')
-        self._argv = argv or sys.argv[:]
-        log.debug('argv: {0}'.format(self._argv))
-        self._config = config or Config()
-        self._parser = argparse.ArgumentParser(argument_default=argparse.SUPPRESS, *args, **kwargs)
-        self._groups = {
-            'main': self._parser,
-            'required': self._parser.add_argument_group('required'),
-        }
-        self._add_immediate_arguments()
+    def __init__(self, argv=None, *args, **kwargs):
+        self._argv = argv or sys.argv[1:]
+        self._parser = argparse.ArgumentParser(*args, **kwargs)
 
-    def add_argument(self, *args, **kwargs):
-        group = kwargs.pop('group', 'main')
-        parse_immediate = kwargs.pop('parse_immediate', False)
-        log.debug('adding argument group={0} parse_immediate={1} args={2} kwargs={3}'
-                  .format(group, parse_immediate, args, kwargs))
-        parser = self._groups[group]
-        _arg = parser.add_argument(*args, **kwargs)
-        if parse_immediate:
-            log.debug('Parsing {0} from {1} immediately'.format(_arg, self._argv))
-            _, self._argv = self._parser.parse_known_args(self._argv)
+    def add_config_arg(self, *args, **kwargs):
+        config = kwargs.pop('config', Config())
+        _action = kwargs.pop('action', None)
+        action = conf_action(config, _action)
+        kwargs['action'] = action
+        return self.add_argument(*args, **kwargs)
 
-    def _add_immediate_arguments(self):
-        self.add_argument('-p', '--package', dest='package', group='required',
-                          parse_immediate=True, required=True, action=conf_action(self._config),
-                          help='The package to aminate')
+    def __getattr__(self, attr):
+        return getattr(self._parser, attr)
+
+
+def add_base_arguments(parser, config):
+    parser.add_config_arg('package', config=config, help='The package to aminate')
+    parser.add_config_arg('-e', '--environment', config=config.environments,
+                          help='The environment configuration for amination')
+    parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
+    parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
 
 
 def conf_action(config, action=None):

@@ -36,3 +36,25 @@ log = logging.getLogger(__name__)
 class BaseFinalizerPlugin(BasePlugin):
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.finalizer'
+
+    @abc.abstractmethod
+    def finalize(self, volume):
+        """ finalize an image """
+
+    @abc.abstractmethod
+    def __enter__(self):
+        """
+        Block device plugins are context managers
+        __enter__ should return a device string after allocation
+        """
+
+    @abc.abstractmethod
+    def __exit__(self, exc_type, exc_value, trace):
+        """
+        exit point for block device context
+        cleanup locks and such here
+        """
+
+    @abc.abstractmethod
+    def __call__(self, cloud):
+        """ finalizers will receive a cloud object in the with statement"""

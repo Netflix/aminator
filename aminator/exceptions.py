@@ -38,3 +38,7 @@ class DeviceException(AminateException):
 class VolumeException(AminateException):
     """ Errors during volume allocation """
     pass
+
+
+class ArgumentError(AminateException):
+    """ Errors during argument parsing"""

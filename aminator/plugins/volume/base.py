@@ -20,7 +20,7 @@
 
 """
 aminator.plugins.volume.base
-====================================
+============================
 Base class(es) for volume plugins
 """
 import abc
@@ -45,8 +45,14 @@ class BaseVolumePlugin(BasePlugin):
         """
 
     @abc.abstractmethod
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, trace):
         """
         exit point for volume context
         cleanup locks, detach volumes, recycle, etc
+        """
+
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        """
+        The volume manager, in most all cases, will receive a set of arguments when used as a context manager
         """

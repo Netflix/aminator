@@ -45,14 +45,20 @@ class BaseProvisionerPlugin(BasePlugin):
         """
 
     @abc.abstractmethod
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, trace):
         """
         exit point for provisioner
         cleanup, undo chroot, etc
         """
 
     @abc.abstractmethod
-    def provision(self):
+    def __call__(self, *args, **kwargs):
+        """
+        The provisioner, in most all cases, will receive a set of arguments when used as a context manager
+        """
+
+    @abc.abstractmethod
+    def provision(self, *args, **kwargs):
         """
         Kick off the actual provisioning step
         """

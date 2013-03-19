@@ -26,8 +26,8 @@ command-line entry
 import logging
 import sys
 
-import aminator.config
-import aminator.core
+from aminator.config import Argparser
+from aminator.core import Aminator
 
 
 __all__ = ('run',)
@@ -35,4 +35,17 @@ log = logging.getLogger(__name__)
 
 
 def run():
-    sys.exit(aminator.core.Aminator().aminate())
+    # we throw this one away, real parsing happens later
+    # this is just for getting a debug flag for verbose logging.
+    # to be extra sneaky, we add a --debug to the REAL parsers so it shows up in help
+    # but we don't touch it there :P
+    bootstrap_parser = Argparser(add_help=False)
+    bootstrap_parser.add_argument('--debug', action='store_true')
+    args, argv = bootstrap_parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + argv
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig()
+    sys.exit(Aminator(debug=args.debug).aminate())

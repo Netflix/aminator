@@ -25,7 +25,7 @@ aminator core amination logic
 """
 import logging
 
-from aminator.config import init_defaults
+from aminator.config import init_defaults, log_per_package
 from aminator.environment import Environment
 from aminator.plugins import PluginManager
 
@@ -34,14 +34,26 @@ log = logging.getLogger(__name__)
 
 
 class Aminator(object):
-    def __init__(self, config=init_defaults,
-                 plugin_manager=PluginManager,
-                 environment=Environment):
-        config, parser = config()
-        plugin_manager = plugin_manager(config, parser)
-        self.environment = environment(config, plugin_manager)
+    def __init__(self, config=None, parser=None, plugin_manager=PluginManager, environment=Environment, debug=False):
+        log.info('Aminator starting...')
+        if not all((config, parser)):
+            log.debug('Loading default configuration')
+            config, parser = init_defaults(debug=debug)
+        self.config = config
+        self.parser = parser
+        log.debug('Configuration loaded')
+        self.plugin_manager = plugin_manager(self.config, self.parser)
+        log.debug('Plugins loaded')
+        self.parser.parse_args()
+        log.debug('Args parsed')
+
+        if self.config.logging.per_package.enabled:
+            log.debug('Configuring per-package logging')
+            log_per_package(self.config, 'per_package')
+
+        self.environment = environment()
 
     def aminate(self):
-        with self.environment as env:
+        with self.environment(self.config, self.plugin_manager) as env:
             status = env.provision()
         return status

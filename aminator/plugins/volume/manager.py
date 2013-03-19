@@ -38,3 +38,7 @@ class VolumePluginManager(BasePluginManager):
     @property
     def entry_point(self):
         return self._entry_point
+
+    @staticmethod
+    def check_func(plugin):
+        return True

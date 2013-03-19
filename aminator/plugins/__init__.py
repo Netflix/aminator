@@ -40,21 +40,31 @@ log = logging.getLogger(__name__)
 
 
 class PluginManager(object):
+    """ The plugin manager manager, if you will. Responsible for booting plugins """
     _registry = {}
 
     def __init__(self, config, parser):
-        for entry_point, manager in config.plugins.managers.iteritems():
-            plugin_module = __import__(entry_point + '.manager', globals=globals(), locals=locals(),
-                                       fromlist=(manager['class'],))
-            cls = getattr(plugin_module, manager['class'])
-            self._registry[entry_point] = cls()
-            self._registry[manager['kind']] = self._registry[entry_point]
-            for plugin_name in self._registry[entry_point].names():
-                plugin = self._registry[entry_point].by_name[plugin_name].obj
-                plugin.configure(config, parser)
+        """
+        config.plugins.managers is a map of entry points, their kinds, and the actual manager classes
+        this populates the registry dict, mapping kind and entry_point to an actual instance of the manager
+        """
+        for kind, plugin_info in config.plugins.entry_points.iteritems():
+            entry_point = plugin_info.entry_point
+            classname = plugin_info['class']
 
-    def find_by_namespace(self, namespace, name):
-        return self._registry[namespace].by_name[name]
+            manager_module = __import__(entry_point + '.manager', globals=globals(), locals=locals(),
+                                        fromlist=(classname,))
+            manager = getattr(manager_module, classname)
+
+            self._registry[entry_point] = manager()
+            self._registry[kind] = self._registry[entry_point]
+
+            for name, plugin in self._registry[entry_point].by_name.iteritems():
+                plugin.obj.configure(config, parser)
+                log.info('Loaded plugin {0}.{1}'.format(entry_point, name))
+
+    def find_by_entry_point(self, entry_point, name):
+        return self._registry[entry_point].by_name[name]
 
     def find_by_kind(self, kind, name):
         return self._registry[kind].by_name[name]
