@@ -23,9 +23,13 @@ aminator.plugins.blockdevice.linux
 ==================================
 basic linux block device manager
 """
+import fcntl
+import os
 import logging
 
+from aminator.exceptions import DeviceException
 from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
+from aminator.util.linux import flock, locked, native_device_prefix, os_node_exists
 
 
 __all__ = ('LinuxBlockDevicePlugin',)
@@ -38,8 +42,58 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     def configure(self, config, parser):
         super(LinuxBlockDevicePlugin, self).configure(config, parser)
 
+        block_config = self.config.plugins[self.full_name]
+
+        if self.config.lock_dir[0] not in ('/', '~'):
+            self.lock_dir = os.path.join(self.config.aminator_root, self.config.lock_dir)
+        else:
+            self.lock_dir = os.path.expanduser(self.config.lock_dir)
+        self.lock_file = self.__class__.__name__
+
+        majors = block_config.device_letters
+        self.device_prefix = native_device_prefix(block_config.device_prefixes)
+        device_format = '/dev/{0}{1}{2}'
+
+        self.allowed_devices = [device_format.format(self.device_prefix, major, minor)
+                                for major in majors
+                                for minor in xrange(1, 16)]
+
     def __enter__(self):
-        pass
+        with flock(self.lock_file):
+            dev, dev_lock = self.find_available_dev()
+        self.dev = dev
+        self.dev_lock = dev_lock
+        return self.dev, self.dev_lock
 
     def __exit__(self, exc_type, exc_value, trace):
-        pass
+        fcntl.flock(self.dev_lock, fcntl.LOCK_UN)
+        self.dev_lock.close()
+
+    def __call__(self, cloud):
+        self.cloud = cloud
+        return self
+
+    def is_stale(self, dev):
+        attached_block_devices = self.cloud.attached_block_devices(self.device_prefix)
+        if dev in attached_block_devices and not os_node_exists(dev):
+            return True
+        return False
+
+    def find_available_dev(self):
+        for dev in self.allowed_devices:
+            device_lock = os.path.join(self.lock_dir, os.path.basename(dev))
+            if os.path.exists(dev):
+                log.debug('%s exists, skipping' % dev)
+                continue
+            if locked(device_lock):
+                log.debug('%s is locked, skipping' % dev)
+                continue
+            if self.is_stale(dev):
+                log.debug('%s is stale, skipping' % dev)
+                continue
+            fh = open(device_lock, 'a')
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            log.debug('fh = {0}, dev = {1}'.format(str(fh), dev))
+            return dev, fh
+        else:
+            raise DeviceException('Exhausted all devices, none free')

@@ -43,7 +43,7 @@ class Environment(object):
             log.debug('Attached: {0}'.format(getattr(self, kind)))
 
     def provision(self):
-        log.info('Beginning amination! Package: {0}'.format(self.config.package))
+        log.info('Beginning amination! Package: {0}'.format(self.config.context.package.arg))
         with self.cloud as cloud:
             with self.finalizer(cloud) as finalizer:
                 with self.volume(self.cloud, self.blockdevice) as volume:
@@ -65,7 +65,7 @@ class Environment(object):
     def __call__(self, config, plugin_manager):
         self.config = config
         self.plugin_manager = plugin_manager
-        self.name = self.config.get('environment', self.config.environments.default)
-        log.debug('Environment: {0}'.format(self.name))
+        self.name = self.config.context.get('environment', self.config.environments.default)
+        self.config.context['environment'] = self.name
         self.attach_plugins()
         return self

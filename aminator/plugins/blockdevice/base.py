@@ -50,3 +50,9 @@ class BaseBlockDevicePlugin(BasePlugin):
         exit point for block device context
         cleanup locks and such here
         """
+
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        """
+        Block device plugins receive a cloud object so they can determine if a mount is stale or not
+        """

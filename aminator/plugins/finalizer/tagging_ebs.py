@@ -42,12 +42,12 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
     def add_plugin_args(self):
         tagging = self.parser.add_argument_group(title='AMI Tagging and Naming',
                                                  description='Tagging and naming options for the resultant AMI')
-        tagging.add_argument('-n', '--name', dest='name', action=conf_action(self.config.plugins[self.full_name]),
+        tagging.add_argument('-n', '--name', dest='name', action=conf_action(self.config.context.ami),
                              help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs')
-        tagging.add_argument('-s', '--suffix', dest='suffix', action=conf_action(self.config.plugins[self.full_name]),
+        tagging.add_argument('-s', '--suffix', dest='suffix', action=conf_action(self.config.context.ami),
                              help='suffix of ami name, (default yyyymmddHHMM)')
         creator_help = 'The user who is aminating. The resultant AMI will receive a creator tag w/ this user'
-        tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(self.config.plugins[self.full_name]),
+        tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(self.config.context.ami),
                              help=creator_help)
 
     def finalize(self, volume):

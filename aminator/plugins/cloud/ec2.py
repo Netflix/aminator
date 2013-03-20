@@ -26,9 +26,12 @@ ec2 cloud provider
 import logging
 
 from boto.ec2 import connect_to_region
+from boto.ec2.instance import Instance
+from boto.utils import get_instance_metadata
 
 from aminator.config import conf_action
 from aminator.plugins.cloud.base import BaseCloudPlugin
+from aminator.util.linux import device_prefix, native_block_device
 
 
 __all__ = ('EC2Cloud',)
@@ -45,18 +48,18 @@ class EC2CloudPlugin(BaseCloudPlugin):
         base_ami = self.parser.add_argument_group(title='Base AMI', description='EITHER AMI id OR name, not both!')
         base_ami_mutex = base_ami.add_mutually_exclusive_group(required=True)
         base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name',
-                                    action=conf_action(self.config.plugins[self.full_name]),
+                                    action=conf_action(config=self.config.context.ami),
                                     help='The name of the base AMI used in provisioning')
         base_ami_mutex.add_argument('-B', '--base-ami-id', dest='base_ami_id',
-                                    action=conf_action(self.config.plugins[self.full_name]),
+                                    action=conf_action(config=self.config.context.ami),
                                     help='The id of the base AMI used in provisioning')
         cloud = self.parser.add_argument_group(title='EC2 Options', description='EC2 Connection Information')
         cloud.add_argument('--ec2-region', dest='region', help='EC2 region (default: us-east-1)',
-                           action=conf_action(self.config.plugins[self.full_name]))
-        cloud.add_argument('--boto-secure', dest='is_secure' ,help='Connect via https',
-                           action=conf_action(self.config.plugins[self.full_name], action='store_true'))
+                           action=conf_action(config=self.config.context.cloud))
+        cloud.add_argument('--boto-secure', dest='is_secure',  help='Connect via https',
+                           action=conf_action(config=self.config.context.cloud, action='store_true'))
         cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
-                           action=conf_action(self.config.plugins[self.full_name], action='store_true'))
+                           action=conf_action(config=self.config.context.cloud, action='store_true'))
 
     def connect(self, **kwargs):
         if not self._connection:
@@ -79,6 +82,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             logging.getLogger('boto').setLevel(logging.INFO)
         kwargs['is_secure'] = cloud_config.is_secure
         self._connection = connect_to_region(region, **kwargs)
+        log.info('Aminating in region {0}'.format(region))
 
     def attach_volume_to_instance(self, blockdevice):
         pass
@@ -89,29 +93,41 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def register_image(self):
         pass
 
+    def attached_block_devs(self, native_device_prefix):
+        self._instance_info.update()
+        if device_prefix(self._instance_info.block_device_mapping.keys()[0]) != native_device_prefix:
+            return dict((native_block_device(dev, native_device_prefix), mapping)
+                        for (dev, mapping) in enumerate(self._instance_info.block_device_mapping))
+        return self._instance_info.block_device_mapping
+
     def resolve_baseami(self):
         log.info('Resolving base AMI')
+        context = self.config.context
         cloud_config = self.config.plugins[self.full_name]
         try:
-            if cloud_config.base_ami_name:
-                ami_id = cloud_config.base_ami_name
+            ami_id = context.ami.get('base_ami_name', cloud_config.get('base_ami_name', None))
+            if ami_id is None:
+                ami_id = context.ami.get('base_ami_id', cloud_config.get('base_ami_id', None))
+                if ami_id is None:
+                    raise RuntimeError('Must configure or provide either a base ami name or id')
+                else:
+                    context.ami['ami_id'] = ami_id
+                    log.info('looking up base AMI with ID {0}'.format(ami_id))
+                    baseami = self._connection.get_all_images(image_ids=[ami_id])[0]
+            else:
                 log.info('looking up base AMI with name {0}'.format(ami_id))
                 baseami = self._connection.get_all_images(filters={'name': ami_id})[0]
-            elif cloud_config.base_ami_id:
-                ami_id = cloud_config.base_ami_id
-                log.info('looking up base AMI with ID {0}'.format(ami_id))
-                baseami = self._connection.get_all_images(image_ids=[ami_id])[0]
-            else:
-                raise RuntimeError('Must configure or provide either a base ami name or id')
         except IndexError:
             raise RuntimeError('Could not locate base AMI with identifier: {0}'.format(ami_id))
         log.info('Successfully resolved {0.name}({0.id})'.format(baseami))
-        self.config['ami_id'] = ami_id
-        self.config['base_ami'] = baseami
+        context['base_ami'] = baseami
 
     def __enter__(self):
         self.connect()
         self.resolve_baseami()
+        self._instance_info = Instance(connection=self._connection)
+        self._instance_info.id = get_instance_metadata()['instance-id']
+        self._instance_info.update()
 
         return self
 

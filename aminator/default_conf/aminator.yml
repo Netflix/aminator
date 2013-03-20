@@ -36,5 +36,6 @@ plugins:
         class: VolumePluginManager
 
 context:
-  package:
-    arg:
+  package: {}
+  ami: {}
+  cloud: {}

@@ -58,6 +58,10 @@ class BaseCloudPlugin(BasePlugin):
         """ Instructs the cloud provider to register a finalized image for launching """
 
     @abc.abstractmethod
+    def attached_block_devs(self, *args, **kwargs):
+        """ returns an iterable containing currently attached block devices """
+
+    @abc.abstractmethod
     def __enter__(self):
         """
         Cloud plugins are context managers
