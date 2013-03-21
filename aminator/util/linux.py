@@ -54,8 +54,8 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
             return CommandResult(False, None)
         log.debug('command: {0}'.format(_cmd))
         res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
-        log.debug('stdout:\n{0}'.format(res.std_out))
-        log.debug('stderr:\n{0}'.format(res.std_err))
+        if any((res.std_out, res.std_err)):
+            log.debug('stdout: {0.std_out}\nstderr: {0.std_err}'.format(res))
         log.debug('status code: {0}'.format(res.status_code))
         return CommandResult(res.status_code == 0, res)
     return _run
@@ -77,7 +77,6 @@ def os_node_exists(dev):
 @command()
 def fsck(dev):
     return 'fsck -y {0}'.format(dev)
-
 
 @command()
 def mount(mountspec):
@@ -121,12 +120,15 @@ class Chroot(object):
         self.cwd = os.getcwd()
         os.chroot(self.path)
         os.chdir('/')
+        log.debug('Inside chroot')
         return self
 
     def __exit__(self, typ, exc, trc):
+        log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')
         os.chdir(self.cwd)
+        log.debug('Outside chroot')
         return False
 
 

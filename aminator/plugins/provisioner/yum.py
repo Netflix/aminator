@@ -41,9 +41,11 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
         super(YumProvisionerPlugin, self).configure(config, parser)
 
     def provision(self):
+        log.debug('Entering chroot at {0}'.format(self.mountpoint))
         with Chroot(self.mountpoint):
             log.debug('Inside chroot')
             log.debug(os.listdir('/'))
+        log.debug('Exited chroot')
 
     def configure_chroot(self):
         log.debug('Configuring chroot at {0}'.format(self.mountpoint))
@@ -62,7 +64,7 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
 
     def teardown_chroot(self):
         log.debug('Tearing down chroot at {0}'.format(self.mountpoint))
-        if busy_mount(self.mountpoint):
+        if busy_mount(self.mountpoint).success:
             log.error('Unable to tear down chroot at {0}: device busy'.format(self.mountpoint))
             return False
         if not mounted(self.mountpoint):
