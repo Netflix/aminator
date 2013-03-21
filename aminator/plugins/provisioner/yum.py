@@ -24,9 +24,11 @@ aminator.plugins.provisioner.yum
 basic yum provisioner
 """
 import logging
+import os
 
+from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-
+from aminator.util.linux import busy_mount, Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -38,15 +40,67 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
     def configure(self, config, parser):
         super(YumProvisionerPlugin, self).configure(config, parser)
 
+    def provision(self):
+        with Chroot(self.mountpoint):
+            log.debug('Inside chroot')
+            log.debug(os.listdir('/'))
+
+    def configure_chroot(self):
+        log.debug('Configuring chroot at {0}'.format(self.mountpoint))
+        config = self.config.plugins[self.full_name]
+        for mountdef in config.chroot_mounts:
+            dev, fstype, mountpoint, options = mountdef
+            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
+            log.debug('Attempting to mount {0}'.format(mountspec))
+            if not mounted(mountspec.mountpoint):
+                result = mount(mountspec)
+                if not result.success:
+                    log.critical('Unable to configure chroot: {0.std_err}'.format(result))
+                    return False
+        log.debug('Chroot environment ready')
+        return True
+
+    def teardown_chroot(self):
+        log.debug('Tearing down chroot at {0}'.format(self.mountpoint))
+        if busy_mount(self.mountpoint):
+            log.error('Unable to tear down chroot at {0}: device busy'.format(self.mountpoint))
+            return False
+        if not mounted(self.mountpoint):
+            log.warn('{0} not mounted. Success?...'.format(self.mountpoint))
+            return True
+
+        config = self.config.plugins[self.full_name]
+        for mountdef in reversed(config.chroot_mounts):
+            dev, fstype, mountpoint, options = mountdef
+            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
+            log.debug('Attempting to unmount {0}'.format(mountspec))
+            if not mounted(mountspec.mountpoint):
+                log.warn('{0} not mounted'.format(mountspec.mountpoint))
+                continue
+            result = unmount(mountspec.mountpoint)
+            if not result.success:
+                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
+                return False
+        log.debug('Checking for stray mounts')
+        for mountpoint in lifo_mounts(self.mountpoint):
+            log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
+            result = unmount(mountpoint)
+            if not result.success:
+                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
+                return False
+        return True
+
     def __enter__(self):
+        if not self.configure_chroot():
+            raise VolumeException('Error configuring chroot')
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        pass
+        if not self.teardown_chroot():
+            raise VolumeException('Error tearing down chroot')
+        return False
 
     def __call__(self, volume):
-        self.volume = volume
+        self.mountpoint = volume
         return self
 
-    def provision(self):
-        pass

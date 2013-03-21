@@ -37,11 +37,11 @@ from decorator import decorator
 
 
 log = logging.getLogger(__name__)
-MountSpec = namedtuple('MountSpec', 'dev mountpoint fstype options')
+MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
 CommandResult = namedtuple('CommandResult', 'success result')
 
 
-def command(timeout=None, data=None, success=0, *cargs, **ckwargs):
+def command(timeout=None, data=None, *cargs, **ckwargs):
     """
     decorator used to define shell commands to be executed via envoy.run
     decorated function should return a simple string representing the command to be executed
@@ -57,7 +57,7 @@ def command(timeout=None, data=None, success=0, *cargs, **ckwargs):
         log.debug('stdout:\n{0}'.format(res.std_out))
         log.debug('stderr:\n{0}'.format(res.std_err))
         log.debug('status code: {0}'.format(res.status_code))
-        return CommandResult(res.status_code == success, res)
+        return CommandResult(res.status_code == 0, res)
     return _run
 
 
@@ -110,83 +110,24 @@ def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
 
-@contextmanager
-def os_closing(fh):
-    """
-    Intended to wrap os.open() and close the descriptor when done
-    """
-    try:
-        yield fh
-    finally:
-        os.close(fh)
+class Chroot(object):
+    def __init__(self, path):
+        self.path = path
+        log.debug('Chroot path: {0}'.format(self.path))
 
-
-@contextmanager
-def chroot(path):
-    """
-    Perform some actions from a chroot environment
-
-    :param path: The new root
-    """
-    if not path or not os.path.isdir(path):
-        raise IOError('chroot: path not provided or not found: {0}'.format(path))
-
-    with os_closing(os.open('/', os.O_RDONLY)) as real_root:
-        cwd = os.getcwd()
-        log.debug('cwd: {0}'.debug(cwd))
-        os.chroot(path)
+    def __enter__(self):
+        log.debug('Configuring chroot at {0}'.format(self.path))
+        self.real_root = os.open('/', os.O_RDONLY)
+        self.cwd = os.getcwd()
+        os.chroot(self.path)
         os.chdir('/')
-        yield
-        os.fchdir(real_root)
+        return self
+
+    def __exit__(self, typ, exc, trc):
+        os.fchdir(self.real_root)
         os.chroot('.')
-        os.chdir(cwd)
-
-
-def chroot_setup(root, mounts):
-    """
-    Takes a root path and overlays special mounts on top
-    :param root: chroot root path
-    :param mounts: iterable collection of MountSpec tuples
-    :type mounts: list
-    :return: True on successful setup, False if errors
-    """
-    for mountspec in mounts:
-        rootpath = os.path.join(root, mountspec.mountpoint)
-        if not os.path.exists(rootpath):
-            log.error('{0} does not exist'.format(rootpath))
-            return False
-        if not mount(mountspec).success:
-            log.error('Unable to mount {0} on {1} fstype {2}'.format(device, chroot_mountpoint,
-                                                                     fstype))
-            return False
-        return True
-
-
-def chroot_teardown(root, mounts):
-    """
-    Unmounts a chroot environment
-    :param root: chroot root path
-    :param mounts: tuple of tuples of dev,fstype,mountpoint
-    :return: True if everything unmounts okay, False if errors
-    """
-    if busy_mount(root):
-        log.error('Unable to teardown {}, device busy'.format(root))
+        os.chdir(self.cwd)
         return False
-    if not mounted(root):
-        return True
-    # unmount in reverse order to account for layered mounts
-    for device, fstype, mountpoint in reversed(mounts):
-        chroot_mountpoint = os.path.join(root, mountpoint.lstrip('/'))
-        if not mounted(chroot_mountpoint):
-            continue
-        if not unmount(chroot_mountpoint):
-            log.error('Unable to unmount {0}'.format(chroot_mountpoint))
-            return False
-    for mountpoint in lifo_mounts(root):
-        if not unmount(mountpoint):
-            log.error('Unable to unmount {0}'.format(mountpoint))
-            return False
-    return unmount(root).success
 
 
 def lifo_mounts(root=None):

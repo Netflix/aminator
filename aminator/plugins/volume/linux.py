@@ -87,6 +87,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def __enter__(self):
         self._attach(self.blockdevice)
         self._mount()
+        return self.mountpoint
 
     def __exit__(self, exc_type, exc_value, trace):
         self._unmount()
