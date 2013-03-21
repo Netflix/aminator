@@ -24,7 +24,6 @@ aminator.plugins.cloud.ec2
 ec2 cloud provider
 """
 import logging
-import os
 
 from boto.ec2 import connect_to_region
 from boto.ec2.instance import Instance
@@ -46,10 +45,36 @@ log = logging.getLogger(__name__)
 class EC2CloudPlugin(BaseCloudPlugin):
     _name = 'ec2'
 
+    def __init__(self, *args, **kwargs):
+        super(EC2CloudPlugin, self).__init__(*args, **kwargs)
+
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
 
-    def add_plugin_args(self):
+    @property
+    def enabled(self):
+        return super(EC2CloudPlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(EC2CloudPlugin, self).enabled = enable
+
+    @property
+    def entry_point(self):
+        return super(EC2CloudPlugin, self).entry_point
+
+    @property
+    def name(self):
+        return super(EC2CloudPlugin, self).name
+
+    @property
+    def full_name(self):
+        return super(EC2CloudPlugin, self).full_name
+
+    def configure(self, *args, **kwargs):
+        super(EC2CloudPlugin, self).configure(*args, **kwargs)
+
+    def add_plugin_args(self, *args, **kwargs):
         base_ami = self.parser.add_argument_group(title='Base AMI', description='EITHER AMI id OR name, not both!')
         base_ami_mutex = base_ami.add_mutually_exclusive_group(required=True)
         base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name',
@@ -65,6 +90,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
                            action=conf_action(config=self.config.context.cloud, action='store_true'))
         cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
                            action=conf_action(config=self.config.context.cloud, action='store_true'))
+
+    def load_plugin_config(self, *args, **kwargs):
+        super(EC2CloudPlugin, self).load_plugin_config(*args, **kwargs)
 
     def connect(self, **kwargs):
         if not self._connection:
@@ -128,10 +156,14 @@ class EC2CloudPlugin(BaseCloudPlugin):
     @retry(VolumeException, tries=2, delay=1, backoff=2, logger=log)
     def attach_volume(self, blockdevice, tag=True):
         self.allocate_base_volume(tag=tag)
-        log.debug('Attaching volume {0} to {1}:{2}'.format(self.volume.id, self.instance.id, blockdevice))
-        self.volume.attach(self.instance.id, blockdevice)
+        # must do this as amazon still wants /dev/sd*
+        ec2_device_name = blockdevice.replace('xvd', 'sd')
+        log.debug('Attaching volume {0} to {1}:{2}({3})'.format(self.volume.id, self.instance.id, ec2_device_name,
+                                                                blockdevice))
+        self.volume.attach(self.instance.id, ec2_device_name)
         if not self.volume_attached(blockdevice):
-            log.debug('{0} attachment to {1}:{2} timed out'.format(self.volume.id, self.instance.id, blockdevice))
+            log.debug('{0} attachment to {1}:{2}({3}) timed out'.format(self.volume.id, self.instance.id,
+                                                                        ec2_device_name, blockdevice))
             self.volume.add_tag('status', 'used')
             # trigger a retry
             raise VolumeException('Timed out waiting for {0} to attach to {1}:{2}'.format(self.volume.id,
@@ -191,19 +223,23 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 return True
             return False
 
-    def check_stale(self, dev, prefix):
+    def is_stale_attachment(self, dev, prefix):
+        log.debug('Checking for stale attachment. dev: {0}, prefix: {1}'.format(dev, prefix))
         if dev in self.attached_block_devices(prefix) and not os_node_exists(dev):
+            log.debug('{0} is stale, rejecting'.format(dev))
             return True
+        log.debug('{0} not stale, using'.format(dev))
         return False
 
     def register_image(self):
         pass
 
     def attached_block_devices(self, prefix):
+        log.debug('Checking for currently attached block devices. prefix: {0}'.format(prefix))
         self.instance.update()
         if device_prefix(self.instance.block_device_mapping.keys()[0]) != prefix:
             return dict((native_block_device(dev, prefix), mapping)
-                        for (dev, mapping) in enumerate(self.instance.block_device_mapping))
+                        for (dev, mapping) in self.instance.block_device_mapping.iteritems())
         return self.instance.block_device_mapping
 
     def resolve_baseami(self):
@@ -238,7 +274,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return self
 
     def __exit__(self, typ, exc, trc):
-        pass
+        return False
 
     def __call__(self):
         return self

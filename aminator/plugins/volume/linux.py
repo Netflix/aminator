@@ -38,8 +38,31 @@ log = logging.getLogger(__name__)
 class LinuxVolumePlugin(BaseVolumePlugin):
     _name = 'linux'
 
-    def configure(self, config, parser):
-        super(LinuxVolumePlugin, self).configure(config, parser)
+    def __init__(self, *args, **kwargs):
+        super(LinuxVolumePlugin, self).__init__(*args, **kwargs)
+
+    @property
+    def enabled(self):
+        return super(LinuxVolumePlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(LinuxVolumePlugin, self).enabled = enable
+
+    @property
+    def entry_point(self):
+        return super(LinuxVolumePlugin, self).entry_point
+
+    @property
+    def name(self):
+        return super(LinuxVolumePlugin, self).name
+
+    @property
+    def full_name(self):
+        return super(LinuxVolumePlugin, self).full_name
+
+    def configure(self, config, parser, *args, **kwargs):
+        super(LinuxVolumePlugin, self).configure(config, parser, *args, **kwargs)
 
     @property
     def dev(self):
@@ -93,6 +116,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
         self._unmount()
         self._detach()
         self._delete()
+        return False
 
     def __call__(self, cloud, blockdevice):
         self.cloud = cloud

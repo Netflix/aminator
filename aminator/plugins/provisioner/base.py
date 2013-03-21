@@ -38,6 +38,42 @@ class BaseProvisionerPlugin(BasePlugin):
     _entry_point = 'aminator.plugins.provisioner'
 
     @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        super(BaseProvisionerPlugin, self).__init__(*args, **kwargs)
+
+    @abc.abstractproperty
+    def enabled(self):
+        return super(BaseProvisionerPlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(BaseProvisionerPlugin, self).enabled = enable
+
+    @abc.abstractproperty
+    def entry_point(self):
+        return super(BaseProvisionerPlugin, self).entry_point
+
+    @abc.abstractproperty
+    def name(self):
+        return super(BaseProvisionerPlugin, self).name
+
+    @abc.abstractproperty
+    def full_name(self):
+        return super(BaseProvisionerPlugin, self).full_name
+
+    @abc.abstractmethod
+    def configure(self, config, parser):
+        super(BaseProvisionerPlugin, self).configure(config, parser)
+
+    @abc.abstractmethod
+    def add_plugin_args(self, *args, **kwargs):
+        super(BaseProvisionerPlugin, self).add_plugin_args(*args, **kwargs)
+
+    @abc.abstractmethod
+    def load_plugin_config(self, *args, **kwargs):
+        super(BaseProvisionerPlugin, self).load_plugin_config(*args, **kwargs)
+
+    @abc.abstractmethod
     def __enter__(self):
         """
         Provisioner plugins are context managers

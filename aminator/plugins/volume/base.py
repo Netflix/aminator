@@ -38,6 +38,42 @@ class BaseVolumePlugin(BasePlugin):
     _entry_point = 'aminator.plugins.volume'
 
     @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        super(BaseVolumePlugin, self).__init__(*args, **kwargs)
+
+    @abc.abstractproperty
+    def enabled(self):
+        return super(BaseVolumePlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(BaseVolumePlugin, self).enabled = enable
+
+    @abc.abstractproperty
+    def entry_point(self):
+        return super(BaseVolumePlugin, self).entry_point
+
+    @abc.abstractproperty
+    def name(self):
+        return super(BaseVolumePlugin, self).name
+
+    @abc.abstractproperty
+    def full_name(self):
+        return super(BaseVolumePlugin, self).full_name
+
+    @abc.abstractmethod
+    def configure(self, config, parser, *args, **kwargs):
+        super(BaseVolumePlugin, self).configure(config, parser, *args, **kwargs)
+
+    @abc.abstractmethod
+    def add_plugin_args(self, *args, **kwargs):
+        super(BaseVolumePlugin, self).add_plugin_args(*args, **kwargs)
+
+    @abc.abstractmethod
+    def load_plugin_config(self, *args, **kwargs):
+        super(BaseVolumePlugin, self).load_plugin_config(*args, **kwargs)
+
+    @abc.abstractmethod
     def __enter__(self):
         """
         Volume plugins are context managers

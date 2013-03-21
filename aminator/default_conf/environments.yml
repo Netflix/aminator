@@ -4,10 +4,10 @@ ec2_yum_linux:
     provisioner: yum
     volume: linux
     blockdevice: linux
-    finalizer: tagging
+    finalizer: tagging_ebs
 ec2_apt_linux:
     cloud: ec2
     provisioner: apt
     volume: linux
     blockdevice: linux
-    finalizer: tagging
+    finalizer: tagging_ebs

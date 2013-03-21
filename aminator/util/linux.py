@@ -258,22 +258,28 @@ def root_check():
 
 
 def native_device_prefix(prefixes):
+    log.debug('Getting the OS-native device prefix from potential prefixes: {0}'.format(prefixes))
     for prefix in prefixes:
         if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
+            log.debug('Native prefix is {0}'.format(prefix))
             return prefix
     else:
+        log.debug('{0} contains no native device prefixes'.format(prefixes))
         return None
 
 
 def device_prefix(source_device):
+    log.debug('Getting prefix for device {0}'.format(source_device))
     # strip off any incoming /dev/ foo
     source_device_name = os.path.basename(source_device)
     # if we have a subdevice/partition...
     if source_device_name[-1].isdigit():
         # then its prefix is the name minus the last TWO chars
+        log.debug('Device prefix for {0} is {1}'.format(source_device, source_device_name[:-2:]))
         return source_device_name[:-2:]
     else:
         # otherwise, just strip the last one
+        log.debug('Device prefix for {0} is {1}'.format(source_device, source_device_name[:-1:]))
         return source_device_name[:-1:]
 
 

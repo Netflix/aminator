@@ -37,9 +37,42 @@ class BaseCloudPlugin(BasePlugin):
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.cloud'
 
+    @abc.abstractmethod
     def __init__(self, *args, **kwargs):
         self._connection = None
         super(BaseCloudPlugin, self).__init__(*args, **kwargs)
+
+    @abc.abstractproperty
+    def enabled(self):
+        return super(BaseCloudPlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(BaseCloudPlugin, self).enabled = enable
+
+    @abc.abstractproperty
+    def entry_point(self):
+        return super(BaseCloudPlugin, self).entry_point
+
+    @abc.abstractproperty
+    def name(self):
+        return super(BaseCloudPlugin, self).name
+
+    @abc.abstractproperty
+    def full_name(self):
+        return super(BaseCloudPlugin, self).full_name
+
+    @abc.abstractmethod
+    def configure(self, config, parser):
+        super(BaseCloudPlugin, self).configure(config, parser)
+
+    @abc.abstractmethod
+    def add_plugin_args(self, *args, **kwargs):
+        super(BaseCloudPlugin, self).add_plugin_args(*args, **kwargs)
+
+    @abc.abstractmethod
+    def load_plugin_config(self, *args, **kwargs):
+        super(BaseCloudPlugin, self).load_plugin_config(*args, **kwargs)
 
     @abc.abstractmethod
     def connect(self, *args, **kwargs):
@@ -58,7 +91,7 @@ class BaseCloudPlugin(BasePlugin):
         """ Instructs the cloud provider to register a finalized image for launching """
 
     @abc.abstractmethod
-    def check_stale(self, *args, **kwargs):
+    def is_stale_attachment(self, *args, **kwargs):
         """ checks to see if a given device is a stale attachment """
 
     @abc.abstractmethod

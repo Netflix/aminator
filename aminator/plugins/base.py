@@ -41,13 +41,14 @@ class BasePlugin(object):
     _name = None
     _enabled = True
 
+    @abc.abstractmethod
     def __init__(self, *args, **kwargs):
         if self._entry_point is None:
             raise AttributeError('Plugins must declare their entry point namespace in a _entry_point class attribute')
         if self._name is None:
             raise AttributeError('Plugins must declare their entry point name in a _name class attribute')
 
-    @property
+    @abc.abstractproperty
     def enabled(self):
         return self._enabled
 
@@ -55,18 +56,19 @@ class BasePlugin(object):
     def enabled(self, enable):
         self._enabled = enable
 
-    @property
+    @abc.abstractproperty
     def entry_point(self):
         return self._entry_point
 
-    @property
+    @abc.abstractproperty
     def name(self):
         return self._name
 
-    @property
+    @abc.abstractproperty
     def full_name(self):
         return '{0}.{1}'.format(self.entry_point, self.name)
 
+    @abc.abstractmethod
     def configure(self, config, parser):
         """ Configure the plugin and contribute to command line args """
         log.debug("Configuring plugin {0} for entry point {1}".format(self.name, self.entry_point))
@@ -76,13 +78,15 @@ class BasePlugin(object):
         if self._enabled:
             self.add_plugin_args()
 
-    def add_plugin_args(self):
+    @abc.abstractmethod
+    def add_plugin_args(self, *args, **kwargs):
         """
         May be overridden by plugin implementations to contribute arguments to the arg parser
         """
         pass
 
-    def load_plugin_config(self):
+    @abc.abstractmethod
+    def load_plugin_config(self, *args, **kwargs):
         entry_point = self.entry_point
         name = self.name
         key = '.'.join((entry_point, name))

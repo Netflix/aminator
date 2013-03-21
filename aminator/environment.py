@@ -60,7 +60,7 @@ class Environment(object):
         return self
 
     def __exit__(self, exc_type, exc_value, trc):
-        pass
+        return False
 
     def __call__(self, config, plugin_manager):
         self.config = config

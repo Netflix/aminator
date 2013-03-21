@@ -36,7 +36,30 @@ log = logging.getLogger(__name__)
 class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
     _name = 'tagging_ebs'
 
-    def configure(self, config, parser):
+    def __init__(self, *args, **kwargs):
+        super(TaggingEBSFinalizerPlugin, self).__init__(*args, **kwargs)
+
+    @property
+    def enabled(self):
+        return super(TaggingEBSFinalizerPlugin, self).enabled
+
+    @enabled.setter
+    def enabled(self, enable):
+        super(TaggingEBSFinalizerPlugin, self).enabled = enable
+
+    @property
+    def entry_point(self):
+        return super(TaggingEBSFinalizerPlugin, self).entry_point
+
+    @property
+    def name(self):
+        return super(TaggingEBSFinalizerPlugin, self).name
+
+    @property
+    def full_name(self):
+        return super(TaggingEBSFinalizerPlugin, self).full_name
+
+    def configure(self, config, parser, *args, **kwargs):
         super(TaggingEBSFinalizerPlugin, self).configure(config, parser)
 
     def add_plugin_args(self):
@@ -50,6 +73,9 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(self.config.context.ami),
                              help=creator_help)
 
+    def load_plugin_config(self, *args, **kwargs):
+        super(TaggingEBSFinalizerPlugin, self).load_plugin_config(*args, **kwargs)
+
     def finalize(self, volume):
         return None
 
@@ -57,7 +83,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        pass
+        return False
 
     def __call__(self, cloud):
         self.cloud = cloud

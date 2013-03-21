@@ -57,7 +57,7 @@ entry_points = {
         'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',
     ],
     'aminator.plugins.finalizer': [
-        'tagging = aminator.plugins.finalizer.tagging_ebs:TaggingEBSFinalizerPlugin',
+        'tagging_ebs = aminator.plugins.finalizer.tagging_ebs:TaggingEBSFinalizerPlugin',
     ],
 }
 
