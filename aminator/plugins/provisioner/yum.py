@@ -26,9 +26,10 @@ basic yum provisioner
 import logging
 import os
 
-from aminator.exceptions import VolumeException
+from aminator.exceptions import ProvisionException, VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import busy_mount, Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
+from aminator.util.linux import yum_clean_metadata, yum_install, short_circuit, rewire
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -42,9 +43,25 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
 
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self.mountpoint))
+        config = self.config.plugins[self.full_name]
+        context = self.config.context
+
         with Chroot(self.mountpoint):
             log.debug('Inside chroot')
             log.debug(os.listdir('/'))
+            if config.get('short_circuit_sbin_service', False):
+                if not short_circuit('/sbin/service'):
+                    raise ProvisionException('Unable to short circuit /sbin/service')
+            result = yum_clean_metadata()
+            if not result.success:
+                raise ProvisionException('yum clean metadata failed: {0.std_err}'.format(result))
+            result = yum_install(context.package.arg)
+            if not result.success:
+                raise ProvisionException('Installation of {0} failed: {1.std_err}'.format(context.package.arg,
+                                                                                          result))
+            if config.get('short_circuit_sbin_service', False):
+                if not rewire('/sbin/service'):
+                    raise ProvisionException('Unable to rewire /sbin/service')
         log.debug('Exited chroot')
 
     def configure_chroot(self):

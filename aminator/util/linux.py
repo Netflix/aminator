@@ -67,16 +67,62 @@ def mounted(path):
         return any(pat in mount for mount in mounts)
 
 
-def os_node_exists(dev):
-    try:
-        mode = os.stat(dev).st_mode
-    except OSError:
-        return False
-    return stat.S_ISBLK(mode)
-
 @command()
 def fsck(dev):
     return 'fsck -y {0}'.format(dev)
+
+
+@command()
+def yum_install(package):
+    return 'yum --nogpgcheck -y install {0}'.format(package)
+
+
+@command()
+def yum_localinstall(path):
+    if not os.path.isfile(path):
+        log.critical('Package {0} not found'.format(path))
+        return None
+    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+
+
+@command()
+def yum_clean_metadata():
+    return 'yum clean metadata'
+
+
+@command()
+def apt_get_update():
+    return 'apt-get update'
+
+
+@command()
+def apt_get_install(package):
+    return 'apt-get -y install {0}'.format(package)
+
+
+def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
+    if os.path.isfile(cmd):
+        log.debug('Short circuiting {0}'.format(cmd))
+        os.rename(cmd, '{0}.{1}'.format(cmd, ext))
+        log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
+        os.symlink(dst, cmd)
+        log.debug('{0} linked to {1}'.format(cmd, dst))
+        return True
+    log.error('{0} not found'.format(cmd))
+    return False
+
+
+def rewire(cmd, ext='short_circuit'):
+    if os.path.isfile('{0}.{1}'.format(cmd, ext)):
+        log.debug('Rewiring {0}'.format(cmd))
+        os.remove(cmd)
+        os.rename('{0}.{1}'.format(cmd, ext), cmd)
+        log.debug('{0} rewired'.format(cmd))
+        return True
+    log.error('{0}.{1} not found'.format(cmd, ext))
+    return False
+
+
 
 @command()
 def mount(mountspec):

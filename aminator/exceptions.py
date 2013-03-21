@@ -42,3 +42,7 @@ class VolumeException(AminateException):
 
 class ArgumentError(AminateException):
     """ Errors during argument parsing"""
+
+
+class ProvisionException(AminateException):
+    """ Errors during provisioning """
