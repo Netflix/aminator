@@ -24,9 +24,12 @@ aminator.plugins.volume.linux
 basic linux volume allocator
 """
 import logging
+import os
 
+from aminator.util import retry
+from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount
+from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
-
 
 __all__ = ('LinuxVolumePlugin',)
 log = logging.getLogger(__name__)
@@ -38,11 +41,58 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def configure(self, config, parser):
         super(LinuxVolumePlugin, self).configure(config, parser)
 
+    @property
+    def dev(self):
+        return self._dev
+
+    def _attach(self, blockdevice):
+        with blockdevice(self.cloud) as dev:
+            self._dev = dev
+            self.cloud.attach_volume(dev)
+
+    def _detach(self):
+        self.cloud.detach_volume(self.dev)
+
+    def _mount(self):
+        if self.config.volume_dir.startswith(('~', '/')):
+            self.mountpoint = os.path.expanduser(self.config.volume_dir)
+        else:
+            self.mountpoint = os.path.join(self.config.aminator_root, self.config.volume_dir)
+
+        if not os.path.exists(self.mountpoint):
+            os.makedirs(self.mountpoint)
+
+        if not mounted(self.mountpoint):
+            mountspec = MountSpec(dev=self.dev, mountpoint=self.mountpoint, None, None)
+            result = mount(mountspec)
+            if not result.success:
+                msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)
+                log.critical(msg)
+                raise VolumeException(msg)
+
+        log.debug('Mounted {0.dev} at {0.mountpoint} successfully'.format(mountspec))
+
+    @retry(VolumeException, tries=3, delay=1, backoff=2, logger=log)
+    def _unmount(self):
+        if mounted(self.mountpoint):
+            if busy_mount(self.mountpoint):
+                raise VolumeException('Unable to unmount {0} from {1}'.format(self.dev, self.mountpoint))
+            result = unmount(self.mountpoint)
+            if not result.success:
+                raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self.dev, self.mountpoint,
+                                                                                   result.result.std_err))
+
+    def _delete(self):
+        self.cloud.delete_volume()
+
     def __enter__(self):
-        return self
+        self._attach(self.blockdevice)
+        self._mount()
 
     def __exit__(self, exc_type, exc_value, trace):
-        pass
+        self._unmount()
+        self._detach()
+        self._delete()
 
     def __call__(self, cloud, blockdevice):
         self.cloud = cloud

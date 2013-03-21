@@ -44,10 +44,11 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
         block_config = self.config.plugins[self.full_name]
 
-        if self.config.lock_dir[0] not in ('/', '~'):
-            self.lock_dir = os.path.join(self.config.aminator_root, self.config.lock_dir)
-        else:
+        if self.config.lock_dir.startswith(('/', '~')):
             self.lock_dir = os.path.expanduser(self.config.lock_dir)
+        else:
+            self.lock_dir = os.path.join(self.config.aminator_root, self.config.lock_dir)
+
         self.lock_file = self.__class__.__name__
 
         majors = block_config.device_letters

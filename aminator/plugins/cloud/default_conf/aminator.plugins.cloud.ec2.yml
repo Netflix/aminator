@@ -9,4 +9,4 @@ ephemeral_devices:
   - /dev/sde
 is_secure: true
 root_device: /dev/sda1
-region: us-east-1
+#region:

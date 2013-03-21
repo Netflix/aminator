@@ -24,14 +24,19 @@ aminator.plugins.cloud.ec2
 ec2 cloud provider
 """
 import logging
+import os
 
 from boto.ec2 import connect_to_region
 from boto.ec2.instance import Instance
+from boto.ec2.volume import Volume
+from boto.exception import EC2ResponseError
 from boto.utils import get_instance_metadata
 
 from aminator.config import conf_action
+from aminator.exceptions import VolumeException
 from aminator.plugins.cloud.base import BaseCloudPlugin
-from aminator.util.linux import device_prefix, native_block_device
+from aminator.util import retry
+from aminator.util.linux import device_prefix, native_block_device, os_node_exists
 
 
 __all__ = ('EC2Cloud',)
@@ -70,7 +75,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def _connect(self, **kwargs):
         cloud_config = self.config.plugins[self.full_name]
-        region = cloud_config.region
+        context = self.config.context
+        self._instance_metadata = get_instance_metadata()
+        region = context.get('region',
+                             cloud_config.get('region', self._instance_metadata['placement']['availability-zone'][:-1]))
         log.debug('Establishing boto connection to region: {0}'.format(region))
 
         if cloud_config.boto_debug:
@@ -84,11 +92,105 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._connection = connect_to_region(region, **kwargs)
         log.info('Aminating in region {0}'.format(region))
 
-    def attach_volume_to_instance(self, blockdevice):
-        pass
+    @property
+    def connection(self):
+        return self._connection
 
-    def detach_volume_from_instance(self):
-        pass
+    @property
+    def instance(self):
+        return self._instance_info
+
+    @property
+    def volume(self):
+        return self._volume
+
+    def allocate_base_volume(self, tag=True):
+        cloud_config = self.config.plugins[self.full_name]
+        context = self.config.context
+
+        self._volume = Volume(connection=self._connection)
+
+        self.volume.id = self._connection.create_volume(size=context.base_ami.rootdev.size,
+                                                        zone=self.instance.placement,
+                                                        snapshot=context.base_ami.rootdev.snapshot_id).id
+        if tag:
+            tags = {
+                'purpose': cloud_config.get('tag_ami_purpose', 'amination'),
+                'status': 'busy',
+                'ami': context.base_ami.id,
+                'ami-name': context.base_ami.name,
+                'arch': context.base_ami.architecture,
+            }
+            self.connection.create_tags([self.volume.id], tags)
+        self.volume.update()
+        log.debug('Volume {0} created'.format(self.volume.id))
+
+    @retry(VolumeException, tries=2, delay=1, backoff=2, logger=log)
+    def attach_volume(self, blockdevice, tag=True):
+        self.allocate_base_volume(tag=tag)
+        log.debug('Attaching volume {0} to {1}:{2}'.format(self.volume.id, self.instance.id, blockdevice))
+        self.volume.attach(self.instance.id, blockdevice)
+        if not self.volume_attached():
+            log.debug('{0} attachment to {1}:{2} timed out'.format(self.volume.id, self.instance.id, blockdevice))
+            self.volume.add_tag('status', 'used')
+            # trigger a retry
+            raise VolumeException('Timed out waiting for {0} to attach to {1}:{2}'.format(self.volume.id,
+                                                                                          self.instance.id,
+                                                                                          blockdevice))
+        log.debug('Volume {0} attached to {1}:{2}'.format(self.volume.id, self.instance.id, blockdevice))
+
+    def volume_attached(self, blockdevice):
+        try:
+            self._volume_attached(blockdevice)
+        except VolumeException:
+            log.debug('Timed out waiting for volume {0} to attach to {1}:{2}'.format(self.volume.id,
+                                                                                     self.instance.id, blockdevice))
+            return False
+        return True
+
+    @retry(VolumeException, tries=10, delay=1, backoff=2, logger=log)
+    def _volume_attached(self, blockdevice):
+        status = self.volume.update()
+        if status != 'in-use':
+            raise VolumeException('Volume {0} not yet attached to {1}:{2}'.format(self.volume.id,
+                                                                                  self.instance.id, blockdevice))
+        elif not os_node_exists(blockdevice):
+            raise VolumeException('{0} does not exist yet.'.format(blockdevice))
+        else:
+            return True
+
+    def detach_volume(self, blockdevice):
+        log.debug('Detaching volume {0} from {1}'.format(self.volume.id, self.instance.id))
+        self.volume.detach()
+        if not self._volume_detached(blockdevice):
+            raise VolumeException('Time out waiting for {0} to detach from {1]'.format(self.volume.id,
+                                                                                       self.instance.id))
+        log.debug('Successfully detached volume {0} from {1}'.format(self.volume.id, self.instance.id))
+
+    @retry(VolumeException, tries=7, delay=1, backoff=2, logger=log)
+    def _volume_detached(self, blockdevice):
+        status = self.volume.update()
+        if status != 'available':
+            raise VolumeException('Volume {0} not yet detached from {1}'.format(self.volume.id, self.instance.id))
+        elif os_node_exists(blockdevice):
+            raise VolumeException('Device node {0} still exists'.format(blockdevice))
+        else:
+            return True
+
+    def delete_volume(self):
+        log.debug('Deleting volume {0}'.format(self.volume.id))
+        self.volume.delete()
+        return self._volume_deleted()
+
+    def _volume_deleted(self):
+        try:
+            self.volume.update()
+        except EC2ResponseError, e:
+            if e.code == 'InvalidVolume.NotFound':
+                log.debug('Volume {0} successfully deleted'.format(self.volume.id))
+                return True
+            return False
+
 
     def register_image(self):
         pass
