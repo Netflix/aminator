@@ -12,19 +12,27 @@ base:
         format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
         datefmt: '%F %T'
     handlers:
+      per_package:
+        class: logging.StreamHandler
+        formatter: simple
+        level: DEBUG
+        stream: ext://sys.stdout
       console:
         class: logging.StreamHandler
         formatter: simple
         level: DEBUG
         stream: ext://sys.stdout
+    loggers:
+      junk:
+        handlers: [per_package]
     root:
       handlers: [console]
 per_package:
-  enabled: false
+  enabled: true
   config:
     version: 1
     disable_existing_loggers: false
-    incremental: false
+    incremental: true
     formatters:
       simple:
         format: '%(asctime)s [%(levelname)s] %(message)s'

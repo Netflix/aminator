@@ -46,11 +46,11 @@ class BaseCloudPlugin(BasePlugin):
         """ Instructs a cloud provider to establish a connection """
 
     @abc.abstractmethod
-    def attach_volume_to_instance(self, *args, **kwargs):
+    def attach_volume(self, *args, **kwargs):
         """ Instructs the cloud provider to attach some sort of volume to the instance on a given block device """
 
     @abc.abstractmethod
-    def detach_volume_from_instance(self, *args, **kwargs):
+    def detach_volume(self, *args, **kwargs):
         """ Instructs the cloud provider to detach a given volume from the instance """
 
     @abc.abstractmethod
@@ -58,8 +58,8 @@ class BaseCloudPlugin(BasePlugin):
         """ Instructs the cloud provider to register a finalized image for launching """
 
     @abc.abstractmethod
-    def attached_block_devs(self, *args, **kwargs):
-        """ returns an iterable containing currently attached block devices """
+    def check_stale(self, *args, **kwargs):
+        """ checks to see if a given device is a stale attachment """
 
     @abc.abstractmethod
     def __enter__(self):

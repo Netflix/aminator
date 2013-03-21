@@ -41,7 +41,7 @@ MountSpec = namedtuple('MountSpec', 'dev mountpoint fstype options')
 CommandResult = namedtuple('CommandResult', 'success result')
 
 
-def command(timeout=None, data=None, *cargs, **ckwargs):
+def command(timeout=None, data=None, success=0, *cargs, **ckwargs):
     """
     decorator used to define shell commands to be executed via envoy.run
     decorated function should return a simple string representing the command to be executed
@@ -56,7 +56,8 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
         res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
         log.debug('stdout:\n{0}'.format(res.std_out))
         log.debug('stderr:\n{0}'.format(res.std_err))
-        return CommandResult(res.status_code == 0, res)
+        log.debug('status code: {0}'.format(res.status_code))
+        return CommandResult(res.status_code == success, res)
     return _run
 
 
@@ -101,7 +102,7 @@ def mount(mountspec):
 
 @command()
 def unmount(dev):
-    return 'unmount {0}'.format(dev)
+    return 'umount {0}'.format(dev)
 
 
 @command()

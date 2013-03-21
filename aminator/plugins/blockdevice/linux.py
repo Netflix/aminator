@@ -26,6 +26,7 @@ basic linux block device manager
 import fcntl
 import os
 import logging
+from collections import namedtuple
 
 from aminator.exceptions import DeviceException
 from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
@@ -34,6 +35,9 @@ from aminator.util.linux import flock, locked, native_device_prefix, os_node_exi
 
 __all__ = ('LinuxBlockDevicePlugin',)
 log = logging.getLogger(__name__)
+
+
+BlockDevice = namedtuple('BlockDevice', 'node handle')
 
 
 class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
@@ -59,26 +63,23 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                                 for major in majors
                                 for minor in xrange(1, 16)]
 
+    @property
+    def dev(self):
+        return self._dev
+
     def __enter__(self):
         with flock(self.lock_file):
-            dev, dev_lock = self.find_available_dev()
-        self.dev = dev
-        self.dev_lock = dev_lock
-        return self.dev, self.dev_lock
+            dev = self.find_available_dev()
+        self._dev = dev
+        return self.dev.node
 
     def __exit__(self, exc_type, exc_value, trace):
-        fcntl.flock(self.dev_lock, fcntl.LOCK_UN)
-        self.dev_lock.close()
+        fcntl.flock(self.dev.handle, fcntl.LOCK_UN)
+        self.dev.handle.close()
 
     def __call__(self, cloud):
         self.cloud = cloud
         return self
-
-    def is_stale(self, dev):
-        attached_block_devices = self.cloud.attached_block_devices(self.device_prefix)
-        if dev in attached_block_devices and not os_node_exists(dev):
-            return True
-        return False
 
     def find_available_dev(self):
         for dev in self.allowed_devices:
@@ -89,12 +90,12 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
             if locked(device_lock):
                 log.debug('%s is locked, skipping' % dev)
                 continue
-            if self.is_stale(dev):
+            if self.cloud.check_stale(dev, self.device_prefix):
                 log.debug('%s is stale, skipping' % dev)
                 continue
             fh = open(device_lock, 'a')
             fcntl.flock(fh, fcntl.LOCK_EX)
             log.debug('fh = {0}, dev = {1}'.format(str(fh), dev))
-            return dev, fh
+            return BlockDevice(dev, fh)
         else:
             raise DeviceException('Exhausted all devices, none free')

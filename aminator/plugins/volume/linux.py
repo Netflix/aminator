@@ -55,27 +55,26 @@ class LinuxVolumePlugin(BaseVolumePlugin):
 
     def _mount(self):
         if self.config.volume_dir.startswith(('~', '/')):
-            self.mountpoint = os.path.expanduser(self.config.volume_dir)
+            self.volume_root = os.path.expanduser(self.config.volume_dir)
         else:
-            self.mountpoint = os.path.join(self.config.aminator_root, self.config.volume_dir)
-
+            self.volume_root = os.path.join(self.config.aminator_root, self.config.volume_dir)
+        self.mountpoint = os.path.join(self.volume_root, os.path.basename(self.dev))
         if not os.path.exists(self.mountpoint):
             os.makedirs(self.mountpoint)
 
         if not mounted(self.mountpoint):
-            mountspec = MountSpec(dev=self.dev, mountpoint=self.mountpoint, None, None)
+            mountspec = MountSpec(self.dev, self.mountpoint, None, None)
             result = mount(mountspec)
             if not result.success:
                 msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)
                 log.critical(msg)
                 raise VolumeException(msg)
-
         log.debug('Mounted {0.dev} at {0.mountpoint} successfully'.format(mountspec))
 
     @retry(VolumeException, tries=3, delay=1, backoff=2, logger=log)
     def _unmount(self):
         if mounted(self.mountpoint):
-            if busy_mount(self.mountpoint):
+            if busy_mount(self.mountpoint).success:
                 raise VolumeException('Unable to unmount {0} from {1}'.format(self.dev, self.mountpoint))
             result = unmount(self.mountpoint)
             if not result.success:

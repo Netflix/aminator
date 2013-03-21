@@ -110,9 +110,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
         self._volume = Volume(connection=self._connection)
 
-        self.volume.id = self._connection.create_volume(size=context.base_ami.rootdev.size,
-                                                        zone=self.instance.placement,
-                                                        snapshot=context.base_ami.rootdev.snapshot_id).id
+        rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
+        self.volume.id = self._connection.create_volume(size=rootdev.size, zone=self.instance.placement,
+                                                        snapshot=rootdev.snapshot_id).id
         if tag:
             tags = {
                 'purpose': cloud_config.get('tag_ami_purpose', 'amination'),
@@ -130,7 +130,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self.allocate_base_volume(tag=tag)
         log.debug('Attaching volume {0} to {1}:{2}'.format(self.volume.id, self.instance.id, blockdevice))
         self.volume.attach(self.instance.id, blockdevice)
-        if not self.volume_attached():
+        if not self.volume_attached(blockdevice):
             log.debug('{0} attachment to {1}:{2} timed out'.format(self.volume.id, self.instance.id, blockdevice))
             self.volume.add_tag('status', 'used')
             # trigger a retry
@@ -191,16 +191,20 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 return True
             return False
 
+    def check_stale(self, dev, prefix):
+        if dev in self.attached_block_devices(prefix) and not os_node_exists(dev):
+            return True
+        return False
 
     def register_image(self):
         pass
 
-    def attached_block_devs(self, native_device_prefix):
-        self._instance_info.update()
-        if device_prefix(self._instance_info.block_device_mapping.keys()[0]) != native_device_prefix:
-            return dict((native_block_device(dev, native_device_prefix), mapping)
-                        for (dev, mapping) in enumerate(self._instance_info.block_device_mapping))
-        return self._instance_info.block_device_mapping
+    def attached_block_devices(self, prefix):
+        self.instance.update()
+        if device_prefix(self.instance.block_device_mapping.keys()[0]) != prefix:
+            return dict((native_block_device(dev, prefix), mapping)
+                        for (dev, mapping) in enumerate(self.instance.block_device_mapping))
+        return self.instance.block_device_mapping
 
     def resolve_baseami(self):
         log.info('Resolving base AMI')
