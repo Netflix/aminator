@@ -38,7 +38,7 @@ from aminator.util import retry
 from aminator.util.linux import device_prefix, native_block_device, os_node_exists
 
 
-__all__ = ('EC2Cloud',)
+__all__ = ('EC2CloudPlugin',)
 log = logging.getLogger(__name__)
 
 
@@ -47,9 +47,6 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def __init__(self, *args, **kwargs):
         super(EC2CloudPlugin, self).__init__(*args, **kwargs)
-
-    def configure(self, config, parser):
-        super(EC2CloudPlugin, self).configure(config, parser)
 
     @property
     def enabled(self):

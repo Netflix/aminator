@@ -64,6 +64,12 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def configure(self, config, parser, *args, **kwargs):
         super(LinuxVolumePlugin, self).configure(config, parser, *args, **kwargs)
 
+    def add_plugin_args(self, *args, **kwargs):
+        super(LinuxVolumePlugin, self).add_plugin_args(*args, **kwargs)
+
+    def load_plugin_config(self, *args, **kwargs):
+        super(LinuxVolumePlugin, self).load_plugin_config(*args, **kwargs)
+
     @property
     def dev(self):
         return self._dev

@@ -1,5 +1,9 @@
 enabled: true
-short_circuit_sbin_service: true
+
+short_circuit: true
+short_circut_files:
+  - /sbin/service
+
 # fstab-esque list of mounts for a chroot environment. ordered.
 # [device, type, mount point, options]
 chroot_mounts:
@@ -8,3 +12,6 @@ chroot_mounts:
     - [/dev, bind, /dev, null]
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
+
+swap_in_files:
+  - /etc/resolv.conf

@@ -29,7 +29,7 @@ import logging
 from aminator.plugins.base import BasePlugin
 
 
-__all__ = ('BaseDeviceManagerPlugin',)
+__all__ = ('BaseBlockDevicePlugin',)
 log = logging.getLogger(__name__)
 
 

@@ -28,6 +28,7 @@ import errno
 import fcntl
 import logging
 import os
+import shutil
 import stat
 from collections import namedtuple
 from contextlib import contextmanager
@@ -98,30 +99,6 @@ def apt_get_update():
 @command()
 def apt_get_install(package):
     return 'apt-get -y install {0}'.format(package)
-
-
-def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
-    if os.path.isfile(cmd):
-        log.debug('Short circuiting {0}'.format(cmd))
-        os.rename(cmd, '{0}.{1}'.format(cmd, ext))
-        log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
-        os.symlink(dst, cmd)
-        log.debug('{0} linked to {1}'.format(cmd, dst))
-        return True
-    log.error('{0} not found'.format(cmd))
-    return False
-
-
-def rewire(cmd, ext='short_circuit'):
-    if os.path.isfile('{0}.{1}'.format(cmd, ext)):
-        log.debug('Rewiring {0}'.format(cmd))
-        os.remove(cmd)
-        os.rename('{0}.{1}'.format(cmd, ext), cmd)
-        log.debug('{0} rewired'.format(cmd))
-        return True
-    log.error('{0}.{1} not found'.format(cmd, ext))
-    return False
-
 
 
 @command()
@@ -299,3 +276,118 @@ def os_node_exists(dev):
     except OSError:
         return False
     return stat.S_ISBLK(mode)
+
+
+def swap_in_aminator_file(src, dstpath, backup_ext='_aminator'):
+    if os.path.isfile(src):
+        log.debug('Copying {0} from the aminator host to {1}'.format(src, dstpath))
+        dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
+        log.debug('copying src: {0} dst: {1}'.format(src, dst))
+        try:
+            if os.path.isfile(dst) or os.path.islink(dst):
+                backup = '{0}{1}'.format(dst, backup_ext)
+                log.debug('Moving existing {0} out of the way'.format(dst))
+                try:
+                    os.rename(dst, backup)
+                except Exception, e:
+                    log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
+                    return False
+            shutil.copy(src, dst)
+        except Exception, e:
+            log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
+            return False
+        log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
+        return True
+    else:
+        log.critical('File not found: {0}'.format(src))
+        return True
+
+
+def swap_in_aminator_files(files, dstpath, backup_ext='_aminator'):
+    for filename in files:
+        if not swap_in_aminator_file(filename, dstpath, backup_ext):
+            return False
+    return True
+
+
+def swap_out_aminator_file(src, dstpath, backup_ext='_aminator'):
+    dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
+    backup = '{0}{1}'.format(dst, backup_ext)
+    if os.path.isfile(backup) or os.path.islink(backup):
+        try:
+            log.debug('Restoring {0} to {1}'.format(backup, dst))
+            if os.path.isfile(dst) or os.path.islink(dst):
+                log.debug('Removing {0}'.format(dst))
+                try:
+                    os.remove(dst)
+                except Exception, e:
+                    log.exception('Error encountered while removing {0}'.format(dst))
+                    return False
+            os.rename(backup, dst)
+        except Exception, e:
+            log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
+            return False
+        else:
+            log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
+            return True
+    else:
+        log.critical('Backup {0} not found'.format(backup))
+        return False
+
+
+def swap_out_aminator_files(sources, dstpath, backup_ext='_aminator'):
+    for filename in files:
+        if not swap_out_aminator_file(filename, dstpath, backup_ext):
+            return False
+    return True
+
+
+def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
+    if os.path.isfile(cmd):
+        try:
+            log.debug('Short circuiting {0}'.format(cmd))
+            os.rename(cmd, '{0}.{1}'.format(cmd, ext))
+            log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
+            os.symlink(dst, cmd)
+            log.debug('{0} linked to {1}'.format(cmd, dst))
+        except Exception, e:
+            log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
+            return False
+        else:
+            log.debug('short circuited {0} to {1}'.format(cmd, dst))
+            return True
+    else:
+        log.error('{0} not found'.format(cmd))
+        return False
+
+
+def short_circuit_files(cmds, ext='short_circuit', dst='/bin/true'):
+    for cmd in cmds:
+        if not short_circuit(cmd, ext, dst):
+            return False
+    return True
+
+
+def rewire(cmd, ext='short_circuit'):
+    if os.path.isfile('{0}.{1}'.format(cmd, ext)):
+        try:
+            log.debug('Rewiring {0}'.format(cmd))
+            os.remove(cmd)
+            os.rename('{0}.{1}'.format(cmd, ext), cmd)
+            log.debug('{0} rewired'.format(cmd))
+        except Exception, e:
+            log.exception('Error encountered while rewiring {0}'.format(cmd))
+            return False
+        else:
+            log.debug('rewired {0}'.format(cmd))
+            return True
+    else:
+        log.error('{0}.{1} not found'.format(cmd, ext))
+        return False
+
+
+def rewire_files(cmds, ext='short_circuit'):
+    for cmd in cmds:
+        if not rewire(cmd, ext):
+            return False
+    return True

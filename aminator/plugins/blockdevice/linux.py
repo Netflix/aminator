@@ -89,7 +89,6 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     def add_plugin_args(self, *args, **kwargs):
         super(LinuxBlockDevicePlugin, self).add_plugin_args(*args, **kwargs)
 
-
     def load_plugin_config(self, *args, **kwargs):
         super(LinuxBlockDevicePlugin, self).load_plugin_config(*args, **kwargs)
 
@@ -123,7 +122,7 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
             elif locked(device_lock):
                 log.debug('{0} is locked, skipping'.format(dev))
                 continue
-            elif self.cloud.check_stale(dev, self.device_prefix):
+            elif self.cloud.is_stale_attachment(dev, self.device_prefix):
                 log.debug('{0} is stale, skipping'.format(dev))
                 continue
             else:

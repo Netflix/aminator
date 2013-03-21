@@ -30,7 +30,7 @@ import shutil
 from aminator.exceptions import ProvisionException, VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import busy_mount, Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
-from aminator.util.linux import apt_get_update, apt_get_install
+from aminator.util.linux import apt_get_update, apt_get_install, swap_out_aminator_file, swap_in_aminator_file
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -81,11 +81,11 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             log.debug(os.listdir('/'))
             result = apt_get_update()
             if not result.success:
-                raise ProvisionException('apt-get update: {0.std_err}'.format(result))
+                raise ProvisionException('apt-get update: {0.std_err}'.format(result.result))
             result = apt_get_install(context.package.arg)
             if not result.success:
                 raise ProvisionException('Installation of {0} failed: {1.std_err}'.format(context.package.arg,
-                                                                                          result))
+                                                                                          result.result))
         log.debug('Exited chroot')
 
     def configure_chroot(self):
@@ -101,14 +101,23 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
                     log.critical('Unable to configure chroot: {0.std_err}'.format(result))
                     return False
         log.debug('Mounts configured')
+
         if os.path.isfile('/etc/resolv.conf'):
             log.debug('Copying in a temporary resolv.conf')
+            resolv = 'resolv.conf'
+            src = os.path.join('/etc', resolv)
+            dst = os.path.join(self.mountpoint, 'etc/', resolv)
+            log.debug('src: {0} dst: {1}'.format(src, dst))
             try:
-                shutil.copy('/etc/resolv.conf', os.path.join(self.mountpoint, 'etc/resolv.conf'))
+                if os.path.isfile(dst) or os.path.islink(dst):
+                    log.debug('Moving {0} out of the way'.format(dst))
+                    try:
+                        os.rename(dst, dst + '.aminator')
+                    except Exception, e:
+                        log.warn('Error encountered while removing existing resolv.conf: {0}'.format(e))
+                shutil.copy(src, dst)
             except Exception, e:
-                log.debug('Exception copying resolv.conf: {0}'.format(e))
-                log.debug(os.listdir(self.mountpoint))
-                log.debug(os.listdir(os.path.join(self.mountpoint, 'etc')))
+                log.warn('Error encountered while installing resolv.conf: {0}'.format(e))
         else:
             log.info('unable to find a suitable resolv.conf to copy into the chroot env')
 
@@ -126,10 +135,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
 
         config = self.config.plugins[self.full_name]
 
-        resolv = os.path.join(self.mountpoint, 'etc/resolv.conf')
-        if os.path.exists(resolv):
-            log.debug('removing temporary resolv.conf at {0}'.format(resolv))
-            os.remove(resolv)
+
 
         for mountdef in reversed(config.chroot_mounts):
             dev, fstype, mountpoint, options = mountdef

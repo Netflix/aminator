@@ -31,6 +31,7 @@ from aminator.exceptions import ProvisionException, VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import busy_mount, Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import yum_clean_metadata, yum_install, short_circuit, rewire
+from aminator.util.linux import swap_out_aminator_file, swap_in_aminator_file
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -84,15 +85,24 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
                     raise ProvisionException('Unable to short circuit /sbin/service')
             result = yum_clean_metadata()
             if not result.success:
-                raise ProvisionException('yum clean metadata failed: {0.std_err}'.format(result))
+                raise ProvisionException('yum clean metadata failed: {0.std_err}'.format(result.result))
             result = yum_install(context.package.arg)
             if not result.success:
                 raise ProvisionException('Installation of {0} failed: {1.std_err}'.format(context.package.arg,
-                                                                                          result))
+                                                                                          result.result))
             if config.get('short_circuit_sbin_service', False):
                 if not rewire('/sbin/service'):
                     raise ProvisionException('Unable to rewire /sbin/service')
         log.debug('Exited chroot')
+
+    def _short_circuit(self):
+        config = self.config.plugins[self.full_name]
+        short_circuit_files = config.get('short_circuit_files', [])
+        short_circuit_dst = config.get('short_circuit_dst', '/bin/true')
+        for filename in short_circuit_files:
+            if not short_circuit(filename, dst=short_circuit_dst):
+                raise ProvisionException('Unable to short circuit {0} to {1}')
+
 
     def configure_chroot(self):
         log.debug('Configuring chroot at {0}'.format(self.mountpoint))
@@ -109,10 +119,12 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
         log.debug('Mounts configured')
         if os.path.isfile('/etc/resolv.conf'):
             log.debug('Copying in a temporary resolv.conf')
-            shutil.copy('/etc/resolv.conf', os.path.join(self.mountpoint, 'etc/resolv.conf'))
+            src = '/etc/resolv.conf'
+            dst = os.path.join(self.mountpoint, 'etc/')
+            log.debug('src: {0} dst: {1}'.format(src, dst))
+            shutil.copy(src, dst)
         else:
             log.warn('unable to find a suitable resolv.conf to copy into the chroot env')
-
         log.debug('Chroot environment ready')
         return True
 
