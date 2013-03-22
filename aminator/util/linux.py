@@ -30,6 +30,7 @@ import logging
 import os
 import shutil
 import stat
+import string
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -40,6 +41,8 @@ from decorator import decorator
 log = logging.getLogger(__name__)
 MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
 CommandResult = namedtuple('CommandResult', 'success result')
+# need to scrub anything not in this list from AMI names and other metadata
+SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 
 
 def command(timeout=None, data=None, *cargs, **ckwargs):
@@ -140,30 +143,40 @@ def deb_query(package):
     return 'dpkg -p {0}'.format(package)
 
 
+def sanitize_metadata(word):
+    chars = list(word)
+    for index, char in enumerate(chars):
+        if char not in SAFE_AMI_CHARACTERS:
+            chars[index] = '_'
+    return ''.join(chars)
+
+
 def rpm_package_metadata(package):
+    # TODO: make this config driven
     metadata = {}
-    result = rpm_query(package, '%{Name},%{Version},%{Release}')
+    result = rpm_query('%{Name},%{Version},%{Release}', package)
     if result.success:
         name, version, release = result.result.std_out.split(',')
-        metadata['name'] = name
-        metadata['version'] = version
-        metadata['release'] = release
+        metadata['name'] = sanitize_metadata(name)
+        metadata['version'] = sanitize_metadata(version)
+        metadata['release'] = sanitize_metadata(release)
     else:
         log.debug('Failed to query RPM metadata')
     return metadata
 
 
 def deb_package_metadata(package):
+    # TODO: make this config driven
     metadata = {}
     result = deb_query(package)
     if result.success:
-        for line in result.result.std_out:
+        for line in result.result.std_out.split('\n'):
             if line.startswith('Package:'):
                 log.debug('Package in {0}'.format(line))
-                metadata['name'] = line.split(':')[1]
+                metadata['name'] = sanitize_metadata(line.split(':')[1].strip())
             elif line.startswith('Version:'):
                 log.debug('Version in {0}'.format(line))
-                metadata['version'] = line.split(':')[1]
+                metadata['version'] = sanitize_metadata(line.split(':')[1].strip())
             else:
                 log.debug('No tags'.format(line))
                 continue
