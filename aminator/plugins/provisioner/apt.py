@@ -24,6 +24,7 @@ aminator.plugins.provisioner.apt
 basic apt provisioner
 """
 import logging
+import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import apt_get_install, apt_get_update
@@ -44,4 +45,5 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _provision_package(self):
         context = self.config.context
+        os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         return apt_get_install(context.package.arg)
