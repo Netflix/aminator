@@ -44,6 +44,6 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         return apt_get_update()
 
     def _provision_package(self):
-        context = self.config.context
+        context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         return apt_get_install(context.package.arg)

@@ -43,85 +43,48 @@ BlockDevice = namedtuple('BlockDevice', 'node handle')
 class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     _name = 'linux'
 
-    def __init__(self, *args, **kwargs):
-        super(LinuxBlockDevicePlugin, self).__init__(*args, **kwargs)
-
-    @property
-    def enabled(self):
-        return super(LinuxBlockDevicePlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(LinuxBlockDevicePlugin, self).enabled = enable
-
-    @property
-    def entry_point(self):
-        return super(LinuxBlockDevicePlugin, self).entry_point
-
-    @property
-    def name(self):
-        return super(LinuxBlockDevicePlugin, self).name
-
-    @property
-    def full_name(self):
-        return super(LinuxBlockDevicePlugin, self).full_name
-
     def configure(self, config, parser):
         super(LinuxBlockDevicePlugin, self).configure(config, parser)
 
-        block_config = self.config.plugins[self.full_name]
+        block_config = self._config.plugins[self.full_name]
 
-        if self.config.lock_dir.startswith(('/', '~')):
-            self.lock_dir = os.path.expanduser(self.config.lock_dir)
+        if self._config.lock_dir.startswith(('/', '~')):
+            self._lock_dir = os.path.expanduser(self._config.lock_dir)
         else:
-            self.lock_dir = os.path.join(self.config.aminator_root, self.config.lock_dir)
+            self._lock_dir = os.path.join(self._config.aminator_root, self._config.lock_dir)
 
-        self.lock_file = self.__class__.__name__
+        self._lock_file = self.__class__.__name__
 
         majors = block_config.device_letters
-        self.device_prefix = native_device_prefix(block_config.device_prefixes)
+        self._device_prefix = native_device_prefix(block_config.device_prefixes)
         device_format = '/dev/{0}{1}{2}'
 
-        self.allowed_devices = [device_format.format(self.device_prefix, major, minor)
-                                for major in majors
-                                for minor in xrange(1, 16)]
-
-    def add_plugin_args(self, *args, **kwargs):
-        super(LinuxBlockDevicePlugin, self).add_plugin_args(*args, **kwargs)
-
-    def load_plugin_config(self, *args, **kwargs):
-        super(LinuxBlockDevicePlugin, self).load_plugin_config(*args, **kwargs)
-
-    @property
-    def dev(self):
-        return self._dev
+        self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
+                                 for major in majors
+                                 for minor in xrange(1, 16)]
 
     def __enter__(self):
-        with flock(self.lock_file):
+        with flock(self._lock_file):
             dev = self.find_available_dev()
         self._dev = dev
-        return self.dev.node
+        return self._dev.node
 
-    def __exit__(self, exc_type, exc_value, trace):
-        fcntl.flock(self.dev.handle, fcntl.LOCK_UN)
-        self.dev.handle.close()
-
-    def __call__(self, cloud):
-        self.cloud = cloud
-        return self
+    def __exit__(self, typ, val, trc):
+        fcntl.flock(self._dev.handle, fcntl.LOCK_UN)
+        self._dev.handle.close()
 
     def find_available_dev(self):
         log.info('Searching for an available block device')
-        for dev in self.allowed_devices:
+        for dev in self._allowed_devices:
             log.debug('checking if device {0} is available'.format(dev))
-            device_lock = os.path.join(self.lock_dir, os.path.basename(dev))
+            device_lock = os.path.join(self._lock_dir, os.path.basename(dev))
             if os.path.exists(dev):
                 log.debug('{0} exists, skipping'.format(dev))
                 continue
             elif locked(device_lock):
                 log.debug('{0} is locked, skipping'.format(dev))
                 continue
-            elif self.cloud.is_stale_attachment(dev, self.device_prefix):
+            elif self.cloud.is_stale_attachment(dev, self._device_prefix):
                 log.debug('{0} is stale, skipping'.format(dev))
                 continue
             else:

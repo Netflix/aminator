@@ -34,74 +34,65 @@ log = logging.getLogger(__name__)
 
 
 class BaseCloudPlugin(BasePlugin):
+    """
+    Cloud plugins are context managers to ensure cleanup. They are the interface to cloud objects and operations.
+    """
+
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.cloud'
 
-    @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        self._connection = None
-        super(BaseCloudPlugin, self).__init__(*args, **kwargs)
+    _connection = None
 
-    @abc.abstractproperty
-    def enabled(self):
-        return super(BaseCloudPlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(BaseCloudPlugin, self).enabled = enable
-
-    @abc.abstractproperty
-    def entry_point(self):
-        return super(BaseCloudPlugin, self).entry_point
-
-    @abc.abstractproperty
-    def name(self):
-        return super(BaseCloudPlugin, self).name
-
-    @abc.abstractproperty
-    def full_name(self):
-        return super(BaseCloudPlugin, self).full_name
+    @property
+    def connection(self):
+        return self._connection
 
     @abc.abstractmethod
-    def configure(self, config, parser):
-        super(BaseCloudPlugin, self).configure(config, parser)
+    def connect(self):
+        """ Store the resultant connection in the _connection class attribute """
 
     @abc.abstractmethod
-    def add_plugin_args(self, *args, **kwargs):
-        super(BaseCloudPlugin, self).add_plugin_args(*args, **kwargs)
+    def allocate_base_volume(self):
+        """ create a volume object from the base/foundation volume """
 
     @abc.abstractmethod
-    def load_plugin_config(self, *args, **kwargs):
-        super(BaseCloudPlugin, self).load_plugin_config(*args, **kwargs)
+    def attach_volume(self):
+        """ Instructs the cloud provider to attach some sort of volume to the instance """
 
     @abc.abstractmethod
-    def connect(self, *args, **kwargs):
-        """ Instructs a cloud provider to establish a connection """
-
-    @abc.abstractmethod
-    def attach_volume(self, *args, **kwargs):
-        """ Instructs the cloud provider to attach some sort of volume to the instance on a given block device """
-
-    @abc.abstractmethod
-    def detach_volume(self, *args, **kwargs):
+    def detach_volume(self):
         """ Instructs the cloud provider to detach a given volume from the instance """
 
     @abc.abstractmethod
-    def register_image(self, *args, **kwargs):
-        """ Instructs the cloud provider to register a finalized image for launching """
+    def delete_volume(self):
+        """ destroys a volume """
 
     @abc.abstractmethod
-    def is_stale_attachment(self, *args, **kwargs):
+    def snapshot_volume(self):
+        """ creates a snapshot from the attached volume """
+
+    @abc.abstractmethod
+    def is_volume_attached(self):
+        """ volume attachment status """
+
+    @abc.abstractmethod
+    def is_stale_attachment(self):
         """ checks to see if a given device is a stale attachment """
 
     @abc.abstractmethod
-    def __enter__(self):
+    def attached_block_devices(self):
         """
-        Cloud plugins are context managers
+        list any block devices attached to the aminator instance.
+        helps blockdevice plugins allocate an os device node
         """
 
     @abc.abstractmethod
-    def __exit__(self, exc_type, exc_value, trace):
-        """
-        exit point for cloud context
-        """
+    def register_image(self):
+        """ Instructs the cloud provider to register a finalized image for launching """
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, typ, val, trc):
+        return False

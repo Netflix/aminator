@@ -43,5 +43,5 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         return yum_clean_metadata()
 
     def _provision_package(self):
-        context = self.config.context
+        context = self._config.context
         return yum_install(context.package.arg)

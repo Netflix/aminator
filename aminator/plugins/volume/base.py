@@ -34,61 +34,24 @@ log = logging.getLogger(__name__)
 
 
 class BaseVolumePlugin(BasePlugin):
+    """
+    Volume plugins ask blockdevice for an os block device, the cloud for a volume at
+    that block device, mount it, and return the mount point for the provisioner. How they go about it
+    is up to the implementor.
+    The are context managers to ensure they unmount and clean up resources
+    """
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.volume'
 
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        super(BaseVolumePlugin, self).__init__(*args, **kwargs)
-
-    @abc.abstractproperty
-    def enabled(self):
-        return super(BaseVolumePlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(BaseVolumePlugin, self).enabled = enable
-
-    @abc.abstractproperty
-    def entry_point(self):
-        return super(BaseVolumePlugin, self).entry_point
-
-    @abc.abstractproperty
-    def name(self):
-        return super(BaseVolumePlugin, self).name
-
-    @abc.abstractproperty
-    def full_name(self):
-        return super(BaseVolumePlugin, self).full_name
-
-    @abc.abstractmethod
-    def configure(self, config, parser, *args, **kwargs):
-        super(BaseVolumePlugin, self).configure(config, parser, *args, **kwargs)
-
-    @abc.abstractmethod
-    def add_plugin_args(self, *args, **kwargs):
-        super(BaseVolumePlugin, self).add_plugin_args(*args, **kwargs)
-
-    @abc.abstractmethod
-    def load_plugin_config(self, *args, **kwargs):
-        super(BaseVolumePlugin, self).load_plugin_config(*args, **kwargs)
-
-    @abc.abstractmethod
     def __enter__(self):
-        """
-        Volume plugins are context managers
-        __enter__ should return a volume object or identifier
-        """
+        return self
 
     @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, trace):
-        """
-        exit point for volume context
-        cleanup locks, detach volumes, recycle, etc
-        """
+        return False
 
-    @abc.abstractmethod
-    def __call__(self, *args, **kwargs):
-        """
-        The volume manager, in most all cases, will receive a set of arguments when used as a context manager
-        """
+    def __call__(self, cloud, blockdevice):
+        self._cloud = cloud
+        self._blockdevice = blockdevice
+        return self

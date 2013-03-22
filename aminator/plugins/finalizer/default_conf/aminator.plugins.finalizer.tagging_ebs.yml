@@ -1,5 +1,11 @@
 enabled: true
-name:
-name_format: '{0.name}-{0.version}-{0.release}-{0.arch}-{1:%Y%m%d%H%M}-{2}-ebs'
+description_format: 'name={name}, arch={arch}, ancestor_name={ancestor_name}, ancestor_id={ancestor_id}, ancestor_version={ancestor_version}'
+name_format: '{package_name}-{version}-{release}-{arch}-{suffix}'
 suffix_format: '{0:%Y%m%d%H%M}'
 creator: aminator
+default_root_device: /dev/sda1
+default_block_device_map:
+  - [/dev/sdb, ephemeral0]
+  - [/dev/sdc, ephemeral1]
+  - [/dev/sdd, ephemeral2]
+  - [/dev/sde, ephemeral3]

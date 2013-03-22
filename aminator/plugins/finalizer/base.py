@@ -34,63 +34,23 @@ log = logging.getLogger(__name__)
 
 
 class BaseFinalizerPlugin(BasePlugin):
+    """
+    Finalizers handle administrivia post-package-provisioning. Think: registration, tagging, snapshotting, etc.
+    They are context managers to ensure resource cleanup
+    """
+
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.finalizer'
 
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        super(BaseFinalizerPlugin, self).__init__(*args, **kwargs)
-
-    @abc.abstractproperty
-    def enabled(self):
-        return super(BaseFinalizerPlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(BaseFinalizerPlugin, self).enabled = enable
-
-    @abc.abstractproperty
-    def entry_point(self):
-        return super(BaseFinalizerPlugin, self).entry_point
-
-    @abc.abstractproperty
-    def name(self):
-        return super(BaseFinalizerPlugin, self).name
-
-    @abc.abstractproperty
-    def full_name(self):
-        return super(BaseFinalizerPlugin, self).full_name
-
-    @abc.abstractmethod
-    def configure(self, config, parser):
-        super(BaseFinalizerPlugin, self).configure(config, parser)
-
-    @abc.abstractmethod
-    def add_plugin_args(self, *args, **kwargs):
-        super(BaseFinalizerPlugin, self).add_plugin_args(*args, **kwargs)
-
-    @abc.abstractmethod
-    def load_plugin_config(self, *args, **kwargs):
-        super(BaseFinalizerPlugin, self).load_plugin_config(*args, **kwargs)
-
-    @abc.abstractmethod
-    def finalize(self, volume):
+    def finalize(self):
         """ finalize an image """
 
-    @abc.abstractmethod
     def __enter__(self):
-        """
-        Block device plugins are context managers
-        __enter__ should return a device string after allocation
-        """
+        return self
 
-    @abc.abstractmethod
-    def __exit__(self, exc_type, exc_value, trace):
-        """
-        exit point for block device context
-        cleanup locks and such here
-        """
+    def __exit__(self, typ, val, trc):
+        return False
 
-    @abc.abstractmethod
     def __call__(self, cloud):
-        """ finalizers will receive a cloud object in the with statement"""
+        self._cloud = cloud

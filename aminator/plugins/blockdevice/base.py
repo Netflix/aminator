@@ -34,61 +34,26 @@ log = logging.getLogger(__name__)
 
 
 class BaseBlockDevicePlugin(BasePlugin):
+    """
+    BlockDevicePlugins are context managers and as such, need to implement the context manager protocol
+    """
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.blockdevice'
 
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        super(BaseBlockDevicePlugin, self).__init__(*args, **kwargs)
-
-    @abc.abstractproperty
-    def enabled(self):
-        return super(BaseBlockDevicePlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(BaseBlockDevicePlugin, self).enabled = enable
-
-    @abc.abstractproperty
-    def entry_point(self):
-        return super(BaseBlockDevicePlugin, self).entry_point
-
-    @abc.abstractproperty
-    def name(self):
-        return super(BaseBlockDevicePlugin, self).name
-
-    @abc.abstractproperty
-    def full_name(self):
-        return super(BaseBlockDevicePlugin, self).full_name
-
-    @abc.abstractmethod
-    def configure(self, config, parser, *args, **kwargs):
-        super(BaseBlockDevicePlugin, self).configure(config, parser, *args, **kwargs)
-
-    @abc.abstractmethod
-    def add_plugin_args(self, *args, **kwargs):
-        super(BaseBlockDevicePlugin, self).add_plugin_args(*args, **kwargs)
-
-    @abc.abstractmethod
-    def load_plugin_config(self, *args, **kwargs):
-        super(BaseBlockDevicePlugin, self).load_plugin_config(*args, **kwargs)
-
-    @abc.abstractmethod
     def __enter__(self):
-        """
-        Block device plugins are context managers
-        __enter__ should return a device string after allocation
-        """
+        return self
 
     @abc.abstractmethod
-    def __exit__(self, exc_type, exc_value, trace):
-        """
-        exit point for block device context
-        cleanup locks and such here
-        """
+    def __exit__(self, typ, val, trc):
+        return False
 
-    @abc.abstractmethod
-    def __call__(self, *args, **kwargs):
+    def __call__(self, cloud):
         """
-        Block device plugins receive a cloud object so they can determine if a mount is stale or not
+        By default, BlockDevicePlugins are called using
+        with blockdeviceplugin(cloud) as device:
+            pass
+        Override if need be
         """
+        self.cloud = cloud
+        return self

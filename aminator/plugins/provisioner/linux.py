@@ -19,8 +19,8 @@
 #
 
 """
-aminator.plugins.provisioner.base_linux_provisioner
-===================================================
+aminator.plugins.provisioner.linux
+==================================
 Simple base class for cases where there are small distro-specific corner cases
 """
 import abc
@@ -52,44 +52,12 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def _provision_package(self):
         """ subclasses must implement package provisioning logic """
 
-    def __init__(self, *args, **kwargs):
-        super(BaseLinuxProvisionerPlugin, self).__init__(*args, **kwargs)
-
-    @property
-    def enabled(self):
-        return super(BaseLinuxProvisionerPlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(BaseLinuxProvisionerPlugin, self).enabled = enable
-
-    @property
-    def entry_point(self):
-        return super(BaseLinuxProvisionerPlugin, self).entry_point
-
-    @property
-    def name(self):
-        return super(BaseLinuxProvisionerPlugin, self).name
-
-    @property
-    def full_name(self):
-        return super(BaseLinuxProvisionerPlugin, self).full_name
-
-    def configure(self, config, parser):
-        super(BaseLinuxProvisionerPlugin, self).configure(config, parser)
-
-    def add_plugin_args(self, *args, **kwargs):
-        super(BaseLinuxProvisionerPlugin, self).add_plugin_args(*args, **kwargs)
-
-    def load_plugin_config(self, *args, **kwargs):
-        super(BaseLinuxProvisionerPlugin, self).load_plugin_config(*args, **kwargs)
-
     def provision(self):
-        log.debug('Entering chroot at {0}'.format(self.mountpoint))
-        config = self.config.plugins[self.full_name]
-        context = self.config.context
+        log.debug('Entering chroot at {0}'.format(self._mountpoint))
+        config = self._config.plugins[self.full_name]
+        context = self._config.context
 
-        with Chroot(self.mountpoint):
+        with Chroot(self._mountpoint):
             log.debug('Inside chroot')
 
             if config.get('short_circuit', False):
@@ -110,7 +78,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return True
 
     def _short_circuit(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         files = config.get('short_circuit_files', [])
         if files:
             if not short_circuit_files(files):
@@ -124,7 +92,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             return True
 
     def _rewire(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         files = config.get('short_circuit_files', [])
         if files:
             if not rewire_files(files):
@@ -137,9 +105,9 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('No short circuit files configured, no rewiring done')
         return True
 
-    def configure_chroot(self):
-        config = self.config.plugins[self.full_name]
-        log.debug('Configuring chroot at {0}'.format(self.mountpoint))
+    def _configure_chroot(self):
+        config = self._config.plugins[self.full_name]
+        log.debug('Configuring chroot at {0}'.format(self._mountpoint))
         if config.get('configure_mounts', True):
             if not self._configure_chroot_mounts():
                 log.critical('Configuration of chroot mounts failed')
@@ -156,10 +124,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return True
 
     def _configure_chroot_mounts(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         for mountdef in config.chroot_mounts:
             dev, fstype, mountpoint, options = mountdef
-            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
+            mountspec = MountSpec(dev, fstype, os.path.join(self._mountpoint, mountpoint.lstrip('/')), options)
             log.debug('Attempting to mount {0}'.format(mountspec))
             if not mounted(mountspec.mountpoint):
                 result = mount(mountspec)
@@ -171,10 +139,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             return True
 
     def _install_provision_configs(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         files = config.get('provision_config_files', [])
         if files:
-            if not install_provision_configs(files, self.mountpoint):
+            if not install_provision_configs(files, self._mountpoint):
                 log.critical('Error installing provisioning configs')
                 return False
             else:
@@ -184,9 +152,9 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('No provision config files configured')
             return True
 
-    def teardown_chroot(self):
-        config = self.config.plugins[self.full_name]
-        log.debug('Tearing down chroot at {0}'.format(self.mountpoint))
+    def _teardown_chroot(self):
+        config = self._config.plugins[self.full_name]
+        log.debug('Tearing down chroot at {0}'.format(self._mountpoint))
         if config.get('short_circuit', True):
             if not self._rewire():
                 log.critical('Failure during rewiring commands')
@@ -203,10 +171,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return True
 
     def _teardown_chroot_mounts(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         for mountdef in reversed(config.chroot_mounts):
             dev, fstype, mountpoint, options = mountdef
-            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
+            mountspec = MountSpec(dev, fstype, os.path.join(self._mountpoint, mountpoint.lstrip('/')), options)
             log.debug('Attempting to unmount {0}'.format(mountspec))
             if not mounted(mountspec.mountpoint):
                 log.warn('{0} not mounted'.format(mountspec.mountpoint))
@@ -216,7 +184,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
                 return False
         log.debug('Checking for stray mounts')
-        for mountpoint in lifo_mounts(self.mountpoint):
+        for mountpoint in lifo_mounts(self._mountpoint):
             log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
             result = unmount(mountpoint)
             if not result.success:
@@ -226,10 +194,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return True
 
     def _remove_provision_configs(self):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         files = config.get('provision_config_files', [])
         if files:
-            if not remove_provision_configs(files, self.mountpoint):
+            if not remove_provision_configs(files, self._mountpoint):
                 log.critical('Error removing provisioning configs')
                 return False
             else:
@@ -240,15 +208,15 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             return True
 
     def __enter__(self):
-        if not self.configure_chroot():
+        if not self._configure_chroot():
             raise VolumeException('Error configuring chroot')
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        if not self.teardown_chroot():
+        if not self._teardown_chroot():
             raise VolumeException('Error tearing down chroot')
         return False
 
-    def __call__(self, volume):
-        self.mountpoint = volume
+    def __call__(self, mountpoint):
+        self._mountpoint = mountpoint
         return self

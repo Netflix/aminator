@@ -33,17 +33,17 @@ class Environment(object):
     """ The environment and orchetrator for amination """
     # TODO: given that this represents a workflow, this should possibly be an entry point
 
-    def attach_plugins(self):
-        log.debug('Attaching plugins to environment {0}'.format(self.name))
-        env_config = self.config.environments[self.name]
+    def _attach_plugins(self):
+        log.debug('Attaching plugins to environment {0}'.format(self._name))
+        env_config = self._config.environments[self._name]
         for kind, name in env_config.iteritems():
             log.debug('Attaching plugin {0} for {1}'.format(name, kind))
-            plugin = self.plugin_manager.find_by_kind(kind, name)
+            plugin = self._plugin_manager.find_by_kind(kind, name)
             setattr(self, kind, plugin.obj)
             log.debug('Attached: {0}'.format(getattr(self, kind)))
 
     def provision(self):
-        log.info('Beginning amination! Package: {0}'.format(self.config.context.package.arg))
+        log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
         with self.cloud as cloud:
             with self.finalizer(cloud) as finalizer:
                 with self.volume(self.cloud, self.blockdevice) as volume:
@@ -52,7 +52,7 @@ class Environment(object):
                         if not success:
                             log.critical('Provisioning failed!')
                             return False
-                    success = finalizer.finalize(volume)
+                    success = finalizer.finalize()
                     if not success:
                         log.critical('Finalizing failed!')
                         return False
@@ -65,9 +65,9 @@ class Environment(object):
         return False
 
     def __call__(self, config, plugin_manager):
-        self.config = config
-        self.plugin_manager = plugin_manager
-        self.name = self.config.context.get('environment', self.config.environments.default)
-        self.config.context['environment'] = self.name
-        self.attach_plugins()
+        self._config = config
+        self._plugin_manager = plugin_manager
+        self._name = self._config.context.get('environment', self._config.environments.default)
+        self._config.context['environment'] = self._name
+        self._attach_plugins()
         return self
