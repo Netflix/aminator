@@ -27,7 +27,7 @@ import abc
 import logging
 import os
 
-from aminator.exceptions import ProvisionException, VolumeException
+from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
@@ -94,17 +94,20 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
             if config.get('short_circuit', False):
                 if not self._short_circuit():
-                    raise ProvisionException('Failure short-circuiting files')
+                    log.critical('Failure short-circuiting files')
+                    return False
 
             result = self._refresh_package_metadata()
             if not result.success:
-                raise ProvisionException('Package metadata refresh failed: {0.std_err}'.format(result.result))
+                log.critical('Package metadata refresh failed: {0.std_err}'.format(result.result))
+                return False
 
             result = self._provision_package()
             if not result.success:
-                raise ProvisionException('Installation of {0} failed: {1.std_err}'.format(context.package.arg,
-                                                                                          result.result))
+                log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
         log.debug('Exited chroot')
+        log.info('Provisioning succeeded!')
+        return True
 
     def _short_circuit(self):
         config = self.config.plugins[self.full_name]
@@ -219,6 +222,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             if not result.success:
                 log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
                 return False
+        log.debug('Teardown of chroot mounts succeeded!')
+        return True
 
     def _remove_provision_configs(self):
         config = self.config.plugins[self.full_name]

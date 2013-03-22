@@ -9,7 +9,7 @@ base:
         format: '%(asctime)s [%(levelname)s] %(message)s'
         datefmt: '%F %T'
       detailed:
-        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        format: '%(asctime)s [%(levelname)s] [%(name)s(%(lineno)s):%(funcName)s] %(message)s'
         datefmt: '%F %T'
     handlers:
       per_package:
@@ -38,7 +38,7 @@ per_package:
         format: '%(asctime)s [%(levelname)s] %(message)s'
         datefmt: '%F %T'
       detailed:
-        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        format: '%(asctime)s [%(levelname)s] [%(name)s(%(lineno)s):%(funcName)s] %(message)s'
         datefmt: '%F %T'
     handlers:
       per_package:
@@ -61,7 +61,7 @@ boto:
         format: '%(asctime)s [%(levelname)s] %(message)s'
         datefmt: '%F %T'
       detailed:
-        format: '%(asctime)s [%(levelname)s] [%(filename)s(%(lineno)s):%(funcName)s] %(message)s'
+        format: '%(asctime)s [%(levelname)s] [%(name)s(%(lineno)s):%(funcName)s] %(message)s'
         datefmt: '%F %T'
     handlers:
       boto:

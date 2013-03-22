@@ -230,7 +230,7 @@ def root_check():
     :return: errno.EACCESS if not running as root, None if running as root
     """
     if os.geteuid() != 0:
-        return errno.EACCESS
+        return errno.EACCES
     return None
 
 

@@ -112,7 +112,6 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
     def find_available_dev(self):
         log.info('Searching for an available block device')
-        log.debug('Allowed devices: {0}'.format(self.allowed_devices))
         for dev in self.allowed_devices:
             log.debug('checking if device {0} is available'.format(dev))
             device_lock = os.path.join(self.lock_dir, os.path.basename(dev))

@@ -77,7 +77,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         super(TaggingEBSFinalizerPlugin, self).load_plugin_config(*args, **kwargs)
 
     def finalize(self, volume):
-        return None
+        return True
 
     def __enter__(self):
         return self
