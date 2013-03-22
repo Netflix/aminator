@@ -28,7 +28,12 @@ try:
     from logging import NullHandler
 except ImportError:
     # py26
-    from logutils import NullHandler
+    try:
+        from logutils import NullHandler
+    except ImportError:
+        class NullHandler(logging.Handler):
+            def emit(self, record):
+                pass
 
 __version__ = '1.0.0'
 __versioninfo__ = __version__.split('.')
