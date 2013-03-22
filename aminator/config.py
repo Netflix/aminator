@@ -157,7 +157,7 @@ def log_per_package(config, logger):
     filename_format = per_package_config.handlers[logger].pop('filename_format')
     filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
     per_package_config.handlers[logger].filename = filename
-    log.debug('Detailed {0} output to {1}'.format(logger, per_package_config.handlers[logger].filename))
+    log.info('Detailed {0} output to {1}'.format(logger, per_package_config.handlers[logger].filename))
     dictConfig(per_package_config.toDict())
 
 

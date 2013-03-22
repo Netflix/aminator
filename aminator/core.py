@@ -48,12 +48,14 @@ class Aminator(object):
         log.debug('Args parsed')
 
         if self.config.logging.per_package.enabled:
-            log.debug('Configuring per-package logging')
+            log.info('Configuring per-package logging')
             log_per_package(self.config, 'per_package')
 
         self.environment = environment()
 
     def aminate(self):
         with self.environment(self.config, self.plugin_manager) as env:
-            status = env.provision()
-        return status
+            error = env.provision()
+            if not error:
+                log.info('Amination complete!')
+        return error

@@ -109,11 +109,14 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         context.snapshot.description = description
 
     def _snapshot_volume(self):
+        log.info('Taking a snapshot of the target volume')
         if not self._cloud.snapshot_volume():
             return False
+        log.info('Snapshot success')
         return True
 
     def _register_image(self, block_device_map=None, root_device=None):
+        log.info('Registering image')
         config = self._config.plugins[self.full_name]
         if block_device_map is None:
             block_device_map = config.default_block_device_map
@@ -121,6 +124,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
             root_device = config.default_root_device
         if not self._cloud.register_image(block_device_map, root_device):
             return False
+        log.info('Registration success')
         return True
 
     def _add_tags(self):
@@ -137,8 +141,15 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
             log.info('Successfully tagged objects')
             return True
 
+    def _log_ami_metadata(self):
+        context = self._config.context
+        for attr in ('id', 'name', 'description', 'kernel_id', 'ramdisk_id', 'virtualization_type',):
+            log.info('{0}: {1}'.format(attr, getattr(context.ami.image, attr)))
+        for tag_name, tag_value in context.ami.image.tags.iteritems():
+            log.info('Tag {0} = {1}'.format(tag_name, tag_value))
+
     def finalize(self):
-        log.debug('Finalizing')
+        log.info('Finalizing image')
         self._set_metadata()
 
         if not self._snapshot_volume():
@@ -154,6 +165,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
             return False
 
         log.info('Image registered and tagged')
+        self._log_ami_metadata()
         return True
 
     def __enter__(self):

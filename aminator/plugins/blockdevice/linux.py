@@ -92,6 +92,7 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                 fh = open(device_lock, 'a')
                 fcntl.flock(fh, fcntl.LOCK_EX)
                 log.debug('device locked. fh = {0}, dev = {1}'.format(str(fh), dev))
+                log.info('Block device {0} allocated'.format(dev))
                 return BlockDevice(dev, fh)
         else:
             raise DeviceException('Exhausted all devices, none free')

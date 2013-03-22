@@ -52,5 +52,5 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         metadata = deb_package_metadata(context.package.arg)
         context.package.name = metadata.get('name', context.package.arg)
-        context.package.version = metadata.get('version', 'not_found')
-        context.package.release = metadata.get('release', 'not_found')
+        context.package.version = metadata.get('version', '_')
+        context.package.release = metadata.get('release', '_')
