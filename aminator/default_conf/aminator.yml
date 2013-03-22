@@ -62,8 +62,8 @@ plugins:
 context:
   package: {}
   ami:
-    tags:
+    tags: {}
   snapshot:
-    tags:
+    tags: {}
   web_log: {}
   cloud: {}

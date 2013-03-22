@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, apt_get_update
+from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -47,3 +47,10 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         return apt_get_install(context.package.arg)
+
+    def _store_package_metadata(self):
+        context = self._config.context
+        metadata = deb_package_metadata(context.package.arg)
+        context.package.name = metadata.get('name', context.package.arg)
+        context.package.version = metadata.get('version', 'not_found')
+        context.package.release = metadata.get('release', 'not_found')

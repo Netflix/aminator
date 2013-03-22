@@ -131,6 +131,44 @@ def unmount(dev):
 def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
+@command()
+def rpm_query(package, queryformat):
+    return 'rpm -q --qf \'{0}\' {1}'.format(package, queryformat)
+
+@command()
+def deb_query(package):
+    return 'dpkg -p {0}'.format(package)
+
+
+def rpm_package_metadata(package):
+    metadata = {}
+    result = rpm_query(package, '%{Name},%{Version},%{Release}')
+    if result.success:
+        name, version, release = result.result.std_out.split(',')
+        metadata['name'] = name
+        metadata['version'] = version
+        metadata['release'] = release
+    else:
+        log.debug('Failed to query RPM metadata')
+    return metadata
+
+
+def deb_package_metadata(package):
+    metadata = {}
+    result = deb_query(package)
+    if result.success:
+        for line in result.result.std_out:
+            if line.startswith('Package:'):
+                log.debug('Package in {0}'.format(line))
+                metadata['name'] = line.split(':')[1]
+            elif line.startswith('Version:'):
+                log.debug('Version in {0}'.format(line))
+                metadata['version'] = line.split(':')[1]
+            else:
+                log.debug('No tags'.format(line))
+                continue
+    return metadata
+
 
 class Chroot(object):
     def __init__(self, path):

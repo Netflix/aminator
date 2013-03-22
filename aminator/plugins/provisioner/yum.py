@@ -26,7 +26,7 @@ basic yum provisioner
 import logging
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install
+from aminator.util.linux import yum_clean_metadata, yum_install, rpm_package_metadata
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -45,3 +45,10 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _provision_package(self):
         context = self._config.context
         return yum_install(context.package.arg)
+
+    def _store_package_metadata(self):
+        context = self._config.context
+        metadata = rpm_package_metadata(context.package.arg)
+        context.package.name = metadata.get('name', context.package.arg)
+        context.package.version = metadata.get('version', 'not_found')
+        context.package.release = metadata.get('release', 'not_found')

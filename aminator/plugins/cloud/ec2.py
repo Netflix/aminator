@@ -24,6 +24,7 @@ aminator.plugins.cloud.ec2
 ec2 cloud provider
 """
 import logging
+from time import sleep
 
 from boto.ec2 import connect_to_region
 from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
@@ -32,9 +33,10 @@ from boto.ec2.instance import Instance
 from boto.ec2.volume import Volume
 from boto.exception import EC2ResponseError
 from boto.utils import get_instance_metadata
+from decorator import decorator
 
 from aminator.config import conf_action
-from aminator.exceptions import VolumeException
+from aminator.exceptions import FinalizerException, VolumeException
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.util import retry
 from aminator.util.linux import device_prefix, native_block_device, os_node_exists
@@ -42,6 +44,39 @@ from aminator.util.linux import device_prefix, native_block_device, os_node_exis
 
 __all__ = ('EC2CloudPlugin',)
 log = logging.getLogger(__name__)
+
+
+def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, backoff=1, logger=None):
+    """
+    a slightly tweaked form of aminator.util.retry for handling retries on image registration
+    """
+    if logger is None:
+        logger = log
+
+    @decorator
+    def _retry(f, *args, **kwargs):
+        _tries, _delay = tries, delay
+        total_tries = _tries
+        args, kwargs = args, kwargs
+        while _tries > 0:
+            try:
+                return f(*args, **kwargs)
+            except ExceptionToCheck, e:
+                if e.error_code == 'InvalidAMIName.Duplicate':
+                    log.debug('Duplicate AMI Name {0}, retrying'.format(kwargs['name']))
+                    attempt = abs(_tries - (total_tries + 1))
+                    kwargs['name'] = kwargs.pop('name') + str(attempt)
+                    log.debug('Trying name {0}'.format(kwargs['name']))
+                    sleep(_delay)
+                    _tries -= 1
+                    _delay *= backoff
+                else:
+                    for (code, msg) in e.errors:
+                        log.critical('EC2ResponseError: {0}: {1}.'.format(code, msg))
+                        return False
+        log.critical('Failed to register AMI')
+        return False
+    return _retry
 
 
 class EC2CloudPlugin(BaseCloudPlugin):
@@ -114,7 +149,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'ami-name': context.base_ami.name,
                 'arch': context.base_ami.architecture,
             }
-            self.connection.create_tags([self._volume.id], tags)
+            self._connection.create_tags([self._volume.id], tags)
         self._volume.update()
         log.debug('Volume {0} created'.format(self._volume.id))
 
@@ -156,7 +191,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         else:
             return True
 
-    def create_snapshot(self, description=None):
+    def snapshot_volume(self, description=None):
         context = self._config.context
         if not description:
             description = context.snapshot.get('description', '')
@@ -177,7 +212,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         else:
             return obj.state == state
 
-    @retry(VolumeException, tries=600, delay=2, backoff=1, logger=log)
+    @retry(VolumeException, tries=600, delay=0.5, backoff=1.5, logger=log)
     def _wait_for_state(self, resource, state):
         if self._state_check(resource, state):
             log.debug('{0} reached state {1}'.format(resource.__class__.__name__, state))
@@ -233,13 +268,21 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('{0} not stale, using'.format(dev))
         return False
 
-
-
+    @registration_retry(tries=3, delay=1, backoff=1)
+    def _register_image(self, **ami_metadata):
+        context = self._config.context
+        ami = Image(connection=self._connection)
+        ami.id = self._connection.register_image(**ami_metadata)
+        if ami.id is None:
+            return False
+        else:
+            log.info('Successfully registered AMI {0}'.format(ami.id))
+            context.ami.image = self._ami = ami
+            return True
 
     def register_image(self, block_device_map, root_block_device):
         context = self._config.context
         bdm = self._make_block_device_map(block_device_map, root_block_device)
-        ami = Image(connection=self.connection)
         ami_metadata = {
             'name': context.ami.name,
             'description': context.ami.description,
@@ -249,16 +292,48 @@ class EC2CloudPlugin(BaseCloudPlugin):
             'ramdisk_id': context.base_ami.ramdisk_id
         }
         if not self._register_image(**ami_metadata):
-
-
+            return False
+        return True
 
     def _make_block_device_map(self, block_device_map, root_block_device):
-        bdm = BlockDeviceMapping(connection=self.connection)
+        bdm = BlockDeviceMapping(connection=self._connection)
         bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id,
                                                  delete_on_termination=True)
         for (os_dev, ec2_dev) in block_device_map:
             bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
         return bdm
+
+    @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
+    def add_tags(self, resource_type):
+        context = self._config.context
+
+        log.debug('Adding tags for resource type {0}'.format(resource_type))
+
+        tags = context[resource_type].get('tags', None)
+        if not tags:
+            log.critical('Unable to locate tags for {0}'.format(resource_type))
+            return False
+
+        instance_var = '_' + resource_type
+        try:
+            instance = getattr(self, instance_var)
+        except Exception, e:
+            log.exception('Unable to find local instance var {0}'.format(instance_var))
+            log.critical('Tagging failed')
+            return False
+        else:
+            try:
+                self._connection.create_tags([instance.id], tags)
+            except EC2ResponseError, e:
+                log.exception('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
+                raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type,
+                                                                                                    instance.id))
+            else:
+                log.debug('Successfully tagged {0}({1})'.format(resource_type, instance.id))
+                instance.update()
+                tagstring = '\n'.join('='.join((key, val)) for (key, val) in tags.iteritems())
+                log.debug('Tags: \n{0}'.format(tagstring))
+                return True
 
     def attached_block_devices(self, prefix):
         log.debug('Checking for currently attached block devices. prefix: {0}'.format(prefix))
@@ -298,26 +373,3 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._instance.update()
 
         return self
-
-
-def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=0.5, backoff=1, logger=None):
-    """
-    a slightly tweaked form of aminator.util.retry for handling retries on image registration
-    """
-    if logger is None:
-        logger = log
-
-    @decorator
-    def _retry(f, *args, **kwargs):
-        _tries, _delay = tries, delay
-
-        while _tries > 0:
-            try:
-                return f(*args, **kwargs)
-            except ExceptionToCheck, e:
-                logger.debug(e)
-                sleep(_delay)
-                _tries -= 1
-                _delay *= backoff
-        return f(*args, **kwargs)
-    return _retry

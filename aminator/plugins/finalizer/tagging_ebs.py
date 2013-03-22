@@ -27,6 +27,7 @@ import logging
 from datetime import datetime
 
 from aminator.config import conf_action
+from aminator.exceptions import FinalizerException
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
 
 
@@ -53,20 +54,25 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         context = self._config.context
         config = self._config.plugins[self.full_name]
 
+        log.debug('Populating snapshot and ami metadata for tagging and naming')
         creator = context.ami.get('creator',
                                   config.get('creator',
                                              'aminator'))
-        context.tags.ami.creator = creator
-        context.tags.snapshot.creator = creator
+        context.ami.tags.creator = creator
+        context.snapshot.tags.creator = creator
 
         package_name = context.package.name
         package_version = context.package.version
         package_release = context.package.release
-        arch = context.baseami.architecture
 
-        suffix = context.ami.get(suffix, None)
+        context.ami.tags.appversion = '{0}-{1}-{2}'.format(package_name, package_version, package_release)
+        context.snapshot.tags.appversion = '{0}-{1}-{2}'.format(package_name, package_version, package_release)
+
+        arch = context.base_ami.architecture
+
+        suffix = context.ami.get('suffix', None)
         if not suffix:
-            context.ami.suffix_format.format(datetime.utcnow())
+            suffix = config.suffix_format.format(datetime.utcnow())
 
         name = context.ami.get('name', None)
         if not name:
@@ -85,9 +91,10 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         context.ami.name = ami_name
         context.snapshot.name = name
 
-        baseami_name = context.baseami.name
-        baseami_id = context.baseami.id
-        baseami_version = context.baseami.tags.get('base_ami_version', '')
+        baseami_name = context.base_ami.name
+        baseami_id = context.base_ami.id
+        baseami_version = context.base_ami.tags.get('base_ami_version', '')
+        context.ami.tags.base_ami_version = baseami_version
 
         description_metadata = {
             'name': name,
@@ -95,30 +102,43 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
             'ancestor_name': baseami_name,
             'ancestor_id': baseami_id,
             'ancestor_version': baseami_version,
-            }
+        }
         default_description = config.description_format.format(**description_metadata)
         description = context.snapshot.get('description', default_description)
         context.ami.description = description
         context.snapshot.description = description
 
     def _snapshot_volume(self):
-        if not self._cloud.create_snapshot():
+        if not self._cloud.snapshot_volume():
             return False
+        return True
 
     def _register_image(self, block_device_map=None, root_device=None):
-        config = self.config.plugins[self.full_name]
+        config = self._config.plugins[self.full_name]
         if block_device_map is None:
             block_device_map = config.default_block_device_map
         if root_device is None:
             root_device = config.default_root_device
-        if not self._cloud.register_image(block_device_map):
+        if not self._cloud.register_image(block_device_map, root_device):
             return False
+        return True
 
     def _add_tags(self):
-        pass
+        context = self._config.context
+        context.ami.tags.creation_time = '{0:%F %T UTC}'.format(datetime.utcnow())
+        for resource in ('snapshot', 'ami'):
+            try:
+                self._cloud.add_tags(resource)
+            except FinalizerException, e:
+                log.exception('Error adding tags to {0}'.format(resource))
+                return False
+            log.info('Successfully tagged {0}'.format(resource))
+        else:
+            log.info('Successfully tagged objects')
+            return True
 
     def finalize(self):
-
+        log.debug('Finalizing')
         self._set_metadata()
 
         if not self._snapshot_volume():
@@ -130,7 +150,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
             return False
 
         if not self._add_tags():
-            log.error('Error adding tags')
+            log.critical('Error adding tags')
             return False
 
         log.info('Image registered and tagged')

@@ -46,3 +46,7 @@ class ArgumentError(AminateException):
 
 class ProvisionException(AminateException):
     """ Errors during provisioning """
+
+
+class FinalizerException(AminateException):
+    """ Errors during finalizing """

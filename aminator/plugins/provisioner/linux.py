@@ -52,6 +52,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def _provision_package(self):
         """ subclasses must implement package provisioning logic """
 
+    @abc.abstractmethod
+    def _store_package_metadata(self):
+        """ stuff name, version, release into context """
+
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
         config = self._config.plugins[self.full_name]
@@ -73,6 +77,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             result = self._provision_package()
             if not result.success:
                 log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
+                return False
+            self._store_package_metadata()
         log.debug('Exited chroot')
         log.info('Provisioning succeeded!')
         return True

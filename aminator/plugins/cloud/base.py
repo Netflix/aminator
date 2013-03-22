@@ -43,10 +43,6 @@ class BaseCloudPlugin(BasePlugin):
 
     _connection = None
 
-    @property
-    def connection(self):
-        return self._connection
-
     @abc.abstractmethod
     def connect(self):
         """ Store the resultant connection in the _connection class attribute """
@@ -85,6 +81,10 @@ class BaseCloudPlugin(BasePlugin):
         list any block devices attached to the aminator instance.
         helps blockdevice plugins allocate an os device node
         """
+
+    @abc.abstractmethod
+    def add_tags(self):
+        """ consumes tags and applies them to objects """
 
     @abc.abstractmethod
     def register_image(self):
