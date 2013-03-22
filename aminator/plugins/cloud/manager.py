@@ -1,4 +1,5 @@
-#!/bin/bash
+# -*- coding: utf-8 -*-
+
 #
 #
 #  Copyright 2013 Netflix, Inc.
@@ -17,40 +18,23 @@
 #
 #
 
-inc_d=${0%/*}
-prog=${0##*/}
-inc_f=${inc_d}/${prog%.sh}-funcs.sh
+"""
+aminator.plugins.cloud.manager
+==============================
+Cloud plugin manager(s) and utils
+"""
+import logging
 
-if [[ ! -f $inc_f ]]
-then
-    echo "$inc_f not found." >&2
-    exit 1
-fi
-
-source $inc_f
-
-parse_args "$@"
-
-logging_init
+from aminator.plugins.manager import BasePluginManager
 
 
-case $action in
-    install)
-        inc_f=${inc_f/-/-$(distro_guess $action_args)-}
-        if [[ -f $inc_f ]]
-        then
-            source $inc_f
-        fi
-        install_pkg $action_args || exit 1
-        ;;
-    *)
-        err "unsupported action: $action"
-        exit 1
-        ;;
-esac
+log = logging.getLogger(__name__)
 
-if [[ -n $TMPFILES ]]
-then
-    wrap_log rm -f -v ${TMPFILES[*]}
-fi
-exit 0
+
+class CloudPluginManager(BasePluginManager):
+    """ Cloud Plugin Manager """
+    _entry_point = 'aminator.plugins.cloud'
+
+    @property
+    def entry_point(self):
+        return self._entry_point

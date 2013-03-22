@@ -1,0 +1,69 @@
+# aminator default configuration settings
+
+config_root: /etc/aminator
+
+# lack of leading ~ or / makes these relative to config_root
+config_files:
+    main: [aminator.yml, ~/.aminator/aminator.yml]
+    logging: [logging.yml, ~/.aminator/logging.yml]
+    environments: [environments.yml, ~/.aminator/environments.yml]
+
+# aminator working dir (state, locks, etc)
+aminator_root: /var/aminator
+# lack of leading ~ or / makes these relative to aminator_root
+volume_dir: volumes
+lock_dir: lock
+
+# thar be logfiles here!
+log_root: /var/log/aminator
+
+# if you have the means to provide a web interface to your logs, define a template
+# here using str.format() style
+# The format string will use the dict under the context.web_log config key
+# to format the URL.
+# use the special key and value timestamp: true to insert datetime.datetime.utcnow in the context
+# For example:
+# context:
+#   web_log:
+#     host: foo.com:8443
+#     protocol: https://
+#     path: /aminator_logs/
+#     package: helloworld-1.0
+#     timestamp: true
+#     suffix: .log
+#
+# web_log_url_template: '{protocol}{host}{path}{package}-{timestamp:%Y%m%d%H%M%S}{suffix}'
+#
+# after massaging, something like
+# context.web_log_url = web_log_url_template.format(**context.web_log)
+
+web_log_url_template:
+
+
+plugins:
+    config_root: /etc/aminator/plugins
+    entry_points:
+      blockdevice:
+        entry_point: aminator.plugins.blockdevice
+        class: BlockDevicePluginManager
+      cloud:
+        entry_point: aminator.plugins.cloud
+        class: CloudPluginManager
+      finalizer:
+        entry_point: aminator.plugins.finalizer
+        class: FinalizerPluginManager
+      provisioner:
+        entry_point: aminator.plugins.provisioner
+        class: ProvisionerPluginManager
+      volume:
+        entry_point: aminator.plugins.volume
+        class: VolumePluginManager
+
+context:
+  package: {}
+  ami:
+    tags: {}
+  snapshot:
+    tags: {}
+  web_log: {}
+  cloud: {}

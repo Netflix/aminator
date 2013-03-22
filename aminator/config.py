@@ -18,85 +18,202 @@
 #
 #
 
+"""
+aminator.config
+===============
+aminator configuration, argument handling, and logging setup
+"""
+import argparse
+import logging
 import os
 import sys
+from copy import deepcopy
+from datetime import datetime
 
-import yaml
+try:
+    from logging.config import dictConfig
+except ImportError:
+    # py26
+    from logutils.dictconfig import dictConfig
 
+import bunch
+from pkg_resources import resource_string, resource_exists
 
-__doc__ = """
-# aminator default configuration settings
-# This document is processed by yaml and formatted per
-# http://pyyaml.org/wiki/PyYAMLDocumentation#Documents
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
-config_file: /etc/aminator.yaml    # defaults can be overridden in this yaml formatted file.
-lockdir: /var/lock            # lock file directory
-
-device_prefixes: [sd, xvd]                      # possible OS device prefixes
-nonpartitioned_device_letters: 'fghijklmnop'    # devices used for non-partitioned volumes
-partitioned_device_letters:    'qrstuvwxyz'     # devices used for partitioned volumes, i.e. hvm
-
-volume_root: /aminator/volumes      # volumes mounted onto subdirs of this directory.
-
-# fstab-esque list of mounts for a chroot environment. ordered.
-# device, type, mount point
-chroot_mounts:
-    - [proc, proc, /proc]
-    - [sysfs, sysfs, /sys]
-    - [/dev, bind, /dev]
-    - [devpts, devpts, /dev/pts]
-    - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc]
-
-root_device: /dev/sda1
-ephemeral_devices:
-    - /dev/sdb
-    - /dev/sdc
-    - /dev/sdd
-    - /dev/sde
-
-# log_dir: destination for debug log files. Debug logs are interesting as they include all the
-# gory details of the aminate execution. Debug {logfile} names are constructued using the
-# command-line package and AMI suffix parameters and take the form: {package}-{suffix}.log
-log_dir: /var/log/aminator
-
-# log_url_prefix: should include two formatting replacement fields to be replaced
-# with the public dns name (or ip address if in vpc) of the instance where aminate
-# is executed and the detailed log.
-# eg. http://{name_or_address}:8080/some/path/{logfile}
-log_url_prefix:
-
-# boto_logdir: Directory where boto debug logs will be written. Log file paths take this form:
-# {boto_logdir}/{boto}-{logfile}
-#
-# These logs can be quite verbose and will contain the account key. Therefore, boto debug logs
-# will be written only when the '-D' aminate option is passed and if boto_logdir is set with
-# an existing directory.
-boto_log_dir:
-"""
+import aminator
 
 
-class Config(object):
-    def __init__(self):
-        file_config = {}
-        default_cfg = yaml.load(__doc__)
-        self._set_attrs(**default_cfg)
-        if os.path.exists(self.config_file):
-            with open(self.config_file) as cf:
-                try:
-                    file_config = yaml.load(cf)
-                except yaml.MarkedYAMLError, e:
-                    sys.stderr.write("{0}: {1}: line{2}, column{3}".format(e,
-                                                                           e.message,
-                                                                           e.problem_mark.line,
-                                                                           e.problem_mark.column))
-        if len(file_config) > 0:
-            self._set_attrs(**file_config)
+__all__ = ()
+log = logging.getLogger(__name__)
+_action_registries = argparse.ArgumentParser()._registries['action']
 
-    def _set_attrs(self, **kwargs):
-        for i in kwargs:
-            value = kwargs[i]
-            if isinstance(value, list):
-                value = tuple(value)
-            setattr(self, i, value)
+RSRC_PKG = 'aminator'
+RSRC_DEFAULT_CONF_DIR = 'default_conf'
+RSRC_DEFAULT_CONFS = {
+    'main': os.path.join(RSRC_DEFAULT_CONF_DIR, 'aminator.yml'),
+    'logging': os.path.join(RSRC_DEFAULT_CONF_DIR, 'logging.yml'),
+    'environments': os.path.join(RSRC_DEFAULT_CONF_DIR, 'environments.yml'),
+}
 
-config = Config()
+
+def init_defaults(argv=None, debug=False):
+    argv = argv or sys.argv[1:]
+    config = Config.from_defaults()
+    config = config.dict_merge(config, Config.from_files(config.config_files.main))
+    main_parser = Argparser(argv=argv, description='Aminator: bringing AMIs to life', add_help=False,
+                            argument_default=argparse.SUPPRESS)
+    config.logging = LoggingConfig.from_defaults()
+    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging))
+    config.environments = EnvironmentConfig.from_defaults()
+    config.environments = config.dict_merge(config.environments,
+                                            EnvironmentConfig.from_files(config.config_files.environments))
+
+    if config.logging.base.enabled:
+        dictConfig(config.logging.base.config.toDict())
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    add_base_arguments(parser=main_parser, config=config)
+    plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS,
+                              parents=[main_parser])
+    log.info('Aminator {0} default configuration loaded'.format(aminator.__version__))
+    return config, plugin_parser
+
+
+class Config(bunch.Bunch):
+    """ Base config class """
+    resource_package = RSRC_PKG
+    resource_default = RSRC_DEFAULT_CONFS['main']
+
+    @classmethod
+    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs):
+        return cls(cls.fromYAML(yaml_data, Loader=Loader, *args, **kwargs))
+
+    @classmethod
+    def from_pkg_resource(cls, namespace, name, *args, **kwargs):
+        config = resource_string(namespace, name)
+        if len(config):
+            return cls.from_yaml(config, *args, **kwargs)
+        else:
+            log.warn('Resource for {0}.{1} is empty, returning empty config'.format(namespace, name))
+
+    @classmethod
+    def from_file(cls, yaml_file, *args, **kwargs):
+        if not os.path.exists(yaml_file):
+            log.warn('File {0} not found, returning empty config'.format(yaml_file))
+            return cls()
+        with open(yaml_file) as f:
+            _config = cls.from_yaml(f, *args, **kwargs)
+        return _config
+
+    @classmethod
+    def from_files(cls, files, *args, **kwargs):
+        _files = [os.path.expanduser(filename) for filename in files]
+        _files = [filename for filename in _files if os.path.exists(filename)]
+        _config = cls()
+        for filename in _files:
+            _new = cls.from_file(filename, *args, **kwargs)
+            _config = cls.dict_merge(_config, _new)
+        return _config
+
+    @classmethod
+    def from_defaults(cls, namespace=None, name=None, *args, **kwargs):
+        if namespace and name and resource_exists(namespace, name):
+            _namespace = namespace
+            _name = name
+        elif (cls.resource_package and cls.resource_default
+              and resource_exists(cls.resource_package, cls.resource_default)):
+            _namespace = cls.resource_package
+            _name = cls.resource_default
+        else:
+            log.warn('No class resource attributes and no namespace info, returning empty config')
+            return cls(*args, **kwargs)
+        return cls.from_pkg_resource(_namespace, _name, *args, **kwargs)
+
+    @staticmethod
+    def dict_merge(old, new):
+        res = deepcopy(old)
+        for k, v in new.iteritems():
+            if k in res and isinstance(res[k], dict):
+                res[k] = Config.dict_merge(res[k], v)
+            else:
+                res[k] = deepcopy(v)
+        return res
+
+    def __call__(self):
+        return
+
+
+class LoggingConfig(Config):
+    """ Logging config class """
+    resource_default = RSRC_DEFAULT_CONFS['logging']
+
+
+def log_per_package(config, logger):
+    per_package_config = config.logging[logger].config
+    filename_format = per_package_config.handlers[logger].pop('filename_format')
+    filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
+    per_package_config.handlers[logger].filename = filename
+    log.info('Detailed {0} output to {1}'.format(logger, per_package_config.handlers[logger].filename))
+    dictConfig(per_package_config.toDict())
+
+
+class EnvironmentConfig(Config):
+    """ Environment config class """
+    resource_default = RSRC_DEFAULT_CONFS['environments']
+
+
+class PluginConfig(Config):
+    """ Plugin config class """
+    resource_package = resource_default = None
+
+    @classmethod
+    def from_defaults(cls, namespace=None, name=None, *args, **kwargs):
+        if not all((namespace, name)):
+            raise ValueError('Plugins must specify a namespace and name')
+        resource_file = '.'.join((namespace, name, 'yml'))
+        resource_path = os.path.join(RSRC_DEFAULT_CONF_DIR, resource_file)
+        return super(PluginConfig, cls).from_defaults(namespace=namespace, name=resource_path, *args, **kwargs)
+
+
+class Argparser(object):
+    """ Argument parser class. Holds the keys to argparse """
+    def __init__(self, argv=None, *args, **kwargs):
+        self._argv = argv or sys.argv[1:]
+        self._parser = argparse.ArgumentParser(*args, **kwargs)
+
+    def add_config_arg(self, *args, **kwargs):
+        config = kwargs.pop('config', Config())
+        _action = kwargs.pop('action', None)
+        action = conf_action(config, _action)
+        kwargs['action'] = action
+        return self.add_argument(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        return getattr(self._parser, attr)
+
+
+def add_base_arguments(parser, config):
+    parser.add_config_arg('arg', metavar='package', config=config.context.package, help='The package to aminate')
+    parser.add_config_arg('-e', '--environment', config=config.context,
+                          help='The environment configuration for amination')
+    parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
+    parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
+
+
+def conf_action(config, action=None):
+    """
+    class factory function that dynamically creates special ConfigAction
+    forms of argparse actions, injecting a config object into the namespace
+    """
+    action_subclass = _action_registries[action]
+    action_class_name = 'ConfigAction_{0}'.format(action_subclass.__name__)
+
+    def _action_call(self, parser, namespace, values, option_string=None):
+        return super(self.__class__, self).__call__(parser, config, values, option_string)
+
+    action_class = type(action_class_name, (action_subclass, ), {'__call__': _action_call})
+    return action_class

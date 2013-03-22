@@ -18,13 +18,27 @@
 #
 #
 
-ec2_obj_states = {
-    'Image': ['available', 'deregistered', 'pending'],
-    'Instance': ['pending',
-                 'running',
-                 'shutting-down',
-                 'terminated',
-                 'stopping',
-                 'stopped'],
-    'Snapshot': ['pending', 'completed', 'error', '100%'],
-    'Volume': ['creating', 'available', 'in-use', 'deleting', 'error']}
+"""
+aminator.plugins.provisioner.manager
+====================================
+Provisioner plugin manager(s) and utils
+"""
+import logging
+
+from aminator.plugins.manager import BasePluginManager
+
+
+log = logging.getLogger(__name__)
+
+
+class ProvisionerPluginManager(BasePluginManager):
+    """ Provisioner Plugin Manager """
+    _entry_point = 'aminator.plugins.provisioner'
+
+    @property
+    def entry_point(self):
+        return self._entry_point
+
+    @staticmethod
+    def check_func(plugin):
+        return True

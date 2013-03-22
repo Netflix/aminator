@@ -34,3 +34,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# SublimeRope
+.ropeproject
+
+*.sublime-project
+*.sublime-workspace
+.idea

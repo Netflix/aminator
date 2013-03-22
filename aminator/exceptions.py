@@ -21,20 +21,32 @@
 """
 aminator.exceptions
 ===================
-This module contains aminator's exceptions
+aminator's exceptions
 """
 
 
-class AminateError(StandardError):
+class AminateException(Exception):
     """ Base Aminator Exception """
     pass
 
 
-class DeviceError(AminateError):
+class DeviceException(AminateException):
     """ Errors during device allocation """
     pass
 
 
-class VolumeError(AminateError):
+class VolumeException(AminateException):
     """ Errors during volume allocation """
     pass
+
+
+class ArgumentError(AminateException):
+    """ Errors during argument parsing"""
+
+
+class ProvisionException(AminateException):
+    """ Errors during provisioning """
+
+
+class FinalizerException(AminateException):
+    """ Errors during finalizing """
