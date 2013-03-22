@@ -22,17 +22,8 @@ if major != 2 or minor < 6:
     print 'Aminator requires Python 2.6.x or 2.7.x'
     sys.exit(1)
 
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    try:
-        from distribute_setup import use_setuptools
-        use_setuptools()
-        from setuptools import setup, find_packages
-    except ImportError:
-        print 'Aminator requires distribute for installation'
-        print 'http://pythonhosted.org/distribute/'
-        sys.exit(1)
+from distribute_setup import use_setuptools
+use_setuptools()
 
 import aminator
 
