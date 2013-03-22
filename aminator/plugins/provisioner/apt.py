@@ -24,149 +24,24 @@ aminator.plugins.provisioner.apt
 basic apt provisioner
 """
 import logging
-import os
-import shutil
 
-from aminator.exceptions import ProvisionException, VolumeException
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-from aminator.util.linux import busy_mount, Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
-from aminator.util.linux import apt_get_update, apt_get_install, swap_out_aminator_file, swap_in_aminator_file
+from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
+from aminator.util.linux import apt_get_install, apt_get_update
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class AptProvisionerPlugin(BaseProvisionerPlugin):
+class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
+    """
+    AptProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
+    See BaseLinuxProvisionerPlugin for details
+    """
     _name = 'apt'
 
-    def __init__(self, *args, **kwargs):
-        super(AptProvisionerPlugin, self).__init__(*args, **kwargs)
+    def _refresh_package_metadata(self):
+        return apt_get_update()
 
-    @property
-    def enabled(self):
-        return super(AptProvisionerPlugin, self).enabled
-
-    @enabled.setter
-    def enabled(self, enable):
-        super(AptProvisionerPlugin, self).enabled = enable
-
-    @property
-    def entry_point(self):
-        return super(AptProvisionerPlugin, self).entry_point
-
-    @property
-    def name(self):
-        return super(AptProvisionerPlugin, self).name
-
-    @property
-    def full_name(self):
-        return super(AptProvisionerPlugin, self).full_name
-
-    def configure(self, config, parser):
-        super(AptProvisionerPlugin, self).configure(config, parser)
-
-    def add_plugin_args(self, *args, **kwargs):
-        super(AptProvisionerPlugin, self).add_plugin_args(*args, **kwargs)
-
-    def load_plugin_config(self, *args, **kwargs):
-        super(AptProvisionerPlugin, self).load_plugin_config(*args, **kwargs)
-
-    def provision(self):
-        log.debug('Entering chroot at {0}'.format(self.mountpoint))
-        config = self.config.plugins[self.full_name]
+    def _provision_package(self):
         context = self.config.context
-
-        with Chroot(self.mountpoint):
-            log.debug('Inside chroot')
-            log.debug(os.listdir('/'))
-            result = apt_get_update()
-            if not result.success:
-                raise ProvisionException('apt-get update: {0.std_err}'.format(result.result))
-            result = apt_get_install(context.package.arg)
-            if not result.success:
-                raise ProvisionException('Installation of {0} failed: {1.std_err}'.format(context.package.arg,
-                                                                                          result.result))
-        log.debug('Exited chroot')
-
-    def configure_chroot(self):
-        log.debug('Configuring chroot at {0}'.format(self.mountpoint))
-        config = self.config.plugins[self.full_name]
-        for mountdef in config.chroot_mounts:
-            dev, fstype, mountpoint, options = mountdef
-            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
-            log.debug('Attempting to mount {0}'.format(mountspec))
-            if not mounted(mountspec.mountpoint):
-                result = mount(mountspec)
-                if not result.success:
-                    log.critical('Unable to configure chroot: {0.std_err}'.format(result))
-                    return False
-        log.debug('Mounts configured')
-
-        if os.path.isfile('/etc/resolv.conf'):
-            log.debug('Copying in a temporary resolv.conf')
-            resolv = 'resolv.conf'
-            src = os.path.join('/etc', resolv)
-            dst = os.path.join(self.mountpoint, 'etc/', resolv)
-            log.debug('src: {0} dst: {1}'.format(src, dst))
-            try:
-                if os.path.isfile(dst) or os.path.islink(dst):
-                    log.debug('Moving {0} out of the way'.format(dst))
-                    try:
-                        os.rename(dst, dst + '.aminator')
-                    except Exception, e:
-                        log.warn('Error encountered while removing existing resolv.conf: {0}'.format(e))
-                shutil.copy(src, dst)
-            except Exception, e:
-                log.warn('Error encountered while installing resolv.conf: {0}'.format(e))
-        else:
-            log.info('unable to find a suitable resolv.conf to copy into the chroot env')
-
-        log.debug('Chroot environment ready')
-        return True
-
-    def teardown_chroot(self):
-        log.debug('Tearing down chroot at {0}'.format(self.mountpoint))
-        if busy_mount(self.mountpoint).success:
-            log.error('Unable to tear down chroot at {0}: device busy'.format(self.mountpoint))
-            return False
-        if not mounted(self.mountpoint):
-            log.warn('{0} not mounted. Success?...'.format(self.mountpoint))
-            return True
-
-        config = self.config.plugins[self.full_name]
-
-
-
-        for mountdef in reversed(config.chroot_mounts):
-            dev, fstype, mountpoint, options = mountdef
-            mountspec = MountSpec(dev, fstype, os.path.join(self.mountpoint, mountpoint.lstrip('/')), options)
-            log.debug('Attempting to unmount {0}'.format(mountspec))
-            if not mounted(mountspec.mountpoint):
-                log.warn('{0} not mounted'.format(mountspec.mountpoint))
-                continue
-            result = unmount(mountspec.mountpoint)
-            if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
-                return False
-        log.debug('Checking for stray mounts')
-        for mountpoint in lifo_mounts(self.mountpoint):
-            log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
-            result = unmount(mountpoint)
-            if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
-                return False
-        return True
-
-    def __enter__(self):
-        if not self.configure_chroot():
-            raise VolumeException('Error configuring chroot')
-        return self
-
-    def __exit__(self, exc_type, exc_value, trace):
-        if not self.teardown_chroot():
-            raise VolumeException('Error tearing down chroot')
-        return False
-
-    def __call__(self, volume):
-        self.mountpoint = volume
-        return self
+        return apt_get_install(context.package.arg)

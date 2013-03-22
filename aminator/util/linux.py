@@ -278,7 +278,7 @@ def os_node_exists(dev):
     return stat.S_ISBLK(mode)
 
 
-def swap_in_aminator_file(src, dstpath, backup_ext='_aminator'):
+def install_provision_config(src, dstpath, backup_ext='_aminator'):
     if os.path.isfile(src):
         log.debug('Copying {0} from the aminator host to {1}'.format(src, dstpath))
         dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
@@ -303,14 +303,14 @@ def swap_in_aminator_file(src, dstpath, backup_ext='_aminator'):
         return True
 
 
-def swap_in_aminator_files(files, dstpath, backup_ext='_aminator'):
+def install_provision_configs(files, dstpath, backup_ext='_aminator'):
     for filename in files:
-        if not swap_in_aminator_file(filename, dstpath, backup_ext):
+        if not install_provision_config(filename, dstpath, backup_ext):
             return False
     return True
 
 
-def swap_out_aminator_file(src, dstpath, backup_ext='_aminator'):
+def remove_provision_config(src, dstpath, backup_ext='_aminator'):
     dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
     backup = '{0}{1}'.format(dst, backup_ext)
     if os.path.isfile(backup) or os.path.islink(backup):
@@ -335,9 +335,9 @@ def swap_out_aminator_file(src, dstpath, backup_ext='_aminator'):
         return False
 
 
-def swap_out_aminator_files(sources, dstpath, backup_ext='_aminator'):
-    for filename in files:
-        if not swap_out_aminator_file(filename, dstpath, backup_ext):
+def remove_provision_configs(sources, dstpath, backup_ext='_aminator'):
+    for filename in sources:
+        if not remove_provision_config(filename, dstpath, backup_ext):
             return False
     return True
 

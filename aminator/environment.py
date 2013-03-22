@@ -48,12 +48,14 @@ class Environment(object):
             with self.finalizer(cloud) as finalizer:
                 with self.volume(self.cloud, self.blockdevice) as volume:
                     with self.provisioner(volume) as provisioner:
-                        error = provisioner.provision()
-                        if error:
-                            return error
-                    error = finalizer.finalize(volume)
-                    if error:
-                        return error
+                        success = provisioner.provision()
+                        if not success:
+                            log.critical('Provisioning failed!')
+                            return False
+                    success = finalizer.finalize(volume)
+                    if not success:
+                        log.critical('Finalizing failed!')
+                        return False
         return None
 
     def __enter__(self):

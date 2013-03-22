@@ -1,5 +1,7 @@
 enabled: true
 
+short_circuit: false
+
 # fstab-esque list of mounts for a chroot environment. ordered.
 # [device, type, mount point, options]
 chroot_mounts:
@@ -9,5 +11,6 @@ chroot_mounts:
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
 
-swap_in_files:
+provision_configs: true
+provision_config_files:
   - /etc/resolv.conf
