@@ -25,37 +25,46 @@ Usage
 -----
 ::
 
-  usage: aminate [-h] -p PKG (-b BASE_AMI_NAME | -B BASE_AMI_ID) [-n NAME]
-                 [-s SUFFIX] [-c CREATOR] [--debug-boto]
+    usage: aminate [-h] [-e ENVIRONMENT] [--version] [--debug] [-n NAME]
+                   [-s SUFFIX] [-c CREATOR] (-b BASE_AMI_NAME | -B BASE_AMI_ID)
+                   [--ec2-region REGION] [--boto-secure] [--boto-debug]
+                   package
 
-  optional arguments:
-    -h, --help            show this help message and exit
+    positional arguments:
+      package               The package to aminate
 
-  Required:
-    Required arguments
+    optional arguments:
+      -h, --help            show this help message and exit
+      -e ENVIRONMENT, --environment ENVIRONMENT
+                            The environment configuration for amination
+      --version             show program's version number and exit
+      --debug               Verbose debugging output
 
-    -p PKG, --package PKG
-                          Name of package to install
+    AMI Tagging and Naming:
+      Tagging and naming options for the resultant AMI
 
-  Base AMI Selection:
-    Only specify id OR name
+      -n NAME, --name NAME  name of resultant AMI (default package_name-version-
+                            release-arch-yyyymmddHHMM-ebs
+      -s SUFFIX, --suffix SUFFIX
+                            suffix of ami name, (default yyyymmddHHMM)
+      -c CREATOR, --creator CREATOR
+                            The user who is aminating. The resultant AMI will
+                            receive a creator tag w/ this user
 
-    -b BASE_AMI_NAME, --base-ami-name BASE_AMI_NAME
-                          The name of the base AMI to provision
-    -B BASE_AMI_ID, --base-ami-id BASE_AMI_ID
-                          The id of the base AMI to provision
+    Base AMI:
+      EITHER AMI id OR name, not both!
 
-  Optional:
-    Optional arguments
+      -b BASE_AMI_NAME, --base-ami-name BASE_AMI_NAME
+                            The name of the base AMI used in provisioning
+      -B BASE_AMI_ID, --base-ami-id BASE_AMI_ID
+                            The id of the base AMI used in provisioning
 
-    -n NAME, --name NAME  name of resultant AMI (default package_name-version-
-                          release-arch-yyyymmddHHMM-ebs)
-    -s SUFFIX, --suffix SUFFIX
-                          suffix of ami name, (default yyyymmddHHMM)
-    -c CREATOR, --creator CREATOR
-                          the name of the user invoking aminate, resultant AMI
-                          will receive a creator tag w/ this user
-    --debug-boto          log boto debug logs. See aminator.config.__doc__
+    EC2 Options:
+      EC2 Connection Information
+
+      --ec2-region REGION   EC2 region (default: us-east-1)
+      --boto-secure         Connect via https
+      --boto-debug          Boto debug output
 
 Details
 -------

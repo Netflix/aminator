@@ -19,19 +19,26 @@
 #
 
 """
-aminator
-========
-Create images from packages for deployment in various cloud formations
+aminator.plugins.volume.manager
+===============================
+Volume plugin manager(s) and utils
 """
 import logging
-try:
-    from logging import NullHandler
-except ImportError:
-    # py26
-    from logutils import NullHandler
 
-__version__ = '1.0.0'
-__versioninfo__ = __version__.split('.')
-__all__ = ()
+from aminator.plugins.manager import BasePluginManager
 
-logging.getLogger(__name__).addHandler(NullHandler())
+
+log = logging.getLogger(__name__)
+
+
+class VolumePluginManager(BasePluginManager):
+    """ Volume Plugin Manager """
+    _entry_point = 'aminator.plugins.volume'
+
+    @property
+    def entry_point(self):
+        return self._entry_point
+
+    @staticmethod
+    def check_func(plugin):
+        return True

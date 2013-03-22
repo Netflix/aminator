@@ -1,0 +1,13 @@
+default: ec2_yum_linux
+ec2_yum_linux:
+    cloud: ec2
+    provisioner: yum
+    volume: linux
+    blockdevice: linux
+    finalizer: tagging_ebs
+ec2_apt_linux:
+    cloud: ec2
+    provisioner: apt
+    volume: linux
+    blockdevice: linux
+    finalizer: tagging_ebs

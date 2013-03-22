@@ -1,0 +1,12 @@
+enabled: true
+base_ami_id:
+base_ami_name:
+boto_debug: false
+ephemeral_devices:
+  - /dev/sdb
+  - /dev/sdc
+  - /dev/sdd
+  - /dev/sde
+is_secure: true
+root_device: /dev/sda1
+#region:
