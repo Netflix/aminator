@@ -289,7 +289,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
             'block_device_map': bdm,
             'root_device_name': root_block_device,
             'kernel_id': context.base_ami.kernel_id,
-            'ramdisk_id': context.base_ami.ramdisk_id
+            'ramdisk_id': context.base_ami.ramdisk_id,
+            'architecture': context.base_ami.architecture
         }
         if not self._register_image(**ami_metadata):
             return False
