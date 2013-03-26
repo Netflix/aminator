@@ -30,10 +30,11 @@ nosetests.xml
 # Translations
 *.mo
 
-# Mr Developer
+# Mr Developer and Eclipse
 .mr.developer.cfg
 .project
 .pydevproject
+.settings
 
 # SublimeRope
 .ropeproject
