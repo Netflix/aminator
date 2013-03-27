@@ -91,3 +91,5 @@ class BasePlugin(object):
         self._config.plugins[key] = PluginConfig.from_defaults(entry_point, name)
         self._config.dict_merge(self._config.plugins[key],
                                 PluginConfig.from_files(plugin_conf_files))
+        # allow plugins to be disabled by configuration. Especially important in cases where command line args conflict
+        self.enabled = self._config.plugins[key].get('enabled', True)
