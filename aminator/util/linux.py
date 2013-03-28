@@ -76,32 +76,6 @@ def fsck(dev):
     return 'fsck -y {0}'.format(dev)
 
 
-@command()
-def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
-
-
-@command()
-def yum_localinstall(path):
-    if not os.path.isfile(path):
-        log.critical('Package {0} not found'.format(path))
-        return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
-
-
-@command()
-def yum_clean_metadata():
-    return 'yum clean metadata'
-
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
 
 
 @command()
@@ -134,14 +108,6 @@ def unmount(dev):
 def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
-@command()
-def rpm_query(package, queryformat):
-    return 'rpm -q --qf \'{0}\' {1}'.format(package, queryformat)
-
-@command()
-def deb_query(package):
-    return 'dpkg -p {0}'.format(package)
-
 
 def sanitize_metadata(word):
     chars = list(word)
@@ -149,38 +115,6 @@ def sanitize_metadata(word):
         if char not in SAFE_AMI_CHARACTERS:
             chars[index] = '_'
     return ''.join(chars)
-
-
-def rpm_package_metadata(package):
-    # TODO: make this config driven
-    metadata = {}
-    result = rpm_query('%{Name},%{Version},%{Release}', package)
-    if result.success:
-        name, version, release = result.result.std_out.split(',')
-        metadata['name'] = sanitize_metadata(name)
-        metadata['version'] = sanitize_metadata(version)
-        metadata['release'] = sanitize_metadata(release)
-    else:
-        log.debug('Failed to query RPM metadata')
-    return metadata
-
-
-def deb_package_metadata(package):
-    # TODO: make this config driven
-    metadata = {}
-    result = deb_query(package)
-    if result.success:
-        for line in result.result.std_out.split('\n'):
-            if line.startswith('Package:'):
-                log.debug('Package in {0}'.format(line))
-                metadata['name'] = sanitize_metadata(line.split(':')[1].strip())
-            elif line.startswith('Version:'):
-                log.debug('Version in {0}'.format(line))
-                metadata['version'] = sanitize_metadata(line.split(':')[1].strip())
-            else:
-                log.debug('No tags'.format(line))
-                continue
-    return metadata
 
 
 class Chroot(object):

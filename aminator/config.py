@@ -202,6 +202,8 @@ def add_base_arguments(parser, config):
                           help='The environment configuration for amination')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
     parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
+    parser.add_config_arg('-l', '--local-package', action='store_true', config=config.context.package,
+                        help='Treat package as a local package rather than a package to fetch from a repository')
 
 
 def conf_action(config, action=None):
