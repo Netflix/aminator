@@ -56,6 +56,14 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def _store_package_metadata(self):
         """ stuff name, version, release into context """
 
+    @abc.abstractmethod
+    def _disable_service_startup(self):
+        """ prevent service startup when packages are installed in chroot """
+
+    @abc.abstractmethod
+    def _enable_service_startup(self):
+        """ enable service startup after we're done installing packages """
+
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
         config = self._config.plugins[self.full_name]
@@ -63,11 +71,6 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
-
-            if config.get('short_circuit', False):
-                if not self._short_circuit():
-                    log.critical('Failure short-circuiting files')
-                    return False
 
             result = self._refresh_package_metadata()
             if not result.success:
@@ -122,10 +125,13 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             if not self._install_provision_configs():
                 log.critical('Installation of provisioning config failed')
                 return False
-        if config.get('short_circuit', True):
-            if not self._short_circuit():
-                log.critical('Failure during short circuiting commands')
+
+        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
+        if config.get('short_circuit', False):
+            if not self._disable_service_startup():
+                log.critical('Failure short-circuiting files')
                 return False
+
         log.debug('Chroot environment ready')
         return True
 
@@ -161,9 +167,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def _teardown_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Tearing down chroot at {0}'.format(self._mountpoint))
+        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', True):
-            if not self._rewire():
-                log.critical('Failure during rewiring commands')
+            if not self._enable_service_startup():
+                log.critical('Failure during re-enabling service startup')
                 return False
         if config.get('provision_configs', True):
             if not self._remove_provision_configs():

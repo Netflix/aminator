@@ -24,7 +24,7 @@ aminator.plugins.provisioner.apt
 basic apt provisioner
 """
 import logging
-import os
+import os, errno
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata
@@ -40,6 +40,13 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
     _name = 'apt'
 
+    POLICY_FILE = 'policy-rc.d'
+    POLICY_FILE_MODE = 0755
+    POLICY_FILE_PATH = '/usr/sbin'
+    POLICY_FILE_CONTENT = """
+#!/bin/sh
+exit 101"""
+
     def _refresh_package_metadata(self):
         return apt_get_update()
 
@@ -54,3 +61,43 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context.package.name = metadata.get('name', context.package.arg)
         context.package.version = metadata.get('version', '_')
         context.package.release = metadata.get('release', '_')
+
+    def _disable_service_startup(self):
+        """
+        Prevent packages installing in the chroot from starting
+        For debian based distros, we add /usr/sbin/policy-rc.d
+        """
+
+        path = self._mountpoint + self.POLICY_FILE_PATH
+        filename = path + "/" + self.POLICY_FILE
+
+        try:
+            log.debug("creating %s", path)
+            os.makedirs(path)
+            log.debug("created %s", path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
+
+        with open(filename, 'w') as f:
+            log.debug("writing %s", filename)
+            f.write(self.POLICY_FILE_CONTENT.lstrip())
+            os.chmod(filename, self.POLICY_FILE_MODE)
+            log.debug("wrote %s", filename)
+
+        return True
+
+    def _enable_service_startup(self):
+        """
+        Enable service startup so that things work when the AMI starts
+        """
+        full_path = self._mountpoint + "/" + AptProvisionerPlugin.POLICY_FILE_PATH + "/" + \
+                         AptProvisionerPlugin.POLICY_FILE
+        try:
+            os.remove(full_path)
+        except OSError:
+            pass
+
+        return True

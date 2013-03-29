@@ -52,3 +52,19 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context.package.name = metadata.get('name', context.package.arg)
         context.package.version = metadata.get('version', '_')
         context.package.release = metadata.get('release', '_')
+
+    def _disable_service_startup(self):
+        """
+        Prevent packages installing the chroot from starting
+        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
+        """
+        return self._short_circuit()
+
+    def _enable_service_startup(self):
+        """
+        Enable service startup so that things work when the AMI starts
+        For RHEL-like systems, we undo the short_circuit
+        """
+        return self._rewire()
+
+
