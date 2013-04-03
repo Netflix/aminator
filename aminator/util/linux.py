@@ -48,7 +48,7 @@ SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 def command(timeout=None, data=None, *cargs, **ckwargs):
     """
     decorator used to define shell commands to be executed via envoy.run
-    decorated function should return a simple string representing the command to be executed
+    decorated function should return a list or string representing the command to be executed
     decorated function should return None if a guard fails
     """
     @decorator
@@ -56,7 +56,11 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
         _cmd = f(*args, **kwargs)
         if _cmd is None:
             return CommandResult(False, None)
-        log.debug('command: {0}'.format(_cmd))
+        if isinstance(_cmd, list):
+            log.debug('command: {0}'.format(" ".join(_cmd)))
+            _cmd = [_cmd]
+        else:
+            log.debug('command: {0}'.format(_cmd))
         res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
         if any((res.std_out, res.std_err)):
             log.debug('stdout: {0.std_out}\nstderr: {0.std_err}'.format(res))
@@ -134,13 +138,21 @@ def unmount(dev):
 def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
-@command()
-def rpm_query(package, queryformat):
-    return 'rpm -q --qf \'{0}\' {1}'.format(package, queryformat)
 
 @command()
-def deb_query(package):
-    return 'dpkg -p {0}'.format(package)
+def rpm_query(package, queryformat):
+    cmd = 'rpm -q --qf'.split()
+    cmd.append(queryformat)
+    cmd.append(package)
+    return cmd
+
+
+@command()
+def deb_query(package, queryformat):
+    cmd = 'dpkg-query -W'.split()
+    cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
 
 
 def sanitize_metadata(word):
@@ -151,36 +163,34 @@ def sanitize_metadata(word):
     return ''.join(chars)
 
 
-def rpm_package_metadata(package):
-    # TODO: make this config driven
-    metadata = {}
-    result = rpm_query('%{Name},%{Version},%{Release}', package)
-    if result.success:
-        name, version, release = result.result.std_out.split(',')
-        metadata['name'] = sanitize_metadata(name)
-        metadata['version'] = sanitize_metadata(version)
-        metadata['release'] = sanitize_metadata(release)
-    else:
-        log.debug('Failed to query RPM metadata')
-    return metadata
+def keyval_parse(record_sep='\n', field_sep=':'):
+    """decorator for parsing CommandResult stdout into key/value pairs returned in a dict
+    """
+    @decorator
+    def _parse(f, *args, **kwargs):
+        metadata = {}
+        result = f(*args, **kwargs)
+        if result.success:
+            for record in result.result.std_out.split(record_sep):
+                try:
+                    key, val = record.split(field_sep, 1)
+                except ValueError:
+                    continue
+                metadata[key] = val.strip()
+        else:
+            log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
+        return metadata
+    return _parse
 
 
-def deb_package_metadata(package):
-    # TODO: make this config driven
-    metadata = {}
-    result = deb_query(package)
-    if result.success:
-        for line in result.result.std_out.split('\n'):
-            if line.startswith('Package:'):
-                log.debug('Package in {0}'.format(line))
-                metadata['name'] = sanitize_metadata(line.split(':')[1].strip())
-            elif line.startswith('Version:'):
-                log.debug('Version in {0}'.format(line))
-                metadata['version'] = sanitize_metadata(line.split(':')[1].strip())
-            else:
-                log.debug('No tags'.format(line))
-                continue
-    return metadata
+@keyval_parse()
+def rpm_package_metadata(package, queryformat):
+    return rpm_query(package, queryformat)
+
+
+@keyval_parse()
+def deb_package_metadata(package, queryformat):
+    return deb_query(package, queryformat)
 
 
 class Chroot(object):
@@ -340,11 +350,11 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Moving existing {0} out of the way'.format(dst))
                 try:
                     os.rename(dst, backup)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
             shutil.copy(src, dst)
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
@@ -371,11 +381,11 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Removing {0}'.format(dst))
                 try:
                     os.remove(dst)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while removing {0}'.format(dst))
                     return False
             os.rename(backup, dst)
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
             return False
         else:
@@ -401,7 +411,7 @@ def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
             log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
             os.symlink(dst, cmd)
             log.debug('{0} linked to {1}'.format(cmd, dst))
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
             return False
         else:
@@ -426,7 +436,7 @@ def rewire(cmd, ext='short_circuit'):
             os.remove(cmd)
             os.rename('{0}.{1}'.format(cmd, ext), cmd)
             log.debug('{0} rewired'.format(cmd))
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while rewiring {0}'.format(cmd))
             return False
         else:

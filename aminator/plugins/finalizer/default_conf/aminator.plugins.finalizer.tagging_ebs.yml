@@ -1,6 +1,9 @@
 enabled: true
-description_format: 'name={name}, arch={arch}, ancestor_name={ancestor_name}, ancestor_id={ancestor_id}, ancestor_version={ancestor_version}'
-name_format: '{package_name}-{version}-{release}-{arch}-{suffix}'
+description_format: 'name={name}, arch={arch}, ancestor_name={base_ami_name}, ancestor_id={base_ami_id}, ancestor_version={base_ami_version}'
+name_format: '{name}-{version}-{release}-{arch}-{suffix}'
+tag_formats:
+    appversion: '{name}-{version}-{release}'
+    base_ami_version: '{base_ami_version}'
 suffix_format: '{0:%Y%m%d%H%M}'
 creator: aminator
 default_root_device: /dev/sda1
