@@ -56,7 +56,11 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
         _cmd = f(*args, **kwargs)
         if _cmd is None:
             return CommandResult(False, None)
-        log.debug('command: {0}'.format(_cmd))
+        if isinstance(_cmd, list):
+            log.debug('command: {0}'.format(" ".join(_cmd)))
+            _cmd = [_cmd]
+        else:
+            log.debug('command: {0}'.format(_cmd))
         res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
         if any((res.std_out, res.std_err)):
             log.debug('stdout: {0.std_out}\nstderr: {0.std_err}'.format(res))
