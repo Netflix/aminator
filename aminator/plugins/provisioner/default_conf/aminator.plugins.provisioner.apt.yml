@@ -1,6 +1,6 @@
 enabled: true
 
-short_circuit: false
+short_circuit: true
 
 # fstab-esque list of mounts for a chroot environment. ordered.
 # [device, type, mount point, options]
