@@ -1,6 +1,6 @@
 enabled: true
 
-block_services_while_provisioning: true
+short_circuit: true
 short_circuit_files:
 - /tmp/sbin/service
 
