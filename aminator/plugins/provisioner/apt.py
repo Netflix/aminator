@@ -24,7 +24,7 @@ aminator.plugins.provisioner.apt
 basic apt provisioner
 """
 import logging
-import os, errno
+import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata
@@ -39,13 +39,6 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     See BaseLinuxProvisionerPlugin for details
     """
     _name = 'apt'
-
-    POLICY_FILE = 'policy-rc.d'
-    POLICY_FILE_MODE = 0755
-    POLICY_FILE_PATH = '/usr/sbin'
-    POLICY_FILE_CONTENT = """
-#!/bin/sh
-exit 101"""
 
     def _refresh_package_metadata(self):
         return apt_get_update()
@@ -62,42 +55,44 @@ exit 101"""
         context.package.version = metadata.get('version', '_')
         context.package.release = metadata.get('release', '_')
 
-    def _disable_service_startup(self):
+    def _deactivate_provisioning_service_block(self):
         """
         Prevent packages installing in the chroot from starting
         For debian based distros, we add /usr/sbin/policy-rc.d
         """
 
-        path = self._mountpoint + self.POLICY_FILE_PATH
-        filename = path + "/" + self.POLICY_FILE
+        config = self._config.plugins[self.full_name]
+        path = self._mountpoint + config.get('policy_file_path', '')
+        filename = path + "/" + config.get('policy_file')
 
-        try:
+        if not os.path.isdir(path):
             log.debug("creating %s", path)
             os.makedirs(path)
             log.debug("created %s", path)
-        except OSError as exc:
-            if exc.errno == errno.EEXIST and os.path.isdir(path):
-                pass
-            else:
-                raise
 
         with open(filename, 'w') as f:
             log.debug("writing %s", filename)
-            f.write(self.POLICY_FILE_CONTENT.lstrip())
-            os.chmod(filename, self.POLICY_FILE_MODE)
+            f.write(config.get('policy_file_content'))
             log.debug("wrote %s", filename)
+
+        os.chmod(filename, config.get('policy_file_mode', ''))
 
         return True
 
-    def _enable_service_startup(self):
+    def _activate_provisioning_service_block(self):
         """
-        Enable service startup so that things work when the AMI starts
+        Remove policy-rc.d file so that things start when the AMI launches
         """
-        full_path = self._mountpoint + "/" + AptProvisionerPlugin.POLICY_FILE_PATH + "/" + \
-                         AptProvisionerPlugin.POLICY_FILE
-        try:
-            os.remove(full_path)
-        except OSError:
-            pass
+        config = self._config.plugins[self.full_name]
+
+        policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
+                      config.get('policy_file', '')
+
+        if os.path.isfile(policy_file):
+            log.debug("removing %s", policy_file)
+            os.remove(policy_file)
+        else:
+            log.debug("The %s was missing, this is unexpected as the "
+                      "AptProvisionerPlugin should manage this file", policy_file)
 
         return True

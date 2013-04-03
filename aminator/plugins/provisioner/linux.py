@@ -31,7 +31,7 @@ from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
-from aminator.util.linux import short_circuit_files, rewire_files
+
 
 __all__ = ('BaseLinuxProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -57,12 +57,12 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         """ stuff name, version, release into context """
 
     @abc.abstractmethod
-    def _disable_service_startup(self):
-        """ prevent service startup when packages are installed in chroot """
+    def _activate_provisioning_service_block(self):
+        """ enable service startup after we're done installing packages in chroot"""
 
     @abc.abstractmethod
-    def _enable_service_startup(self):
-        """ enable service startup after we're done installing packages """
+    def _deactivate_provisioning_service_block(self):
+        """ prevent service startup when packages are installed in chroot """
 
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
@@ -86,34 +86,6 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         log.info('Provisioning succeeded!')
         return True
 
-    def _short_circuit(self):
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not short_circuit_files(files):
-                log.critical('Unable to short circuit {0} to {1}')
-                return False
-            else:
-                log.debug('Files short-circuited successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured')
-            return True
-
-    def _rewire(self):
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not rewire_files(files):
-                log.critical('Unable to rewire {0} to {1}')
-                return False
-            else:
-                log.debug('Files rewired successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured, no rewiring done')
-        return True
-
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Configuring chroot at {0}'.format(self._mountpoint))
@@ -128,7 +100,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
         #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
-            if not self._disable_service_startup():
+            if not self._deactivate_provisioning_service_block():
                 log.critical('Failure short-circuiting files')
                 return False
 
@@ -169,7 +141,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         log.debug('Tearing down chroot at {0}'.format(self._mountpoint))
         #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', True):
-            if not self._enable_service_startup():
+            if not self._activate_provisioning_service_block():
                 log.critical('Failure during re-enabling service startup')
                 return False
         if config.get('provision_configs', True):

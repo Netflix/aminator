@@ -17,26 +17,50 @@
 #     limitations under the License.
 #
 #
+import logging
 import os
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
+from aminator.config import Config
+
+log = logging.getLogger(__name__)
+console = logging.StreamHandler()
+# add the handler to the root logger
+logging.getLogger('').addHandler(console)
 
 
 class TestAptProvisionerPlugin(object):
 
     def setup_method(self, method):
+        self.config = Config()
+        self.config.plugins = Config()
+        self.config.plugins['aminator.plugins.provisioner.apt'] = self.config.from_file(yaml_file='apt_test.yml')
+
         self.plugin = AptProvisionerPlugin()
-        self.plugin._mountpoint = "/tmp"
-        self.full_path = self.plugin._mountpoint + "/" + AptProvisionerPlugin.POLICY_FILE_PATH + "/" + \
-                         AptProvisionerPlugin.POLICY_FILE
-        try:
+        self.plugin._config = self.config
+
+        config = self.plugin._config.plugins['aminator.plugins.provisioner.apt']
+
+        self.full_path = config.get('mountpoint', '/tmp') + "/" + \
+                         config.get('policy_file_path', '/usr/sbin') + "/" + \
+                         config.get('policy_file', 'policy-rc.d')
+
+        self.plugin._mountpoint = config.get('mountpoint', '/tmp')
+        if os.path.isfile(self.full_path):
             os.remove(self.full_path)
-        except OSError:
-            pass
 
     def test_disable_enable_service_startup(self):
-        assert self.plugin._disable_service_startup()
+        assert self.plugin._deactivate_provisioning_service_block()
         assert os.path.isfile(self.full_path)
-        assert self.plugin._enable_service_startup()
+
+        with open(self.full_path) as f:
+            content = f.readlines()
+
+        # remove whitespace and newlines
+        content = map(lambda s: s.strip(), content)
+        # also remove whitespace and newlines
+        original_content = self.config.plugins['aminator.plugins.provisioner.apt'].get('policy_file_content').splitlines()
+
+        assert original_content == content
+
+        assert self.plugin._activate_provisioning_service_block()
         assert False == os.path.isfile(self.full_path)
-
-
