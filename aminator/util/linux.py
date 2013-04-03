@@ -148,8 +148,11 @@ def rpm_query(package, queryformat):
 
 
 @command()
-def deb_query(package):
-    return 'dpkg -p {0}'.format(package)
+def deb_query(package, queryformat):
+    cmd = 'dpkg-query -W'.split()
+    cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
 
 
 def sanitize_metadata(word):
@@ -173,7 +176,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
-                metadata[key] = sanitize_metadata(val.strip())
+                metadata[key] = val.strip()
         else:
             log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
         return metadata
@@ -186,8 +189,8 @@ def rpm_package_metadata(package, queryformat):
 
 
 @keyval_parse()
-def deb_package_metadata(package, metadata=None):
-    return deb_query(package)
+def deb_package_metadata(package, queryformat):
+    return deb_query(package, queryformat)
 
 
 class Chroot(object):
@@ -347,12 +350,12 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Moving existing {0} out of the way'.format(dst))
                 try:
                     os.rename(dst, backup)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
             shutil.copy(src, dst)
-        except Exception, e:
-            log.exception('Error encountered while copying {0} to {1}: {2}'.format(src, dst, e))
+        except Exception:
+            log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
         return True
@@ -378,12 +381,12 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Removing {0}'.format(dst))
                 try:
                     os.remove(dst)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while removing {0}'.format(dst))
                     return False
             os.rename(backup, dst)
-        except Exception, e:
-            log.exception('Error encountered while restoring {0} to {1}: {2}'.format(backup, dst, e))
+        except Exception:
+            log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
             return False
         else:
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
@@ -408,8 +411,8 @@ def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
             log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
             os.symlink(dst, cmd)
             log.debug('{0} linked to {1}'.format(cmd, dst))
-        except Exception, e:
-            log.exception('Error encountered while short circuting {0} to {1}: {2}'.format(cmd, dst, e))
+        except Exception:
+            log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(cmd, dst))
@@ -433,8 +436,8 @@ def rewire(cmd, ext='short_circuit'):
             os.remove(cmd)
             os.rename('{0}.{1}'.format(cmd, ext), cmd)
             log.debug('{0} rewired'.format(cmd))
-        except Exception, e:
-            log.exception('Error encountered while rewiring {0}: {1}'.format(cmd, e))
+        except Exception:
+            log.exception('Error encountered while rewiring {0}'.format(cmd))
             return False
         else:
             log.debug('rewired {0}'.format(cmd))

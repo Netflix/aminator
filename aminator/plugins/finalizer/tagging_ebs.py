@@ -29,6 +29,7 @@ from datetime import datetime
 from aminator.config import conf_action
 from aminator.exceptions import FinalizerException
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
+from aminator.util.linux import sanitize_metadata
 
 
 __all__ = ('TaggingEBSFinalizerPlugin',)
@@ -77,7 +78,7 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         if not ami_name:
             ami_name = config.name_format.format(**metadata)
 
-        context.ami.name = '{0}-ebs'.format(ami_name)
+        context.ami.name = sanitize_metadata('{0}-ebs'.format(ami_name))
 
         for tag in config.tag_formats:
             context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
