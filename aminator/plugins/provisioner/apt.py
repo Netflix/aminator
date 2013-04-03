@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin, WELL_KNOWN_PACKAGE_NAME
-from aminator.util.linux import sanitize_metadata, command
+from aminator.util.linux import sanitize_metadata, command, keyval_parse
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -53,14 +53,33 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _store_package_metadata(self):
         context = self._config.context
+        config = self._config.plugins[self.full_name]
         if context.package.local_package:
+            # cli arg contains package file name, not package name
+            # extract package name from deb file.
             result = deb_local_package_query(WELL_KNOWN_PACKAGE_NAME)
+            package_name = self.__deb_extract_metadata(result).get("name")
         else:
-            result = deb_query(context.package.arg)
-        metadata = self.__deb_extract_metadata(result)
-        context.package.name = metadata.get('name', context.package.arg)
-        context.package.version = metadata.get('version', '_')
-        context.package.release = metadata.get('release', '_')
+            package_name = context.package.arg
+        metadata = deb_package_metadata(package_name, config.get('pkg_query_format', ''))
+        for x in config.pkg_attributes:
+            if x == 'version':
+                if x in metadata and ':' in metadata[x]:
+                    # strip epoch element from version
+                    vers = metadata[x]
+                    metadata[x] = vers[vers.index(':')+1:]
+                if '-' in metadata[x]:
+                    # debs include release in version so split
+                    # version into version-release to compat w/rpm
+                    vers, rel = metadata[x].split('-', 1)
+                    metadata[x] = vers
+                    metadata['release'] = rel
+                else:
+                    metadata['release'] = 0
+            # this is probably not necessary given above
+            metadata.setdefault(x, None)
+        context.package.attributes = metadata
+
 
     def __deb_extract_metadata(self, result):
         metadata = {}
@@ -81,6 +100,19 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
 # Below are Debian specific package management commands
 #
 
+
+@command()
+def deb_query(package, queryformat):
+    cmd = 'dpkg-query -W'.split()
+    cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
+
+
+@keyval_parse()
+def deb_package_metadata(package, queryformat):
+    return deb_query(package, queryformat)
+
 @command()
 def apt_get_update():
     return 'apt-get update'
@@ -93,10 +125,6 @@ def apt_get_install(package):
 @command()
 def dpkg_install(package):
     return 'dpkg -i {0}'.format(package)
-
-@command()
-def deb_query(package):
-    return 'dpkg -p {0}'.format(package)
 
 @command()
 def deb_local_package_query(package):

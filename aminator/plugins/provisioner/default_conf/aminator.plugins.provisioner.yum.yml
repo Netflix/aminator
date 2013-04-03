@@ -13,6 +13,8 @@ chroot_mounts:
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
 
+pkg_query_format: "name:%{N}\\nversion:%{V}\\nrelease:%{R}\\n"
+pkg_attributes: [name, version, release]
 
 provision_configs: true
 provision_config_files:

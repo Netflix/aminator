@@ -29,6 +29,7 @@ from datetime import datetime
 from aminator.config import conf_action
 from aminator.exceptions import FinalizerException
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
+from aminator.util.linux import sanitize_metadata
 
 
 __all__ = ('TaggingEBSFinalizerPlugin',)
@@ -61,49 +62,29 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         context.ami.tags.creator = creator
         context.snapshot.tags.creator = creator
 
-        package_name = context.package.name
-        package_version = context.package.version
-        package_release = context.package.release
-
-        context.ami.tags.appversion = '{0}-{1}-{2}'.format(package_name, package_version, package_release)
-        context.snapshot.tags.appversion = '{0}-{1}-{2}'.format(package_name, package_version, package_release)
-
-        arch = context.base_ami.architecture
+        metadata = context.package.attributes
+        metadata['arch'] = context.base_ami.architecture
+        metadata['base_ami_name'] = context.base_ami.name
+        metadata['base_ami_id'] = context.base_ami.id
+        metadata['base_ami_version'] = context.base_ami.tags.get('base_ami_version', '')
 
         suffix = context.ami.get('suffix', None)
         if not suffix:
             suffix = config.suffix_format.format(datetime.utcnow())
 
-        name = context.ami.get('name', None)
-        if not name:
-            name_metadata = {
-                'package_name': package_name,
-                'version': package_version,
-                'release': package_release,
-                'arch': arch,
-                'suffix': suffix,
-            }
-            default_name = config.name_format.format(**name_metadata)
-            name = default_name
+        metadata['suffix'] = suffix
 
-        ami_name = '{0}-ebs'.format(name)
+        ami_name = context.ami.get('name', None)
+        if not ami_name:
+            ami_name = config.name_format.format(**metadata)
 
-        context.ami.name = ami_name
-        context.snapshot.name = name
+        context.ami.name = sanitize_metadata('{0}-ebs'.format(ami_name))
 
-        baseami_name = context.base_ami.name
-        baseami_id = context.base_ami.id
-        baseami_version = context.base_ami.tags.get('base_ami_version', '')
-        context.ami.tags.base_ami_version = baseami_version
+        for tag in config.tag_formats:
+            context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
+            context.snapshot.tags[tag] = config.tag_formats[tag].format(**metadata)
 
-        description_metadata = {
-            'name': name,
-            'arch': arch,
-            'ancestor_name': baseami_name,
-            'ancestor_id': baseami_id,
-            'ancestor_version': baseami_version,
-        }
-        default_description = config.description_format.format(**description_metadata)
+        default_description = config.description_format.format(**metadata)
         description = context.snapshot.get('description', default_description)
         context.ami.description = description
         context.snapshot.description = description

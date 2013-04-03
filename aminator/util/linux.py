@@ -117,6 +117,26 @@ def sanitize_metadata(word):
     return ''.join(chars)
 
 
+def keyval_parse(record_sep='\n', field_sep=':'):
+    """decorator for parsing CommandResult stdout into key/value pairs returned in a dict
+    """
+    @decorator
+    def _parse(f, *args, **kwargs):
+        metadata = {}
+        result = f(*args, **kwargs)
+        if result.success:
+            for record in result.result.std_out.split(record_sep):
+                try:
+                    key, val = record.split(field_sep, 1)
+                except ValueError:
+                    continue
+                metadata[key] = val.strip()
+        else:
+            log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
+        return metadata
+    return _parse
+
+
 class Chroot(object):
     def __init__(self, path):
         self.path = path

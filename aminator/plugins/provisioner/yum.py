@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import command, sanitize_metadata
+from aminator.util.linux import command, keyval_parse
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -49,23 +49,16 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _store_package_metadata(self):
         context = self._config.context
-        metadata = self.__rpm_package_metadata(context.package.arg)
-        context.package.name = metadata.get('name', context.package.arg)
-        context.package.version = metadata.get('version', '_')
-        context.package.release = metadata.get('release', '_')
+        config = self._config.plugins[self.full_name]
+        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        for x in config.pkg_attributes:
+            metadata.setdefault(x, None)
+        context.package.attributes = metadata
 
-    def __rpm_package_metadata(package):
-        # TODO: make this config driven
-        metadata = {}
-        result = rpm_query('%{Name},%{Version},%{Release}', package)
-        if result.success:
-            name, version, release = result.result.std_out.split(',')
-            metadata['name'] = sanitize_metadata(name)
-            metadata['version'] = sanitize_metadata(version)
-            metadata['release'] = sanitize_metadata(release)
-        else:
-            log.debug('Failed to query RPM metadata')
-        return metadata
+
+@keyval_parse()
+def rpm_package_metadata(package, queryformat):
+    return rpm_query(package, queryformat)
 
 
 @command()
@@ -87,5 +80,7 @@ def yum_clean_metadata():
 
 @command()
 def rpm_query(package, queryformat):
-    return 'rpm -q --qf \'{0}\' {1}'.format(package, queryformat)
-
+    cmd = 'rpm -q --qf'.split()
+    cmd.append(queryformat)
+    cmd.append(package)
+    return cmd
