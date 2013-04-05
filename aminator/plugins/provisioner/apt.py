@@ -57,8 +57,7 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         if context.package.local_package:
             # cli arg contains package file name, not package name
             # extract package name from deb file.
-            result = deb_local_package_query(WELL_KNOWN_PACKAGE_NAME)
-            package_name = self.__deb_extract_metadata(result).get("name")
+            package_name = deb_local_package_query(WELL_KNOWN_PACKAGE_NAME)['Package']
         else:
             package_name = context.package.arg
         metadata = deb_package_metadata(package_name, config.get('pkg_query_format', ''))
@@ -123,37 +122,18 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         return True
 
-    def __deb_extract_metadata(self, result):
-        metadata = {}
-        if result.success:
-            for line in result.result.std_out.split('\n'):
-                if line.strip().startswith('Package:'):
-                    log.debug('Package in {0}'.format(line))
-                    metadata['name'] = sanitize_metadata(line.split(':')[1].strip())
-                elif line.strip().startswith('Version:'):
-                    log.debug('Version in {0}'.format(line))
-                    metadata['version'] = sanitize_metadata(line.split(':')[1].strip())
-                else:
-                    log.debug('No tags'.format(line))
-                    continue
-        return metadata
-
 #
 # Below are Debian specific package management commands
 #
 
 
+@keyval_parse()
 @command()
-def deb_query(package, queryformat):
+def deb_package_metadata(package, queryformat):
     cmd = 'dpkg-query -W'.split()
     cmd.append('-f={0}'.format(queryformat))
     cmd.append(package)
     return cmd
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat):
-    return deb_query(package, queryformat)
 
 @command()
 def apt_get_update():
@@ -168,6 +148,7 @@ def apt_get_install(package):
 def dpkg_install(package):
     return 'dpkg -i {0}'.format(package)
 
+@keyval_parse()
 @command()
 def deb_local_package_query(package):
     return 'dpkg -I {0}'.format(package)

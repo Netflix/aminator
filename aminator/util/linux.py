@@ -48,7 +48,7 @@ SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 def command(timeout=None, data=None, *cargs, **ckwargs):
     """
     decorator used to define shell commands to be executed via envoy.run
-    decorated function should return a simple string representing the command to be executed
+    decorated function should return a list or string representing the command to be executed
     decorated function should return None if a guard fails
     """
     @decorator
@@ -298,11 +298,11 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Moving existing {0} out of the way'.format(dst))
                 try:
                     os.rename(dst, backup)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
             shutil.copy(src, dst)
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
@@ -329,11 +329,11 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Removing {0}'.format(dst))
                 try:
                     os.remove(dst)
-                except Exception, e:
+                except Exception:
                     log.exception('Error encountered while removing {0}'.format(dst))
                     return False
             os.rename(backup, dst)
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
             return False
         else:
@@ -359,7 +359,7 @@ def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
             log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
             os.symlink(dst, cmd)
             log.debug('{0} linked to {1}'.format(cmd, dst))
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
             return False
         else:
@@ -384,7 +384,7 @@ def rewire(cmd, ext='short_circuit'):
             os.remove(cmd)
             os.rename('{0}.{1}'.format(cmd, ext), cmd)
             log.debug('{0} rewired'.format(cmd))
-        except Exception, e:
+        except Exception:
             log.exception('Error encountered while rewiring {0}'.format(cmd))
             return False
         else:
