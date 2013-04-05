@@ -134,7 +134,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
-                metadata[key] = val.strip()
+                metadata[key.strip()] = val.strip()
         else:
             log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
         return metadata
