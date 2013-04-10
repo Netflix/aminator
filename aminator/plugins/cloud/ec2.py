@@ -119,8 +119,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('Establishing connection to region: {0}'.format(region))
 
         if cloud_config.boto_debug:
-            from aminator.config import log_per_package
-            log_per_package(self._config, 'boto')
+            from aminator.config import configure_datetime_logfile
+            configure_datetime_logfile(self._config, 'boto')
             kwargs['debug'] = 1
             log.debug('Boto debug logging enabled')
         else:

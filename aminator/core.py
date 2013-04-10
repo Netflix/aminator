@@ -25,7 +25,7 @@ aminator core amination logic
 """
 import logging
 
-from aminator.config import init_defaults, log_per_package
+from aminator.config import init_defaults, configure_datetime_logfile
 from aminator.environment import Environment
 from aminator.plugins import PluginManager
 
@@ -49,7 +49,7 @@ class Aminator(object):
 
         if self.config.logging.per_package.enabled:
             log.info('Configuring per-package logging')
-            log_per_package(self.config, 'per_package')
+            configure_datetime_logfile(self.config, 'per_package')
 
         self.environment = environment()
 

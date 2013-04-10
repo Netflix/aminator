@@ -152,13 +152,28 @@ class LoggingConfig(Config):
     resource_default = RSRC_DEFAULT_CONFS['logging']
 
 
-def log_per_package(config, logger):
-    per_package_config = config.logging[logger].config
-    filename_format = per_package_config.handlers[logger].pop('filename_format')
-    filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
-    per_package_config.handlers[logger].filename = filename
-    log.info('Detailed {0} output to {1}'.format(logger, per_package_config.handlers[logger].filename))
-    dictConfig(per_package_config.toDict())
+def configure_datetime_logfile(config, handler):
+    try:
+        filename_format = config.logging[handler]['filename_format']
+    except KeyError:
+        log.error('filename_format not configured for handler {0}'.format(handler))
+        return
+
+    try:
+        filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
+    except IndexError:
+        log.exception("missing replacement fields in {0}'s filename_format")
+
+    for h in logging.root.handlers:
+        if h.name == handler:
+            assert isinstance(h, logging.FileHandler)
+            h.stream.close()
+            h.baseFilename = filename
+            h.stream = open(filename, 'a')
+            log.info('Detailed {0} output to {1}'.format(handler, filename))
+            break
+    else:
+        log.error('{0} handler not found.'.format(handler))
 
 
 class EnvironmentConfig(Config):
