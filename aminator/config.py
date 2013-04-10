@@ -63,14 +63,17 @@ RSRC_DEFAULT_CONFS = {
 def init_defaults(argv=None, debug=False):
     argv = argv or sys.argv[1:]
     config = Config.from_defaults()
-    config = config.dict_merge(config, Config.from_files(config.config_files.main))
+    config = config.dict_merge(config, Config.from_files(config.config_files.main,
+                                                         config.config_root))
     main_parser = Argparser(argv=argv, description='Aminator: bringing AMIs to life', add_help=False,
                             argument_default=argparse.SUPPRESS)
     config.logging = LoggingConfig.from_defaults()
-    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging))
+    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging,
+                                                                                config.config_root))
     config.environments = EnvironmentConfig.from_defaults()
     config.environments = config.dict_merge(config.environments,
-                                            EnvironmentConfig.from_files(config.config_files.environments))
+                                            EnvironmentConfig.from_files(config.config_files.environments,
+                                                                         config.config_root))
 
     if config.logging.base.enabled:
         dictConfig(config.logging.base.config.toDict())
@@ -110,8 +113,9 @@ class Config(bunch.Bunch):
         return _config
 
     @classmethod
-    def from_files(cls, files, *args, **kwargs):
+    def from_files(cls, files, config_root="", *args, **kwargs):
         _files = [os.path.expanduser(filename) for filename in files]
+        _files = [(x if x.startswith('/') else os.path.join(config_root, x)) for x in _files]
         _files = [filename for filename in _files if os.path.exists(filename)]
         _config = cls()
         for filename in _files:
