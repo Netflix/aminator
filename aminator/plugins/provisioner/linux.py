@@ -30,12 +30,12 @@ import os
 from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
-from aminator.util.linux import install_provision_configs, remove_provision_configs
-
+from aminator.util.linux import install_provision_config, install_provision_configs, remove_provision_configs
 
 __all__ = ('BaseLinuxProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
+WELL_KNOWN_PACKAGE_NAME = "/tmp/package-to-install.deb"
 
 class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     """
@@ -88,11 +88,18 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
+        context = self._config.context
         log.debug('Configuring chroot at {0}'.format(self._mountpoint))
         if config.get('configure_mounts', True):
             if not self._configure_chroot_mounts():
                 log.critical('Configuration of chroot mounts failed')
                 return False
+        if context.package.local_package:
+            if not self._copy_local_package_to_mount_point():
+                log.critical('Installation of local package failed')
+                return False
+        else:
+            log.debug('not installing local-package: local_package [{0}]'.format(context.package.local_package))
         if config.get('provision_configs', True):
             if not self._install_provision_configs():
                 log.critical('Installation of provisioning config failed')
@@ -121,6 +128,28 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         else:
             log.debug('Mounts configured')
             return True
+
+
+    def _copy_local_package_to_mount_point(self):
+        context = self._config.context
+        # always remove symbolic link - checking for its existence fails if we have a dangling symlink
+        try:
+            os.remove(WELL_KNOWN_PACKAGE_NAME)
+        except OSError as err:
+            log.debug('Unable to remove {0}: {1}'.format(WELL_KNOWN_PACKAGE_NAME, err))
+            log.debug("If the file doesn't exist, this error can safely be ignored")
+        if os.path.isabs(context.package.arg):
+            package_path = context.package.arg
+        else:
+            package_path = os.path.join(os.getcwd(), context.package.arg)
+        log.debug('Creating symlink from local-package [{0}], to {1}'.format(package_path, WELL_KNOWN_PACKAGE_NAME))
+        try:
+            os.symlink(package_path, WELL_KNOWN_PACKAGE_NAME)
+        except OSError as err:
+            log.critical('Failed to created symlink: {0}'.format(err))
+            return False
+        log.debug('Copying local-package {0}, to mount point {1}'.format(WELL_KNOWN_PACKAGE_NAME, self._mountpoint))
+        return install_provision_config(WELL_KNOWN_PACKAGE_NAME, self._mountpoint)
 
     def _install_provision_configs(self):
         config = self._config.plugins[self.full_name]
