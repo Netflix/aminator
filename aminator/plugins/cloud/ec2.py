@@ -118,7 +118,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
                                                          instance_region)))
         log.debug('Establishing connection to region: {0}'.format(region))
 
-        if cloud_config.boto_debug:
+        context.cloud.setdefault('boto_debug', False)
+        if context.cloud.boto_debug:
             from aminator.config import configure_datetime_logfile
             configure_datetime_logfile(self._config, 'boto')
             kwargs['debug'] = 1
