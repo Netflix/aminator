@@ -48,7 +48,7 @@ SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 def command(timeout=None, data=None, *cargs, **ckwargs):
     """
     decorator used to define shell commands to be executed via envoy.run
-    decorated function should return a list or string representing the command to be executed
+    decorated function should return a simple string representing the command to be executed
     decorated function should return None if a guard fails
     """
     @decorator
@@ -80,32 +80,6 @@ def fsck(dev):
     return 'fsck -y {0}'.format(dev)
 
 
-@command()
-def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
-
-
-@command()
-def yum_localinstall(path):
-    if not os.path.isfile(path):
-        log.critical('Package {0} not found'.format(path))
-        return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
-
-
-@command()
-def yum_clean_metadata():
-    return 'yum clean metadata'
-
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
 
 
 @command()
@@ -139,22 +113,6 @@ def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
 
-@command()
-def rpm_query(package, queryformat):
-    cmd = 'rpm -q --qf'.split()
-    cmd.append(queryformat)
-    cmd.append(package)
-    return cmd
-
-
-@command()
-def deb_query(package, queryformat):
-    cmd = 'dpkg-query -W'.split()
-    cmd.append('-f={0}'.format(queryformat))
-    cmd.append(package)
-    return cmd
-
-
 def sanitize_metadata(word):
     chars = list(word)
     for index, char in enumerate(chars):
@@ -181,16 +139,6 @@ def keyval_parse(record_sep='\n', field_sep=':'):
             log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
         return metadata
     return _parse
-
-
-@keyval_parse()
-def rpm_package_metadata(package, queryformat):
-    return rpm_query(package, queryformat)
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat):
-    return deb_query(package, queryformat)
 
 
 class Chroot(object):
@@ -350,11 +298,11 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Moving existing {0} out of the way'.format(dst))
                 try:
                     os.rename(dst, backup)
-                except Exception:
+                except Exception, e:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
             shutil.copy(src, dst)
-        except Exception:
+        except Exception, e:
             log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
@@ -381,11 +329,11 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Removing {0}'.format(dst))
                 try:
                     os.remove(dst)
-                except Exception:
+                except Exception, e:
                     log.exception('Error encountered while removing {0}'.format(dst))
                     return False
             os.rename(backup, dst)
-        except Exception:
+        except Exception, e:
             log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
             return False
         else:
@@ -411,7 +359,7 @@ def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
             log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
             os.symlink(dst, cmd)
             log.debug('{0} linked to {1}'.format(cmd, dst))
-        except Exception:
+        except Exception, e:
             log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
             return False
         else:
@@ -436,7 +384,7 @@ def rewire(cmd, ext='short_circuit'):
             os.remove(cmd)
             os.rename('{0}.{1}'.format(cmd, ext), cmd)
             log.debug('{0} rewired'.format(cmd))
-        except Exception:
+        except Exception, e:
             log.exception('Error encountered while rewiring {0}'.format(cmd))
             return False
         else:
