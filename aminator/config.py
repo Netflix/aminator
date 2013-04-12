@@ -168,13 +168,21 @@ def configure_datetime_logfile(config, handler):
     except IndexError:
         log.exception("missing replacement fields in {0}'s filename_format")
 
-    for h in logging.root.handlers:
+    # find handler amongst all the loggers and reassign the filename/stream
+    for h in [x for l in logging.root.manager.loggerDict for x in logging.getLogger(l).handlers] + logging.root.handlers:
         if h.name == handler:
             assert isinstance(h, logging.FileHandler)
             h.stream.close()
             h.baseFilename = filename
             h.stream = open(filename, 'a')
-            log.info('Detailed {0} output to {1}'.format(handler, filename))
+            url_template = config.logging[handler].get('web_log_url_template', False)
+            if url_template:
+                url_attrs = config.context.web_log.toDict()
+                url_attrs['logfile'] = os.path.basename(filename)
+                url = url_template.format(**url_attrs)
+                log.info('Detailed {0} output to {1}'.format(handler, url))
+            else:
+                log.info('Detailed {0} output to {1}'.format(handler, filename))
             break
     else:
         log.error('{0} handler not found.'.format(handler))

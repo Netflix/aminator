@@ -61,7 +61,7 @@ class PluginManager(object):
 
             for name, plugin in self._registry[entry_point].by_name.iteritems():
                 plugin.obj.configure(config, parser)
-                log.info('Loaded plugin {0}.{1}'.format(entry_point, name))
+                log.debug('Loaded plugin {0}.{1}'.format(entry_point, name))
 
     def find_by_entry_point(self, entry_point, name):
         return self._registry[entry_point].by_name[name]

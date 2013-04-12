@@ -100,6 +100,14 @@ class EC2CloudPlugin(BaseCloudPlugin):
         cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
                            action=conf_action(config=context.cloud, action='store_true'))
 
+    def configure(self, config, parser):
+        super(EC2CloudPlugin, self).configure(config, parser)
+        host = config.context.web_log.get('host', False)
+        if not host:
+            md = get_instance_metadata()
+            pub, ipv4 = 'public-hostname', 'local-ipv4'
+            config.context.web_log['host'] = md[pub] if pub in md else md[ipv4]
+
     def connect(self, **kwargs):
         if self._connection:
             log.warn('Already connected to EC2')
@@ -277,7 +285,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if ami.id is None:
             return False
         else:
-            log.info('Successfully registered AMI {0}'.format(ami.id))
+            ami.update()
+            log.info('AMI registered: {0} {1}'.format(ami.id, ami.name))
             context.ami.image = self._ami = ami
             return True
 
@@ -319,14 +328,14 @@ class EC2CloudPlugin(BaseCloudPlugin):
         instance_var = '_' + resource_type
         try:
             instance = getattr(self, instance_var)
-        except Exception, e:
+        except Exception:
             log.exception('Unable to find local instance var {0}'.format(instance_var))
             log.critical('Tagging failed')
             return False
         else:
             try:
                 self._connection.create_tags([instance.id], tags)
-            except EC2ResponseError, e:
+            except EC2ResponseError:
                 log.exception('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
                 raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type,
                                                                                                     instance.id))
