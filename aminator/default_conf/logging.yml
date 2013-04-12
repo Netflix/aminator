@@ -1,4 +1,5 @@
-# each dict will be pulled in and set up with dictConfig. Obey the dictConfig schema.
+# base[config] dict used to initialize logging using logging.config.dictConfig.
+# don't change logger or handler names.
 base:
   enabled: true
   config:
@@ -17,51 +18,43 @@ base:
         formatter: simple
         level: INFO
         stream: ext://sys.stdout
+      aminator:
+        class: logging.FileHandler
+        filename: /dev/null
+        formatter: detailed
+        level: DEBUG
+      boto:
+        class: logging.FileHandler
+        filename: /dev/null
+        formatter: detailed
+        level: DEBUG
     root:
       handlers: [console]
-per_package:
-  enabled: true
-  config:
-    version: 1
-    disable_existing_loggers: false
-    incremental: false
-    formatters:
-      simple:
-        format: '%(asctime)s [%(levelname)s] %(message)s'
-        datefmt: '%F %T'
-      detailed:
-        format: '%(asctime)s [%(levelname)s] [%(name)s(%(lineno)s):%(funcName)s] %(message)s'
-        datefmt: '%F %T'
-    handlers:
-      per_package:
-        filename_format: '{0}-{1:%Y%m%d%H%M}.log'
-        class: logging.FileHandler
-        formatter: detailed
-        level: DEBUG
-        # filename: to be filled in at runtime
-    root:
-      level: DEBUG
-      handlers: [per_package]
-boto:
-  enabled: false
-  config:
-    version: 1
-    disable_existing_loggers: false
-    incremental: false
-    formatters:
-      simple:
-        format: '%(asctime)s [%(levelname)s] %(message)s'
-        datefmt: '%F %T'
-      detailed:
-        format: '%(asctime)s [%(levelname)s] [%(name)s(%(lineno)s):%(funcName)s] %(message)s'
-        datefmt: '%F %T'
-    handlers:
-      boto:
-        filename_format: 'boto-{0}-{1:%Y%m%d%H%M}.log'
-        class: logging.FileHandler
-        formatter: detailed
-        level: DEBUG
+      level: INFO
     loggers:
       boto:
-        level: DEBUG
         handlers: [boto]
+        level: DEBUG
+      aminator:
+        handlers: [aminator]
+        level: DEBUG
+
+# post-dictConfig handler configs
+# if you have the means to provide a web interface to your logs, define a template
+# here using str.format() style
+# The format string will use the dict under the context.web_log config key
+# to format the URL.
+# context:
+#   web_log:
+#     host: {filled in at runtime}
+#     logfile: {filled in at runtime}
+#
+#
+
+aminator:
+  enabled: true
+  filename_format: '{0}-{1:%Y%m%d%H%M}.log'
+# web_log_url_template: 'http://{host}/log/location/{logfile}'
+boto:
+  enabled: false
+  filename_format: 'boto-{0}-{1:%Y%m%d%H%M}.log'
