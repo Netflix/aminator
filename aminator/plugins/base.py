@@ -82,14 +82,22 @@ class BasePlugin(object):
         name = self.name
         key = '.'.join((entry_point, name))
 
-        plugin_conf_dir = os.path.join(self._config.config_root,
-                                       self._config.plugins.config_root)
+        if self._config.plugins.config_root.startswith('~'):
+            plugin_conf_dir = os.path.expanduser(self._config.plugins.config_root)
+
+        elif self._config.plugins.config_root.startswith('/'):
+            plugin_conf_dir = self._config.plugins.config_root
+
+        else:
+            plugin_conf_dir = os.path.join(self._config.config_root,
+                                           self._config.plugins.config_root)
+
         plugin_conf_files = (
             os.path.join(plugin_conf_dir, '.'.join((key, 'yml'))),
         )
 
         self._config.plugins[key] = PluginConfig.from_defaults(entry_point, name)
-        self._config.dict_merge(self._config.plugins[key],
-                                PluginConfig.from_files(plugin_conf_files))
+        self._config.plugins[key] = PluginConfig.dict_merge(self._config.plugins[key],
+                                                            PluginConfig.from_files(plugin_conf_files))
         # allow plugins to be disabled by configuration. Especially important in cases where command line args conflict
         self.enabled = self._config.plugins[key].get('enabled', True)
