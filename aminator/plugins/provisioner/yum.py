@@ -24,9 +24,10 @@ aminator.plugins.provisioner.yum
 basic yum provisioner
 """
 import logging
+import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install, rpm_package_metadata
+from aminator.util.linux import command, keyval_parse
 from aminator.util.linux import short_circuit_files, rewire_files
 
 __all__ = ('YumProvisionerPlugin',)
@@ -90,3 +91,33 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         else:
             log.debug('No short circuit files configured, no rewiring done')
         return True
+
+
+@keyval_parse()
+def rpm_package_metadata(package, queryformat):
+    return rpm_query(package, queryformat)
+
+
+@command()
+def yum_install(package):
+    return 'yum --nogpgcheck -y install {0}'.format(package)
+
+
+@command()
+def yum_localinstall(path):
+    if not os.path.isfile(path):
+        log.critical('Package {0} not found'.format(path))
+        return None
+    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+
+
+@command()
+def yum_clean_metadata():
+    return 'yum clean metadata'
+
+@command()
+def rpm_query(package, queryformat):
+    cmd = 'rpm -q --qf'.split()
+    cmd.append(queryformat)
+    cmd.append(package)
+    return cmd
