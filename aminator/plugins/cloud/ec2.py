@@ -150,6 +150,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
         self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement,
                                                          snapshot=rootdev.snapshot_id).id
+        if not self._volume_available():
+            log.critical('{0}: unavailable.')
+            return False
+
         if tag:
             tags = {
                 'purpose': cloud_config.get('tag_ami_purpose', 'amination'),
@@ -216,7 +220,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def _state_check(self, obj, state):
         obj.update()
         classname = obj.__class__.__name__
-        if classname == 'Snapshot':
+        if classname in ('Snapshot', 'Volume'):
             return obj.status == state
         else:
             return obj.state == state
@@ -236,6 +240,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def _snapshot_complete(self):
         return self._wait_for_state(self._snapshot, 'completed')
+
+    def _volume_available(self):
+        return self._wait_for_state(self._volume, 'available')
 
     def detach_volume(self, blockdevice):
         log.debug('Detaching volume {0} from {1}'.format(self._volume.id, self._instance.id))
