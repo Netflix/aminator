@@ -292,7 +292,17 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if ami.id is None:
             return False
         else:
-            ami.update()
+            while True:
+                # spin until Amazon recognizes the AMI ID it told us about
+                try:
+                    sleep(2)
+                    ami.update()
+                    break
+                except EC2ResponseError, e:
+                    if e.error_code == 'InvalidAMIID.NotFound':
+                        log.debug('{0} not found, retrying'.format(ami.id))
+                    else:
+                        raise e
             log.info('AMI registered: {0} {1}'.format(ami.id, ami.name))
             context.ami.image = self._ami = ami
             return True
