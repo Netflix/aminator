@@ -295,6 +295,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             while True:
                 # spin until Amazon recognizes the AMI ID it told us about
                 try:
+                    sleep(2)
                     ami.update()
                     break
                 except EC2ResponseError, e:
