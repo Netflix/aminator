@@ -403,52 +403,54 @@ def remove_provision_configs(sources, dstpath, backup_ext='_aminator'):
     return True
 
 
-def short_circuit(cmd, ext='short_circuit', dst='/bin/true'):
-    if os.path.isfile(cmd):
+def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
+    fullpath = os.path.join(root.rstrip('/'), cmd.lstrip('/'))
+    if os.path.isfile(fullpath):
         try:
-            log.debug('Short circuiting {0}'.format(cmd))
-            os.rename(cmd, '{0}.{1}'.format(cmd, ext))
-            log.debug('{0} renamed to {0}.{1}'.format(cmd, ext))
-            os.symlink(dst, cmd)
-            log.debug('{0} linked to {1}'.format(cmd, dst))
+            log.debug('Short circuiting {0}'.format(fullpath))
+            os.rename(fullpath, '{0}.{1}'.format(fullpath, ext))
+            log.debug('{0} renamed to {0}.{1}'.format(fullpath, ext))
+            os.symlink(dst, fullpath)
+            log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuting {0} to {1}'.format(cmd, dst))
+            log.exception('Error encountered while short circuting {0} to {1}'.format(fullpath, dst))
             return False
         else:
-            log.debug('short circuited {0} to {1}'.format(cmd, dst))
+            log.debug('short circuited {0} to {1}'.format(fullpath, dst))
             return True
     else:
-        log.error('{0} not found'.format(cmd))
+        log.error('{0} not found'.format(fullpath))
         return False
 
 
-def short_circuit_files(cmds, ext='short_circuit', dst='/bin/true'):
+def short_circuit_files(root, cmds, ext='short_circuit', dst='/bin/true'):
     for cmd in cmds:
-        if not short_circuit(cmd, ext, dst):
+        if not short_circuit(root, cmd, ext, dst):
             return False
     return True
 
 
-def rewire(cmd, ext='short_circuit'):
-    if os.path.isfile('{0}.{1}'.format(cmd, ext)):
+def rewire(root, cmd, ext='short_circuit'):
+    fullpath = os.path.join(root.rstrip('/'), cmd.lstrip('/'))
+    if os.path.isfile('{0}.{1}'.format(fullpath, ext)):
         try:
-            log.debug('Rewiring {0}'.format(cmd))
-            os.remove(cmd)
-            os.rename('{0}.{1}'.format(cmd, ext), cmd)
-            log.debug('{0} rewired'.format(cmd))
+            log.debug('Rewiring {0}'.format(fullpath))
+            os.remove(fullpath)
+            os.rename('{0}.{1}'.format(fullpath, ext), fullpath)
+            log.debug('{0} rewired'.format(fullpath))
         except Exception:
-            log.exception('Error encountered while rewiring {0}'.format(cmd))
+            log.exception('Error encountered while rewiring {0}'.format(fullpath))
             return False
         else:
-            log.debug('rewired {0}'.format(cmd))
+            log.debug('rewired {0}'.format(fullpath))
             return True
     else:
-        log.error('{0}.{1} not found'.format(cmd, ext))
+        log.error('{0}.{1} not found'.format(fullpath, ext))
         return False
 
 
-def rewire_files(cmds, ext='short_circuit'):
+def rewire_files(root, cmds, ext='short_circuit'):
     for cmd in cmds:
-        if not rewire(cmd, ext):
+        if not rewire(root, cmd, ext):
             return False
     return True

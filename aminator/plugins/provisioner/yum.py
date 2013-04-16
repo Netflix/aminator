@@ -63,7 +63,7 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         files = config.get('short_circuit_files', [])
         if files:
-            if not short_circuit_files(files):
+            if not short_circuit_files(self._mountpoint, files):
                 log.critical('Unable to short circuit {0} to {1}')
                 return False
             else:
@@ -81,7 +81,7 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         files = config.get('short_circuit_files', [])
         if files:
-            if not rewire_files(files):
+            if not rewire_files(self._mountpoint, files):
                 log.critical('Unable to rewire {0} to {1}')
                 return False
             else:
