@@ -80,32 +80,6 @@ def fsck(dev):
     return 'fsck -y {0}'.format(dev)
 
 
-@command()
-def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
-
-
-@command()
-def yum_localinstall(path):
-    if not os.path.isfile(path):
-        log.critical('Package {0} not found'.format(path))
-        return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
-
-
-@command()
-def yum_clean_metadata():
-    return 'yum clean metadata'
-
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
 
 
 @command()
@@ -139,22 +113,6 @@ def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
 
-@command()
-def rpm_query(package, queryformat):
-    cmd = 'rpm -q --qf'.split()
-    cmd.append(queryformat)
-    cmd.append(package)
-    return cmd
-
-
-@command()
-def deb_query(package, queryformat):
-    cmd = 'dpkg-query -W'.split()
-    cmd.append('-f={0}'.format(queryformat))
-    cmd.append(package)
-    return cmd
-
-
 def sanitize_metadata(word):
     chars = list(word)
     for index, char in enumerate(chars):
@@ -176,21 +134,11 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
-                metadata[key] = val.strip()
+                metadata[key.strip()] = val.strip()
         else:
             log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
         return metadata
     return _parse
-
-
-@keyval_parse()
-def rpm_package_metadata(package, queryformat):
-    return rpm_query(package, queryformat)
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat):
-    return deb_query(package, queryformat)
 
 
 class Chroot(object):

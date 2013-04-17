@@ -26,8 +26,8 @@ basic apt provisioner
 import logging
 import os
 
-from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata
+from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin, WELL_KNOWN_PACKAGE_NAME
+from aminator.util.linux import sanitize_metadata, command, keyval_parse
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -46,12 +46,21 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _provision_package(self):
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
-        return apt_get_install(context.package.arg)
+        if context.package.local_package:
+            return dpkg_install(WELL_KNOWN_PACKAGE_NAME)
+        else:
+            return apt_get_install(context.package.arg)
 
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        if context.package.local_package:
+            # cli arg contains package file name, not package name
+            # extract package name from deb file.
+            package_name = deb_local_package_query(WELL_KNOWN_PACKAGE_NAME)['Package']
+        else:
+            package_name = context.package.arg
+        metadata = deb_package_metadata(package_name, config.get('pkg_query_format', ''))
         for x in config.pkg_attributes:
             if x == 'version':
                 if x in metadata and ':' in metadata[x]:
@@ -107,7 +116,40 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
             log.debug("removing %s", policy_file)
             os.remove(policy_file)
         else:
+
             log.debug("The %s was missing, this is unexpected as the "
                       "AptProvisionerPlugin should manage this file", policy_file)
 
         return True
+
+#
+# Below are Debian specific package management commands
+#
+
+
+@keyval_parse()
+@command()
+def deb_package_metadata(package, queryformat):
+    cmd = 'dpkg-query -W'.split()
+    cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
+
+@command()
+def apt_get_update():
+    return 'apt-get update'
+
+
+@command()
+def apt_get_install(package):
+    return 'apt-get -y install {0}'.format(package)
+
+@command()
+def dpkg_install(package):
+    return 'dpkg -i {0}'.format(package)
+
+@keyval_parse()
+@command()
+def deb_local_package_query(package):
+    return 'dpkg -I {0}'.format(package)
+
