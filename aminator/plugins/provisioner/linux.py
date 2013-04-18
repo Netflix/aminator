@@ -67,7 +67,15 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
         config = self._config.plugins[self.full_name]
-        context = self._config.context
+        context = config.context
+
+        pkg = context.package.arg
+
+        if pkg.find('http://') >= 0:
+            self._download(pkg)
+        elif pkg.find('file://') >= 0 or pkg.startswith('/'):
+            pkg = pkg.replace('file://', '')
+            self._copy_file(pkg)
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
