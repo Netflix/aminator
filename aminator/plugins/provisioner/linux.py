@@ -26,6 +26,8 @@ Simple base class for cases where there are small distro-specific corner cases
 import abc
 import logging
 import os
+import urllib2
+import shutil
 
 from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
@@ -69,13 +71,11 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         context = config.context
 
-        pkg = context.package.arg
-
-        if pkg.find('http://') >= 0:
-            self._download(pkg)
-        elif pkg.find('file://') >= 0 or pkg.startswith('/'):
-            pkg = pkg.replace('file://', '')
-            self._copy_file(pkg)
+        if self._local_install():
+            context.package.local_install = True
+            if not self._stage_pkg():
+                log.critical('failed to stage {0}'.format(context.package.arg))
+                return False
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
@@ -199,6 +199,66 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         else:
             log.debug('No provision config files configured')
             return True
+
+    def _local_install(self):
+        """True if context.package.arg ends with a package extension
+        """
+        config = self._config
+        ext = config.plugins[self.full_name].get('pkg_extension', '')
+        if not ext:
+            return False
+
+        # ensure extension begins with a dot
+        ext = '.{0}'.format(ext.lstrip('.'))
+
+        pkg = config.context.package.arg
+
+        if pkg.find(ext) < 0:
+            return False
+        return (len(pkg) - pkg.rindex(ext)) == len(ext)
+
+    def _stage_pkg(self):
+        context = self._config.context
+        context.package.file = os.path.basename(context.package.arg)
+        context.package.full_path = os.path.join(self._mountpoint,
+                                                 context.package.dir.lstrip('/'),
+                                                 context.package.file)
+        try:
+            if context.package.arg.find('http://') == 0:
+                self._download_pkg(context)
+            else:
+                self._copy_pkg(context)
+        except Exception:
+            log.exception('Error encountered while staging package')
+            return False
+        context.package.arg = os.path.join(context.package.dir, context.package.file)
+        return True
+
+    def _download_pkg(self, context):
+        """dowload url to context.package.dir
+        """
+        pkg_url = context.package.arg
+        dst_file_path = context.package.full_path
+
+        log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
+
+        req = urllib2.urlopen(pkg_url)
+
+        if req.code != 200:
+            raise Exception('download failure code: {0}'.format(req.code))
+        with open(dst_file_path, 'w') as dst_fp:
+            shutil.copyfileobj(req.fp, dst_fp)
+
+    def _copy_pkg(self, context):
+        src_file = context.package.arg.replace('file://', '')
+        dst_file_path = context.package.full_path
+
+        if not os.path.exists(src_file):
+            raise Exception('{0} does not exist.'.format(src_file))
+
+        with open(src_file, 'r') as src_fp:
+            with open(dst_file_path, 'wb') as dst_fp:
+                shutil.copyfileobj(src_fp, dst_fp)
 
     def __enter__(self):
         if not self._configure_chroot():

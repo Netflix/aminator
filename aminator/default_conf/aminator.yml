@@ -37,7 +37,11 @@ plugins:
         class: VolumePluginManager
 
 context:
-  package: {}
+  package:
+    # AMI directory to store package files
+    dir: /tmp
+    # bake package file into AMI
+    preserve: False
   ami:
     tags: {}
   snapshot:

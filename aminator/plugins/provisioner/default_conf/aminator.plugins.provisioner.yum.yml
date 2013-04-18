@@ -16,6 +16,8 @@ chroot_mounts:
 pkg_query_format: "name:%{N}\\nversion:%{V}\\nrelease:%{R}\\n"
 pkg_attributes: [name, version, release]
 
+pkg_extension: deb
+
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf

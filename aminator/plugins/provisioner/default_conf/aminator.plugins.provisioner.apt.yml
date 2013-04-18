@@ -14,6 +14,8 @@ chroot_mounts:
 pkg_query_format: "name:${Package}\\nversion:${Version}\\nrelease:${Release}"
 pkg_attributes: [name, version, release]
 
+pkg_extension: rpm
+
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
