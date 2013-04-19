@@ -164,7 +164,7 @@ def configure_datetime_logfile(config, handler):
         return
 
     try:
-        filename = os.path.join(config.log_root, filename_format.format(config.context.package.arg, datetime.utcnow()))
+        filename = os.path.join(config.log_root, filename_format.format(os.path.basename(config.context.package.arg), datetime.utcnow()))
     except IndexError:
         log.exception("missing replacement fields in {0}'s filename_format")
 
@@ -224,7 +224,9 @@ class Argparser(object):
 
 
 def add_base_arguments(parser, config):
-    parser.add_config_arg('arg', metavar='package', config=config.context.package, help='The package to aminate')
+    parser.add_config_arg('arg', metavar='package_spec', config=config.context.package,
+                          help='package to aminate. A string resolvable by the native package manager or'
+                          ' a file system path or http url to the package file.')
     parser.add_config_arg('-e', '--environment', config=config.context,
                           help='The environment configuration for amination')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))

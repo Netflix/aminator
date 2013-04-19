@@ -68,10 +68,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
     def provision(self):
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
-        config = self._config.plugins[self.full_name]
-        context = config.context
+        context = self._config.context
 
         if self._local_install():
+            log.debug('performing a local install of {0}'.format(context.package.arg))
             context.package.local_install = True
             if not self._stage_pkg():
                 log.critical('failed to stage {0}'.format(context.package.arg))
@@ -90,6 +90,9 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
                 return False
             self._store_package_metadata()
+            if not context.package.get('preserve', False):
+                os.remove(context.package.arg)
+
         log.debug('Exited chroot')
         log.info('Provisioning succeeded!')
         return True
@@ -218,6 +221,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return (len(pkg) - pkg.rindex(ext)) == len(ext)
 
     def _stage_pkg(self):
+        """copy package file into AMI volume.
+        """
         context = self._config.context
         context.package.file = os.path.basename(context.package.arg)
         context.package.full_path = os.path.join(self._mountpoint,

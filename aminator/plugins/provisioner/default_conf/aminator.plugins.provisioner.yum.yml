@@ -16,7 +16,7 @@ chroot_mounts:
 pkg_query_format: "name:%{N}\\nversion:%{V}\\nrelease:%{R}\\n"
 pkg_attributes: [name, version, release]
 
-pkg_extension: deb
+pkg_extension: rpm
 
 provision_configs: true
 provision_config_files:

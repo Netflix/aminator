@@ -53,7 +53,8 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''),
+                                        context.package.get('local_install', False))
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
