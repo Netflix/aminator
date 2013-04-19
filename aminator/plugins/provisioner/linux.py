@@ -265,6 +265,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             with open(dst_file_path, 'wb') as dst_fp:
                 shutil.copyfileobj(src_fp, dst_fp)
 
+        os.remove(src_file)
+
     def __enter__(self):
         if not self._configure_chroot():
             raise VolumeException('Error configuring chroot')
