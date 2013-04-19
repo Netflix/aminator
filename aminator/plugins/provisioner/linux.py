@@ -214,11 +214,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         # ensure extension begins with a dot
         ext = '.{0}'.format(ext.lstrip('.'))
 
-        pkg = config.context.package.arg
-
-        if pkg.find(ext) < 0:
-            return False
-        return (len(pkg) - pkg.rindex(ext)) == len(ext)
+        return config.context.package.arg.endswith(ext)
 
     def _stage_pkg(self):
         """copy package file into AMI volume.
@@ -229,13 +225,14 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
-            if context.package.arg.find('http://') == 0:
+            if context.package.arg.startswith('http://') == 0:
                 self._download_pkg(context)
             else:
                 self._copy_pkg(context)
         except Exception:
             log.exception('Error encountered while staging package')
             return False
+        # reset to chrooted file path
         context.package.arg = os.path.join(context.package.dir, context.package.file)
         return True
 
