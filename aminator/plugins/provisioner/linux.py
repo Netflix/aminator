@@ -225,7 +225,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
-            if context.package.arg.startswith('http://') == 0:
+            if context.package.arg.startswith('http://'):
                 self._download_pkg(context)
             else:
                 self._copy_pkg(context)
