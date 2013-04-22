@@ -140,17 +140,22 @@ def busy_mount(mountpoint):
 
 
 @command()
-def rpm_query(package, queryformat):
+def rpm_query(package, queryformat, local=False):
     cmd = 'rpm -q --qf'.split()
     cmd.append(queryformat)
+    if local:
+        cmd.append('-p')
     cmd.append(package)
     return cmd
 
 
 @command()
-def deb_query(package, queryformat):
-    cmd = 'dpkg-query -W'.split()
-    cmd.append('-f={0}'.format(queryformat))
+def deb_query(package, queryformat, local=False):
+    if local:
+        cmd = 'dpkg -I'.split()
+    else:
+        cmd = 'dpkg-query -W'.split()
+        cmd.append('-f={0}'.format(queryformat))
     cmd.append(package)
     return cmd
 
@@ -169,23 +174,23 @@ def keyval_parse(record_sep='\n', field_sep=':'):
     @decorator
     def _parse(f, *args, **kwargs):
         metadata = {}
-        result = f(*args, **kwargs)
-        if result.success:
-            for record in result.result.std_out.split(record_sep):
+        ret = f(*args, **kwargs)
+        if ret.success:
+            for record in ret.result.std_out.split(record_sep):
                 try:
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
                 metadata[key] = val.strip()
         else:
-            log.debug('failure:{0} :{1}'.format(result.command, result.stderr))
+            log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
         return metadata
     return _parse
 
 
 @keyval_parse()
-def rpm_package_metadata(package, queryformat):
-    return rpm_query(package, queryformat)
+def rpm_package_metadata(package, queryformat, local=False):
+    return rpm_query(package, queryformat, local)
 
 
 @keyval_parse()

@@ -26,7 +26,7 @@ basic yum provisioner
 import logging
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install, rpm_package_metadata
+from aminator.util.linux import yum_clean_metadata, yum_install, yum_localinstall, rpm_package_metadata
 from aminator.util.linux import short_circuit_files, rewire_files
 
 __all__ = ('YumProvisionerPlugin',)
@@ -45,12 +45,16 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _provision_package(self):
         context = self._config.context
-        return yum_install(context.package.arg)
+        if context.package.get('local_install', False):
+            return yum_localinstall(context.package.arg)
+        else:
+            return yum_install(context.package.arg)
 
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''),
+                                        context.package.get('local_install', False))
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
