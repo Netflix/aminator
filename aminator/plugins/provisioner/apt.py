@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata
+from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata, command
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -46,7 +46,10 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _provision_package(self):
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
-        return apt_get_install(context.package.arg)
+        if context.package.get('local_install', False):
+            return apt_get_localinstall(context.package.arg)
+        else:
+            return apt_get_install(context.package.arg)
 
     def _store_package_metadata(self):
         context = self._config.context
@@ -101,7 +104,7 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         config = self._config.plugins[self.full_name]
 
         policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
-                      config.get('policy_file', '')
+            config.get('policy_file', '')
 
         if os.path.isfile(policy_file):
             log.debug("removing %s", policy_file)
@@ -111,3 +114,24 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
                       "AptProvisionerPlugin should manage this file", policy_file)
 
         return True
+
+
+@command()
+def dpkg_install(package):
+    return 'dpkg -i {0}'.format(package)
+
+
+def apt_get_localinstall(package):
+    """install deb file with dpkg then resolve dependencies
+    """
+    dpkg_ret = dpkg_install(package)
+    if dpkg_ret.success:
+        apt_ret = apt_get_install('--fix-missing')
+        if apt_ret.success:
+            return True
+        else:
+            log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
+    else:
+            log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
+    return False
+
