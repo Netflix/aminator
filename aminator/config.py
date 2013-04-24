@@ -170,7 +170,7 @@ def configure_datetime_logfile(config, handler):
 
     # find handler amongst all the loggers and reassign the filename/stream
     for h in [x for l in logging.root.manager.loggerDict for x in logging.getLogger(l).handlers] + logging.root.handlers:
-        if h.name == handler:
+        if getattr(h, 'name', '') == handler:
             assert isinstance(h, logging.FileHandler)
             h.stream.close()
             h.baseFilename = filename
