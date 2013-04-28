@@ -67,15 +67,19 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         """ prevent service startup when packages are installed in chroot """
 
     def provision(self):
-        log.debug('Entering chroot at {0}'.format(self._mountpoint))
         context = self._config.context
 
         if self._local_install():
-            log.debug('performing a local install of {0}'.format(context.package.arg))
+            log.info('performing a local install of {0}'.format(context.package.arg))
             context.package.local_install = True
             if not self._stage_pkg():
                 log.critical('failed to stage {0}'.format(context.package.arg))
                 return False
+        else:
+            log.info('performing a repo install of {0}'.format(context.package.arg))
+            context.package.local_install = False
+
+        log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
@@ -90,7 +94,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
                 return False
             self._store_package_metadata()
-            if not context.package.get('preserve', False):
+            if context.package.local_install and not context.package.get('preserve', False):
                 os.remove(context.package.arg)
 
         log.debug('Exited chroot')
