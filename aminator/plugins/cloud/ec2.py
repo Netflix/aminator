@@ -231,7 +231,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             log.debug('{0} reached state {1}'.format(resource.__class__.__name__, state))
             return True
         else:
-            raise VolumeException('Timed out waiting for {} to get to {}({})'.format(resource.id,
+            raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id,
                                                                                      state,
                                                                                      resource.status))
 
