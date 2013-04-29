@@ -379,26 +379,25 @@ def install_provision_configs(files, dstpath, backup_ext='_aminator'):
 def remove_provision_config(src, dstpath, backup_ext='_aminator'):
     dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
     backup = '{0}{1}'.format(dst, backup_ext)
-    if os.path.isfile(backup) or os.path.islink(backup):
-        try:
+    try:
+        if os.path.isfile(dst) or os.path.islink(dst):
+            log.debug('Removing {0}'.format(dst))
+            try:
+                os.remove(dst)
+                log.debug('Provision config {0} removed'.format(dst))
+            except Exception:
+                log.exception('Error encountered while removing {0}'.format(dst))
+                return False
+        if os.path.isfile(backup) or os.path.islink(backup):
             log.debug('Restoring {0} to {1}'.format(backup, dst))
-            if os.path.isfile(dst) or os.path.islink(dst):
-                log.debug('Removing {0}'.format(dst))
-                try:
-                    os.remove(dst)
-                except Exception:
-                    log.exception('Error encountered while removing {0}'.format(dst))
-                    return False
             os.rename(backup, dst)
-        except Exception:
-            log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
-            return False
-        else:
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
-            return True
-    else:
-        log.critical('Backup {0} not found'.format(backup))
+        else:
+            log.warn('No backup file {0} was found'.format(backup))
+    except Exception:
+        log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
         return False
+    return True
 
 
 def remove_provision_configs(sources, dstpath, backup_ext='_aminator'):
