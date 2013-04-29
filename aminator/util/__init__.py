@@ -25,6 +25,7 @@ Utilities
 """
 import functools
 import logging
+import requests
 from time import sleep
 
 from decorator import decorator
@@ -53,7 +54,7 @@ def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
         while _tries > 0:
             try:
                 return f(*args, **kwargs)
-            except ExceptionToCheck, e:
+            except ExceptionToCheck as e:
                 logger.debug(e)
                 sleep(_delay)
                 _tries -= 1
@@ -74,3 +75,29 @@ def memoize(obj=None):
             cache[args] = obj(*args, **kwargs)
         return cache[args]
     return memoizer
+
+
+@retry(requests.HTTPError, tries=5, delay=1, backoff=2)
+def download_file(url, dst, timeout=1):
+    try:
+        response = requests.get(url, timeout=timeout)
+    except requests.RequestException as e:
+        if isinstance(e, requests.Timeout):
+            # Retry timeouts
+            raise requests.HTTPError('Timeout exceeded.')
+        else:
+            raise e
+            return False
+
+    if response.status_code >= 500:
+        # retry service errors
+        raise requests.HTTPError('{0.status_code} {0.reason}'.format(response))
+        return False
+
+    if response.status_code != 200:
+        return False
+
+    with open(dst, 'w') as dst_fp:
+        dst_fp.write(response.content)
+
+    return True
