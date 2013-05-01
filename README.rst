@@ -31,7 +31,9 @@ Usage
                    package
 
     positional arguments:
-      package               The package to aminate
+      package               package to aminate. A string resolvable by the native
+                            package manager or a file system path or http url to
+                            the package file.
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -75,6 +77,11 @@ The rough amination workflow:
 #. Chroot into mounted volume and provision application
 #. Unmount the volume and create a snapshot
 #. Register the snapshot as an AMI
+
+Support
+-------
+* `Aminator Google Group <http://groups.google.com/group/Aminator>`_
+* #netflixoss on chat.freenode.net
 
 Documentation
 -------------
