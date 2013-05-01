@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.util import retry
-from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount
+from aminator.util.linux import MountSpec, busy_mount, filesystem, mount, mounted, unmount
 from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
 
@@ -56,7 +56,12 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             os.makedirs(self._mountpoint)
 
         if not mounted(self._mountpoint):
-            mountspec = MountSpec(self._dev, None, self._mountpoint, None)
+            if filesystem(self._dev).success:
+                dev = self._dev
+            else:
+                # assume the first partition
+                dev = self._dev + "1"
+            mountspec = MountSpec(dev, None, self._mountpoint, None)
             result = mount(mountspec)
             if not result.success:
                 msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)

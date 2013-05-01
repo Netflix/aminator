@@ -57,11 +57,10 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
         majors = block_config.device_letters
         self._device_prefix = native_device_prefix(block_config.device_prefixes)
-        device_format = '/dev/{0}{1}{2}'
+        device_format = '/dev/{0}{1}'
 
-        self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
-                                 for major in majors
-                                 for minor in xrange(1, 16)]
+        self._allowed_devices = [device_format.format(self._device_prefix, major)
+                                 for major in majors]
 
     def __enter__(self):
         with flock(self._lock_file):

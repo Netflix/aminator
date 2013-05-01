@@ -74,6 +74,10 @@ def mounted(path):
     with open('/proc/mounts') as mounts:
         return any(pat in mount for mount in mounts)
 
+@command()
+def filesystem(dev):
+    return 'blkid -u filesystem {0}'.format(dev)
+
 
 @command()
 def fsck(dev):
