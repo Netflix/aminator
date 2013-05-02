@@ -1,5 +1,5 @@
 PyYAML==3.10
-aminator==1.2.29dev
+aminator==1.2.38dev
 boto==2.9.2
 bunch==1.0.1
 decorator==3.4.0
