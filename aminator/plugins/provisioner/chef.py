@@ -24,6 +24,8 @@ aminator.plugins.provisioner.chef
 chef provisioner
 """
 import logging
+import os
+import shutil
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import short_circuit_files, rewire_files
