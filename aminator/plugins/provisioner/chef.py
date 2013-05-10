@@ -29,13 +29,13 @@ import os
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import command
 
-__all__ = ('chefProvisionerPlugin',)
+__all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class chefProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
-    chefProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
+    ChefProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
     See BaseLinuxProvisionerPlugin for details
     """
     _name = 'chef'
