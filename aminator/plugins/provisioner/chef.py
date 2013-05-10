@@ -27,6 +27,7 @@ import logging
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import short_circuit_files, rewire_files
+from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
