@@ -18,4 +18,4 @@ provision_config_files:
   - /etc/resolv.conf
 
 
-recipe_url: http://artifacts.global.riotgames.com/bacon/cookbooks-v1234.tar.gz
+cookbook_url: http://artifacts.global.riotgames.com/bacon/cookbooks-v1234.tar.gz
