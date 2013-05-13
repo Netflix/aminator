@@ -390,7 +390,6 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                     shutil.rmtree(dst)
                 else:
                     os.remove(dst)
-                remove(dst)
                 log.debug('Provision config {0} removed'.format(dst))
             except Exception:
                 log.exception('Error encountered while removing {0}'.format(dst))
