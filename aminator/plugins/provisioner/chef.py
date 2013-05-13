@@ -31,7 +31,7 @@ from aminator.util.linux import command
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
-
+CommandResult = namedtuple('CommandResult', 'success result')
 
 class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
@@ -44,22 +44,22 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
        """
        Fetch the latest version of cookbooks
        """
-       return True
+       return CommandResult(True, object())
 
     def _provision_package(self):
         print "chef-solo --runlist %s" % context.package.arg
-        return True
-        return chef_solo(context.package.arg)
+        return CommandResult(True, object())
+        #return chef_solo(context.package.arg)
 
     def _store_package_metadata(self):
         context = self._config.context
         context.package.attributes = { 'name': 'chef', 'version': '0.0.1', 'release': '0' }
 
     def _deactivate_provisioning_service_block(self):
-        return True
+        return CommandResult(True, object())
 
     def _activate_provisioning_service_block(self):
-        return True
+        return CommandResult(True, object())
 
 
 @command()
