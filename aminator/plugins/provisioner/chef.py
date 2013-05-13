@@ -48,6 +48,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
        return CommandResult(True, object())
 
     def _provision_package(self):
+        context = self._config.context
         print "chef-solo --runlist %s" % context.package.arg
         return CommandResult(True, object())
         #return chef_solo(context.package.arg)
