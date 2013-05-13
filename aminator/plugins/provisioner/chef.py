@@ -45,6 +45,9 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
        """
        Fetch the latest version of cookbooks
        """
+       config = self._config.plugins[self.full_name]
+       cookbook_url = config.get('cookbook_url')
+       print "Fetching latest version of cookbooks from %s" % cookbook_url
        return CommandResult(True, object())
 
     def _provision_package(self):

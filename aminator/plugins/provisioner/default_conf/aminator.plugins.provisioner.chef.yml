@@ -16,3 +16,6 @@ chroot_mounts:
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
+
+
+recipe_url: http://artifacts.global.riotgames.com/bacon/cookbooks-v1234.tar.gz
