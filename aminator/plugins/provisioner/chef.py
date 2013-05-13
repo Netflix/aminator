@@ -25,6 +25,7 @@ basic chef provisioner
 """
 import logging
 import os
+from collections import namedtuple
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import command
