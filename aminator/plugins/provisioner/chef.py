@@ -42,13 +42,21 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     _name = 'chef'
 
     def _refresh_package_metadata(self):
-       """
-       Fetch the latest version of cookbooks
-       """
-       config = self._config.plugins[self.full_name]
-       cookbook_url = config.get('cookbook_url')
-       print "Fetching latest version of cookbooks from %s" % cookbook_url
-       return CommandResult(True, object())
+        """
+        Fetch the latest version of cookbooks and JSON node info
+        """
+        config = self._config.plugins[self.full_name]
+        cookbook_url = config.get('cookbook_url')
+        json_url = config.get('json_url')
+
+        json_result = fetch_json(json_url)
+
+        if not json_result.success:
+            return json_result
+
+        cookbook_result = fetch_cookbook(cookbook_url)
+        print "Fetching latest version of cookbooks from %s" % cookbook_url
+        return CommandResult(True, object())
 
     def _provision_package(self):
         context = self._config.context
@@ -58,7 +66,13 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _store_package_metadata(self):
         context = self._config.context
-        context.package.attributes = { 'name': 'chef', 'version': '0.0.1', 'release': '0' }
+        config = self._config.plugins[self.full_name]
+
+        name    = config.get('name')
+        version = config.get('version')
+        release = config.get('release')
+
+        context.package.attributes = { 'name': name, 'version': version, 'release': release }
 
     def _deactivate_provisioning_service_block(self):
         return CommandResult(True, object())
@@ -70,3 +84,13 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 @command()
 def chef_solo(runlist):
     return 'chef-solo -r {0}'.format(runlist)
+
+
+@command()
+def fetch_cookbooks(cookbook_url):
+    return 'curl {0} -o "/tmp/cookbooks.tar.gz"'.format(cookbook_url)
+
+
+@command()
+def fetch_json(json_url):
+    return 'curl {0} -o "/tmp/node.json"'.format(json_url)
