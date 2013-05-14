@@ -94,10 +94,10 @@ def yum_localinstall(path):
 
 
 @command()
-def yum_clean_metadata(repos=[]):
+def yum_clean_metadata(repos=None):
     clean='yum clean metadata'
-    if len(repos) > 0:
-        return clean + ' --disablerepo=\* --enablerepo=' +  ','.join(repos)
+    if repos:
+        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
     return clean
 
 @command()
