@@ -94,9 +94,11 @@ def yum_localinstall(path):
 
 
 @command()
-def yum_clean_metadata():
-    return 'yum clean metadata'
-
+def yum_clean_metadata(repos=[]):
+    clean='yum clean metadata'
+    if len(repos) > 0:
+        return clean + ' --disablerepo=\* --enablerepo=' +  ','.join(repos)
+    return clean
 
 @command()
 def apt_get_update():
