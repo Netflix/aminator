@@ -94,9 +94,11 @@ def yum_localinstall(path):
 
 
 @command()
-def yum_clean_metadata():
-    return 'yum clean metadata'
-
+def yum_clean_metadata(repos=None):
+    clean='yum clean metadata'
+    if repos:
+        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
+    return clean
 
 @command()
 def apt_get_update():
@@ -345,12 +347,12 @@ def os_node_exists(dev):
 
 
 def install_provision_config(src, dstpath, backup_ext='_aminator'):
-    if os.path.isfile(src):
+    if os.path.isfile(src) or os.path.isdir(src):
         log.debug('Copying {0} from the aminator host to {1}'.format(src, dstpath))
         dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
         log.debug('copying src: {0} dst: {1}'.format(src, dst))
         try:
-            if os.path.isfile(dst) or os.path.islink(dst):
+            if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
                 backup = '{0}{1}'.format(dst, backup_ext)
                 log.debug('Moving existing {0} out of the way'.format(dst))
                 try:
@@ -358,7 +360,10 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
-            shutil.copy(src, dst)
+            if os.path.isdir(src):
+                shutil.copytree(src,dst,symlinks=True)
+            else:
+                shutil.copy(src,dst)
         except Exception:
             log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
@@ -380,15 +385,19 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
     dst = os.path.join(dstpath.rstrip('/'), src.lstrip('/'))
     backup = '{0}{1}'.format(dst, backup_ext)
     try:
-        if os.path.isfile(dst) or os.path.islink(dst):
+        if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
             log.debug('Removing {0}'.format(dst))
             try:
-                os.remove(dst)
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                else:
+                    os.remove(dst)
                 log.debug('Provision config {0} removed'.format(dst))
             except Exception:
                 log.exception('Error encountered while removing {0}'.format(dst))
                 return False
-        if os.path.isfile(backup) or os.path.islink(backup):
+
+        if os.path.isfile(backup) or os.path.islink(backup) or os.path.isdir(backup):
             log.debug('Restoring {0} to {1}'.format(backup, dst))
             os.rename(backup, dst)
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
