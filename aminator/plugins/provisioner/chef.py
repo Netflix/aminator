@@ -54,7 +54,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         if not json_result.success:
             return json_result
 
-        cookbook_result = fetch_cookbook(cookbook_url)
+        cookbook_result = fetch_cookbooks(cookbook_url)
         print "Fetching latest version of cookbooks from %s" % cookbook_url
         return CommandResult(True, object())
 
