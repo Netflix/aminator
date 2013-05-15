@@ -17,9 +17,7 @@ provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
 
-
-cookbook_url: http://artifacts.global.riotgames.com/aminator/cookbooks/akjaer_1.tar.gz
-json_url: http://artifacts.global.riotgames.com/aminator/json/akjaer.json
+payload_url: http://artifacts.global.riotgames.com/aminator/monoservice-1.0.132.tar.gz
 name: monoservice
 version: 1.0.132
 release: 0

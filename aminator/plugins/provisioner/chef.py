@@ -46,23 +46,19 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         Fetch the latest version of cookbooks and JSON node info
         """
         config = self._config.plugins[self.full_name]
-        cookbook_url = config.get('cookbook_url')
-        json_url = config.get('json_url')
+        payload_url = config.get('cookbook_url')
 
-        json_result = fetch_json(json_url)
+        log.debug('Downloading payload from %s' % json_url)
+        payload_result = fetch_chef_payload(payload_url)
 
-        if not json_result.success:
-            return json_result
-
-        cookbook_result = fetch_cookbooks(cookbook_url)
-        print "Fetching latest version of cookbooks from %s" % cookbook_url
-        return CommandResult(True, object())
+        return payload_result
 
     def _provision_package(self):
         context = self._config.context
-        print "chef-solo --runlist %s" % context.package.arg
-        return CommandResult(True, object())
-        #return chef_solo(context.package.arg)
+        log.debug('Running chef-solo for runlist items: %s' % context.package.arg)
+        chef_result = chef_solo(context.package.arg)
+
+        return chef_result
 
     def _store_package_metadata(self):
         context = self._config.context
@@ -83,14 +79,9 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
 @command()
 def chef_solo(runlist):
-    return 'chef-solo -r {0}'.format(runlist)
+    return 'chef-solo -j /tmp/node.json -c /tmp/solo.rb -o {0}'.format(runlist)
 
 
 @command()
-def fetch_cookbooks(cookbook_url):
-    return 'curl {0} -o "/tmp/cookbooks.tar.gz"'.format(cookbook_url)
-
-
-@command()
-def fetch_json(json_url):
-    return 'curl {0} -o "/tmp/node.json"'.format(json_url)
+def fetch_chef_payload(payload_url):
+    return 'curl -s -0 {0} | tar -C / -xzf -'.format(cookbook_url)
