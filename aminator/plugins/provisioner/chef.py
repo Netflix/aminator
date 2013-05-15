@@ -46,9 +46,9 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         Fetch the latest version of cookbooks and JSON node info
         """
         config = self._config.plugins[self.full_name]
-        payload_url = config.get('cookbook_url')
+        payload_url = config.get('payload_url')
 
-        log.debug('Downloading payload from %s' % json_url)
+        log.debug('Downloading payload from %s' % payload_url)
         payload_result = fetch_chef_payload(payload_url)
 
         return payload_result
@@ -84,4 +84,4 @@ def chef_solo(runlist):
 
 @command()
 def fetch_chef_payload(payload_url):
-    return 'curl -s -0 {0} | tar -C / -xzf -'.format(cookbook_url)
+    return 'curl -s -0 {0} | tar -C / -xzf -'.format(payload_url)
