@@ -42,3 +42,6 @@ nosetests.xml
 *.sublime-project
 *.sublime-workspace
 .idea
+
+# Vim 
+*.swp
