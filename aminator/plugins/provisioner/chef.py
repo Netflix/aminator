@@ -89,10 +89,10 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 def install_chef(chef_version = None):
     download_file('https://www.opscode.com/chef/install.sh', '/tmp/install-chef.sh')
 
-    if version:
-        return 'sudo bash /tmp/install-chef.sh -v {0}'.format(chef_version)
+    if chef_version:
+        return 'bash /tmp/install-chef.sh -v {0}'.format(chef_version)
     else:
-        return 'sudo bash /tmp/install-chef.sh'
+        return 'bash /tmp/install-chef.sh'
 
 
 @command()
