@@ -66,6 +66,11 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         log.debug('Running chef-solo for runlist items: %s' % context.package.arg)
         chef_result = chef_solo(context.package.arg)
 
+        # For some reason, something keeps a lock on a file, so lets sleep for a little while
+        # to make sure the lock is released
+        from time import sleep
+        sleep(10)
+
         return chef_result
 
     def _store_package_metadata(self):
