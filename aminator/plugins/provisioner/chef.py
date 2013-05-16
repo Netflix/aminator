@@ -52,7 +52,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         log.debug('Installing omnibus chef-solo')
         result = install_chef(chef_version)
-        if not result:
+        if not result.success:
             log.critical('Failed to install chef')
             return result
 
