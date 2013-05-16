@@ -28,7 +28,8 @@ import os
 from collections import namedtuple
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import command, download_file
+from aminator.util.linux import command
+from aminator.util import download_file
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
