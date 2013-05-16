@@ -28,7 +28,7 @@ import os
 from collections import namedtuple
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import command
+from aminator.util.linux import command, download_file
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -45,8 +45,15 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         """
         Fetch the latest version of cookbooks and JSON node info
         """
-        config = self._config.plugins[self.full_name]
-        payload_url = config.get('payload_url')
+        config          = self._config.plugins[self.full_name]
+        payload_url     = config.get('payload_url')
+        chef_version    = config.get('chef_version')
+
+        log.debug('Installing omnibus chef-solo')
+        result = install_chef(chef_version)
+        if not result:
+            log.critical('Failed to install chef')
+            return result
 
         log.debug('Downloading payload from %s' % payload_url)
         payload_result = fetch_chef_payload(payload_url)
@@ -78,10 +85,21 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
 
 @command()
+def install_chef(chef_version = None):
+    download_file('https://www.opscode.com/chef/install.sh', '/tmp/install-chef.sh')
+
+    if version:
+        return 'sudo bash /tmp/install-chef.sh -v {0}'.format(chef_version)
+    else:
+        return 'sudo bash /tmp/install-chef.sh'
+
+
+@command()
 def chef_solo(runlist):
     return 'chef-solo -j /tmp/node.json -c /tmp/solo.rb -o {0}'.format(runlist)
 
 
 @command()
 def fetch_chef_payload(payload_url):
-    return 'curl -s -0 {0} | tar -C / -xzf -'.format(payload_url)
+    download_file(payload_url, '/tmp/foo.tar.gz')
+    return 'tar -C / -xf /tmp/foo.tar.gz'.format(payload_url)
