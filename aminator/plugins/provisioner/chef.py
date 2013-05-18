@@ -2,7 +2,7 @@
 
 #
 #
-#  Copyright 2013 Netflix, Inc.
+#  Copyright 2013 Riot Games
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
 #     you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ from collections import namedtuple
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import command
-from aminator.util import download_file
+from aminator.util.linux import short_circuit_files, rewire_files
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -50,11 +50,14 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         payload_url     = config.get('payload_url')
         chef_version    = config.get('chef_version')
 
-        log.debug('Installing omnibus chef-solo')
-        result = install_chef(chef_version)
-        if not result.success:
-            log.critical('Failed to install chef')
-            return result
+        if os.path.exists("/opt/chef/bin/chef-solo"):
+            log.debug('Omnibus chef is already installed, skipping install')
+        else:
+            log.debug('Installing omnibus chef-solo')
+            result = install_omnibus_chef(chef_version)
+            if not result.success:
+                log.critical('Failed to install chef')
+                return result
 
         log.debug('Downloading payload from %s' % payload_url)
         payload_result = fetch_chef_payload(payload_url)
@@ -65,11 +68,6 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         log.debug('Running chef-solo for runlist items: %s' % context.package.arg)
         chef_result = chef_solo(context.package.arg)
-
-        # For some reason, something keeps a lock on a file, so lets sleep for a little while
-        # to make sure the lock is released
-        from time import sleep
-        sleep(10)
 
         return chef_result
 
@@ -84,15 +82,50 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context.package.attributes = { 'name': name, 'version': version, 'release': release }
 
     def _deactivate_provisioning_service_block(self):
-        return CommandResult(True, object())
+        """
+        Prevent packages installing the chroot from starting
+        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not short_circuit_files(self._mountpoint, files):
+                log.critical('Unable to short circuit {0} to {1}')
+                return False
+            else:
+                log.debug('Files short-circuited successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured')
+            return True
 
     def _activate_provisioning_service_block(self):
-        return CommandResult(True, object())
+        """
+        Enable service startup so that things work when the AMI starts
+        For RHEL-like systems, we undo the short_circuit
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not rewire_files(self._mountpoint, files):
+                log.critical('Unable to rewire {0} to {1}')
+                return False
+            else:
+                log.debug('Files rewired successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured, no rewiring done')
+        return True
 
 
 @command()
-def install_chef(chef_version = None):
-    download_file('https://www.opscode.com/chef/install.sh', '/tmp/install-chef.sh')
+def curl_download(src, dst):
+    return 'curl {0} -o {1}'.format(src, dst)
+
+
+@command()
+def install_omnibus_chef(chef_version = None):
+    curl_download('https://www.opscode.com/chef/install.sh', '/tmp/install-chef.sh')
 
     if chef_version:
         return 'bash /tmp/install-chef.sh -v {0}'.format(chef_version)
@@ -107,5 +140,6 @@ def chef_solo(runlist):
 
 @command()
 def fetch_chef_payload(payload_url):
-    download_file(payload_url, '/tmp/foo.tar.gz')
+    curl_download(payload_url, '/tmp/foo.tar.gz')
+
     return 'tar -C / -xf /tmp/foo.tar.gz'.format(payload_url)
