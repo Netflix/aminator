@@ -16,9 +16,3 @@ chroot_mounts:
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
-
-chef_version: 10.18.0
-payload_url: http://artifacts.global.riotgames.com/aminator/monoservice-1.0.132.tar.gz
-name: monoservice
-version: 1.0.132
-release: 0

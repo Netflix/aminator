@@ -30,6 +30,7 @@ from collections import namedtuple
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import command
 from aminator.util.linux import short_circuit_files, rewire_files
+from aminator.config import conf_action
 
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -42,12 +43,28 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
     _name = 'chef'
 
+    def add_plugin_args(self):
+        context = self._config.context
+        chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Required options for running chef-solo provisioner')
+
+        chef_config.add_argument('-a', '--alias', dest='alias', help='Alias for the runlist items. This will be used as the name for the ami',
+                                 action=conf_action(self._config.plugins[self.full_name]))
+        chef_config.add_argument('--payload-url', dest='payload_url', help='Location to fetch the payload from',
+                                 action=conf_action(self._config.plugins[self.full_name]))
+        chef_config.add_argument('--payload-version', dest='payload_version', help='Payload version',
+                                 action=conf_action(self._config.plugins[self.full_name]))
+        chef_config.add_argument('--payload-release', dest='payload_release', help='Payload release',
+                                 action=conf_action(self._config.plugins[self.full_name]))
+        chef_config.add_argument('--chef-version', dest='chef_version', help='Version of chef to install', default="10.18.0",
+                                 action=conf_action(self._config.plugins[self.full_name]))
+        
+
     def _refresh_package_metadata(self):
         """
         Fetch the latest version of cookbooks and JSON node info
         """
         config          = self._config.plugins[self.full_name]
-        payload_url     = config.get('payload_url')
+        payload_url     = config.get('payload-url')
         chef_version    = config.get('chef_version')
 
         if os.path.exists("/opt/chef/bin/chef-solo"):
@@ -65,6 +82,34 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         return payload_result
 
     def _provision_package(self):
+        config          = self._config.plugins[self.full_name]
+        alias           = config.get('alias')
+        payload_url     = config.get('payload-url')
+        payload_version = config.get('payload-version')
+        payload_release = config.get('payload-release')
+        chef_version    = config.get('chef-version')
+
+        if not alias:
+            log.critical('Missing argument for chef provisioner: --alias')
+            return None
+
+        if not payload_url:
+            log.critical('Missing argument for chef provisioner: --payload-url')
+            return None
+
+        if not payload_version:
+            log.critical('Missing argument for chef provisioner: --payload-version')
+            return None
+
+        if not payload_release:
+            log.critical('Missing argument for chef provisioner: --payload-release')
+            return None
+
+        if not chef_version:
+            log.critical('Missing argument for chef provisioner: --chef-version')
+            return None
+
+        pass
         context = self._config.context
         log.debug('Running chef-solo for runlist items: %s' % context.package.arg)
         chef_result = chef_solo(context.package.arg)
