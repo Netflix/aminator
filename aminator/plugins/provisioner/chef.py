@@ -176,4 +176,4 @@ def chef_solo(runlist):
 def fetch_chef_payload(payload_url):
     curl_download(payload_url, '/tmp/chef_payload.tar.gz')
 
-    return 'tar -xf /tmp/chef_payload.tar.gz'.format(payload_url)
+    return 'tar -C /tmp -xf /tmp/chef_payload.tar.gz'.format(payload_url)
