@@ -106,10 +106,8 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         return payload_result
 
     def _provision_package(self):
-        config          = self._config.plugins[self.full_name]
-
-        pass
         context = self._config.context
+
         log.debug('Running chef-solo for runlist items: %s' % context.package.arg)
         chef_result = chef_solo(context.package.arg)
 
