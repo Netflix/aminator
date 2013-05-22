@@ -61,7 +61,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
                                  action=conf_action(self._config.plugins[self.full_name]))
         
 
-    def get_config_value(name, default):
+    def get_config_value(self, name, default):
         config = self._config.plugins[self.full_name]
 
         if config.get(name):
