@@ -164,11 +164,7 @@ def curl_download(src, dst):
 @command()
 def install_omnibus_chef(chef_version = None):
     curl_download('https://www.opscode.com/chef/install.sh', '/tmp/install-chef.sh')
-
-    if chef_version:
-        return 'bash /tmp/install-chef.sh -v {0}'.format(chef_version)
-    else:
-        return 'bash /tmp/install-chef.sh'
+    return 'bash /tmp/install-chef.sh -v {0}'.format(chef_version)
 
 
 @command()
@@ -180,4 +176,4 @@ def chef_solo(runlist):
 def fetch_chef_payload(payload_url):
     curl_download(payload_url, '/tmp/chef_payload.tar.gz')
 
-    return 'tar -C / -xf /tmp/chef_payload.tar.gz'.format(payload_url)
+    return 'tar -xf /tmp/chef_payload.tar.gz'.format(payload_url)
