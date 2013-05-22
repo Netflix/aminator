@@ -35,6 +35,7 @@ from aminator.config import conf_action
 __all__ = ('ChefProvisionerPlugin',)
 log = logging.getLogger(__name__)
 CommandResult = namedtuple('CommandResult', 'success result')
+CommandOutput = namedtuple('CommandOutput', 'std_out std_err')
 
 class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
@@ -42,30 +43,53 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     See BaseLinuxProvisionerPlugin for details
     """
     _name = 'chef'
+    _default_chef_version = '10.18.0'
 
     def add_plugin_args(self):
         context = self._config.context
-        chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Required options for running chef-solo provisioner')
+        chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Options for the chef solo provisioner')
 
-        chef_config.add_argument('-a', '--alias', dest='alias', help='Alias for the runlist items. This will be used as the name for the ami',
+        chef_config.add_argument('-a', '--alias', dest='alias', help='Alias for AMI naming. (default: runlist)',
                                  action=conf_action(self._config.plugins[self.full_name]))
-        chef_config.add_argument('--payload-url', dest='payload_url', help='Location to fetch the payload from',
+        chef_config.add_argument('--payload-url', dest='payload_url', help='Location to fetch the payload from (required)',
                                  action=conf_action(self._config.plugins[self.full_name]))
-        chef_config.add_argument('--payload-version', dest='payload_version', help='Payload version',
+        chef_config.add_argument('--payload-version', dest='payload_version', help='Payload version (default: 0.0.1)',
                                  action=conf_action(self._config.plugins[self.full_name]))
-        chef_config.add_argument('--payload-release', dest='payload_release', help='Payload release',
+        chef_config.add_argument('--payload-release', dest='payload_release', help='Payload release (default: 0)',
                                  action=conf_action(self._config.plugins[self.full_name]))
-        chef_config.add_argument('--chef-version', dest='chef_version', help='Version of chef to install', default="10.18.0",
+        chef_config.add_argument('--chef-version', dest='chef_version', help='Version of chef to install (default: %s)' % self._default_chef_version,
                                  action=conf_action(self._config.plugins[self.full_name]))
         
+
+    def get_config_value(name, default):
+        config = self._config.plugins[self.full_name]
+
+        if config.get(name):
+            return config.get(name)
+        
+        self._config.plugins[self.full_name].__setattr__(name, default)
+        return default
+
 
     def _refresh_package_metadata(self):
         """
         Fetch the latest version of cookbooks and JSON node info
         """
+        context         = self._config.context
         config          = self._config.plugins[self.full_name]
-        payload_url     = config.get('payload-url')
-        chef_version    = config.get('chef_version')
+
+        # This is a required arg, so no default values
+        payload_url     = config.get('payload_url')
+
+        # Fetch config values if provided, otherwise set them to their default values
+        alias           = self.get_config_value('alias', context.arg.package)
+        payload_version = self.get_config_value('payload_version', '0.0.1')
+        payload_release = self.get_config_value('payload_release', '0')
+        chef_version    = self.get_config_value('chef_version', self._default_chef_version)
+
+        if not payload_url:
+            log.critical('Missing required argument for chef provisioner: --payload-url')
+            return CommandResult(False, CommandOutput('', 'Missing required argument for chef provisioner: --payload-url'))
 
         if os.path.exists("/opt/chef/bin/chef-solo"):
             log.debug('Omnibus chef is already installed, skipping install')
@@ -83,31 +107,6 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
     def _provision_package(self):
         config          = self._config.plugins[self.full_name]
-        alias           = config.get('alias')
-        payload_url     = config.get('payload-url')
-        payload_version = config.get('payload-version')
-        payload_release = config.get('payload-release')
-        chef_version    = config.get('chef-version')
-
-        if not alias:
-            log.critical('Missing argument for chef provisioner: --alias')
-            return None
-
-        if not payload_url:
-            log.critical('Missing argument for chef provisioner: --payload-url')
-            return None
-
-        if not payload_version:
-            log.critical('Missing argument for chef provisioner: --payload-version')
-            return None
-
-        if not payload_release:
-            log.critical('Missing argument for chef provisioner: --payload-release')
-            return None
-
-        if not chef_version:
-            log.critical('Missing argument for chef provisioner: --chef-version')
-            return None
 
         pass
         context = self._config.context
@@ -120,11 +119,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         config = self._config.plugins[self.full_name]
 
-        name    = config.get('name')
-        version = config.get('version')
-        release = config.get('release')
-
-        context.package.attributes = { 'name': name, 'version': version, 'release': release }
+        context.package.attributes = { 'name': config.get('alias'), 'version': config.get('payload_version'), 'release': config.get('payload_release') }
 
     def _deactivate_provisioning_service_block(self):
         """
@@ -185,6 +180,6 @@ def chef_solo(runlist):
 
 @command()
 def fetch_chef_payload(payload_url):
-    curl_download(payload_url, '/tmp/foo.tar.gz')
+    curl_download(payload_url, '/tmp/chef_payload.tar.gz')
 
-    return 'tar -C / -xf /tmp/foo.tar.gz'.format(payload_url)
+    return 'tar -C / -xf /tmp/chef_payload.tar.gz'.format(payload_url)
