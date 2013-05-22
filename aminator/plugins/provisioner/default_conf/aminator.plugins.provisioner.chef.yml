@@ -3,6 +3,8 @@ enabled: true
 short_circuit: true
 short_circuit_files:
   - /sbin/service
+  - /sbin/start
+  - /sbin/stop
 
 # fstab-esque list of mounts for a chroot environment. ordered.
 # [device, type, mount point, options]
