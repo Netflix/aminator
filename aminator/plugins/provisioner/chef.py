@@ -82,7 +82,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         payload_url     = config.get('payload_url')
 
         # Fetch config values if provided, otherwise set them to their default values
-        alias           = self.get_config_value('alias', context.arg.package)
+        alias           = self.get_config_value('alias', context.package.arg)
         payload_version = self.get_config_value('payload_version', '0.0.1')
         payload_release = self.get_config_value('payload_release', '0')
         chef_version    = self.get_config_value('chef_version', self._default_chef_version)
