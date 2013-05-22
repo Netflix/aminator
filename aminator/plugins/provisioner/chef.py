@@ -43,7 +43,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
     See BaseLinuxProvisionerPlugin for details
     """
     _name = 'chef'
-    _default_chef_version = '10.18.0'
+    _default_chef_version = '10.26.0'
 
     def add_plugin_args(self):
         context = self._config.context
