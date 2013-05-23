@@ -171,7 +171,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def attach_volume(self, blockdevice, tag=True):
         self.allocate_base_volume(tag=tag)
         # must do this as amazon still wants /dev/sd*
-        ec2_device_name = os.path.realpath(blockdevice) if os.path.islink(blockdevice) else blockdevice
+        ec2_device_name = blockdevice.replace('xvd', 'sd')
         log.debug('Attaching volume {0} to {1}:{2}({3})'.format(self._volume.id, self._instance.id, ec2_device_name,
                                                                 blockdevice))
         self._volume.attach(self._instance.id, ec2_device_name)
