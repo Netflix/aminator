@@ -23,7 +23,6 @@ aminator.plugins.cloud.ec2
 ==========================
 ec2 cloud provider
 """
-import os
 import logging
 from time import sleep
 
