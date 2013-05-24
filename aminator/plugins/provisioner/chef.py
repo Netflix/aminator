@@ -50,7 +50,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Options for the chef solo provisioner')
 
-        chef_config.add_argument('-r', '--runlist', dest='runlist', help='Chef run list items. If not set, run list should be specified in the node JSON file',
+        chef_config.add_argument('-R', '--runlist', dest='runlist', help='Chef run list items. If not set, run list should be specified in the node JSON file',
                                  action=conf_action(self._config.plugins[self.full_name]))
         chef_config.add_argument('--payload-url', dest='payload_url', help='Location to fetch the payload from (required)',
                                  action=conf_action(self._config.plugins[self.full_name]))
