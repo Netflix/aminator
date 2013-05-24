@@ -49,7 +49,7 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Options for the chef solo provisioner')
 
-        chef_config.add_argument('-a', '--alias', dest='alias', help='Alias for AMI naming. (default: runlist)',
+        chef_config.add_argument('-a', '--alias', dest='alias', help='Alias for AMI naming. (required)',
                                  action=conf_action(self._config.plugins[self.full_name]))
         chef_config.add_argument('--payload-url', dest='payload_url', help='Location to fetch the payload from (required)',
                                  action=conf_action(self._config.plugins[self.full_name]))
@@ -78,14 +78,18 @@ class ChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context         = self._config.context
         config          = self._config.plugins[self.full_name]
 
-        # This is a required arg, so no default values
+        # These required args, so no default values
         payload_url     = config.get('payload_url')
+        alias           = config.get('alias')
 
         # Fetch config values if provided, otherwise set them to their default values
-        alias           = self.get_config_value('alias', context.package.arg)
         payload_version = self.get_config_value('payload_version', '0.0.1')
         payload_release = self.get_config_value('payload_release', '0')
         chef_version    = self.get_config_value('chef_version', self._default_chef_version)
+
+        if not alias:
+            log.critical('Missing required argument for chef provisioner: --alias')
+            return CommandResult(False, CommandOutput('', 'Missing required argument for chef provisioner: --alias'))
 
         if not payload_url:
             log.critical('Missing required argument for chef provisioner: --payload-url')
