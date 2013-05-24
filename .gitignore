@@ -42,6 +42,3 @@ nosetests.xml
 *.sublime-project
 *.sublime-workspace
 .idea
-
-# vim swap files
-*.swp
