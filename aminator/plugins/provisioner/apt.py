@@ -54,7 +54,7 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
             if x == 'version':
                 if x in metadata and ':' in metadata[x]:
