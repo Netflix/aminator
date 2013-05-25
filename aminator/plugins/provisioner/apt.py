@@ -125,13 +125,11 @@ def apt_get_localinstall(package):
     """install deb file with dpkg then resolve dependencies
     """
     dpkg_ret = dpkg_install(package)
-    if dpkg_ret.success:
-        apt_ret = apt_get_install('--fix-missing')
-        if apt_ret.success:
-            return True
-        else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
-    else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
-    return False
+    if not dpkg_ret.success:
+        log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
+        return dpkg_ret
 
+    apt_ret = apt_get_install('--fix-missing')
+    if not apt_ret.success:
+            log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
+    return apt_ret
