@@ -56,8 +56,8 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
-            if x == 'version':
-                if x in metadata and ':' in metadata[x]:
+            if x == 'version' and x in metadata:
+                if ':' in metadata[x]:
                     # strip epoch element from version
                     vers = metadata[x]
                     metadata[x] = vers[vers.index(':')+1:]
