@@ -85,7 +85,7 @@ setup(
     zip_safe=False,
     install_requires=requires,
     entry_points=entry_points,
-    license=open('LICENSE.txt').read(),
+    license='ASL 2.0',
     classifiers=(
         'Development Status :: 4 - Beta',
         'Environment :: Console',
