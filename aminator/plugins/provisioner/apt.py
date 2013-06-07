@@ -54,10 +54,10 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''))
+        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
-            if x == 'version':
-                if x in metadata and ':' in metadata[x]:
+            if x == 'version' and x in metadata:
+                if ':' in metadata[x]:
                     # strip epoch element from version
                     vers = metadata[x]
                     metadata[x] = vers[vers.index(':')+1:]
@@ -125,13 +125,11 @@ def apt_get_localinstall(package):
     """install deb file with dpkg then resolve dependencies
     """
     dpkg_ret = dpkg_install(package)
-    if dpkg_ret.success:
-        apt_ret = apt_get_install('--fix-missing')
-        if apt_ret.success:
-            return True
-        else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
-    else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
-    return False
+    if not dpkg_ret.success:
+        log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
+        return dpkg_ret
 
+    apt_ret = apt_get_install('--fix-missing')
+    if not apt_ret.success:
+            log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
+    return apt_ret
