@@ -1,5 +1,12 @@
-aminator - Easily turn an app into an AMI
+aminator - Easily create application-specific custom AMIs
 =========================================
+
+Aminator creates a custom AMI from just:
+
+* A base ami ID 
+* A link to a deb or rpm package that installs your application.
+
+This is useful for many AWS workflows, particularly ones that take advantage of auto-scaling groups.
 
 Requirements
 ------------
@@ -74,7 +81,8 @@ The rough amination workflow:
 
 #. Create a volume from the snapshot of the base AMI
 #. Attach and mount the volume
-#. Chroot into mounted volume and provision application
+#. Chroot into mounted volume
+#. Provision application onto mounted volume using rpm or deb package
 #. Unmount the volume and create a snapshot
 #. Register the snapshot as an AMI
 
