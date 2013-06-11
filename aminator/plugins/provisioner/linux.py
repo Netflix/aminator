@@ -66,6 +66,14 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def _deactivate_provisioning_service_block(self):
         """ prevent service startup when packages are installed in chroot """
 
+    def _pre_chroot_block(self):
+        """ run commands after mounting the volume, but before chroot'ing """
+        pass
+
+    def _post_chroot_block(self):
+        """ commands to run after the exiting the chroot, but before unmounting / finalizing """
+        pass
+
     def provision(self):
         context = self._config.context
 
@@ -78,6 +86,9 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         else:
             log.info('performing a repo install of {0}'.format(context.package.arg))
             context.package.local_install = False
+
+        log.debug('Pre chroot command block')
+        self._pre_chroot_block()
 
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
@@ -98,6 +109,10 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 os.remove(context.package.arg)
 
         log.debug('Exited chroot')
+
+        log.debug('Post chroot command block')
+        self._post_chroot_block()
+
         log.info('Provisioning succeeded!')
         return True
 
@@ -259,6 +274,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
+        if exc_type and self._config.context.preserve_on_error:
+            return False
         if not self._teardown_chroot():
             raise VolumeException('Error tearing down chroot')
         return False
