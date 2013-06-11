@@ -99,4 +99,5 @@ setup(
         'Topic :: System :: Installation/Setup',
         'Topic :: Utilities',
     ),
+    options = {'bdist_rpm':{'post_install' : 'post_install'}},
 )

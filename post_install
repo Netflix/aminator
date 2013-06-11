@@ -1,0 +1,2 @@
+easy_install envoy "boto>=2.7"
+mkdir -p /var/log/aminator /var/aminator/lock
