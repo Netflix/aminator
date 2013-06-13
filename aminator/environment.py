@@ -47,7 +47,6 @@ class Environment(object):
         log.debug("============== END YAML representation of loaded configs ================")
 
     def provision(self):
-	return False
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
         with self.cloud as cloud:
             with self.finalizer(cloud) as finalizer:

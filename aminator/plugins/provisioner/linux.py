@@ -128,11 +128,15 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Installation of provisioning config failed')
                 return False
 
+	log.debug("starting short_circuit ")
+
         #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
             if not self._deactivate_provisioning_service_block():
                 log.critical('Failure short-circuiting files')
                 return False
+
+	log.debug("finished short_circuit")
 
         log.debug('Chroot environment ready')
         return True
