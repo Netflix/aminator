@@ -25,6 +25,7 @@ The orchestrator
 """
 import logging
 from pprint import pformat
+import yaml
 
 log = logging.getLogger(__name__)
 
@@ -41,11 +42,12 @@ class Environment(object):
             plugin = self._plugin_manager.find_by_kind(kind, name)
             setattr(self, kind, plugin.obj)
             log.debug('Attached: {0}'.format(getattr(self, kind)))
-	log.debug("============= begin final configs loaded ===============")
-	log.debug(pformat(self._config, width=20))
-	log.debug("============= end  final configs loaded ===============")
+        log.debug("============= BEGIN YAML representation of loaded configs ===============")
+        log.debug(yaml.dump(self._config))
+        log.debug("============== END YAML representation of loaded configs ================")
 
     def provision(self):
+	return False
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
         with self.cloud as cloud:
             with self.finalizer(cloud) as finalizer:
