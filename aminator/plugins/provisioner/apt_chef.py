@@ -90,9 +90,28 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 	Pass thru to the AptProvisioner method, but using our configs
         """
         
-        # metadata for chef = chef-json-file/version
-        context.package.attributes = "k-test/1.0"
+        # since there isn't a package to get this info from, we'll need to be told
+        # this stuff.  I'm thinking we could add it to the json file which is 
+        # name = cookbook/role name
+        # version = cookbook version
+        # hopefully auto-generated from Jenkins
 
+	context = self._config.context
+        config = self._config.plugins[self.full_name]
+
+        context.package.attributes = { 'name': context.package.arg, 'version': 0.1, 'release': 0 }
+
+        #context.package.attributes = "k-test/1.0"
+        context.package.attributes['arch'] = 'x86_64'
+        context.package.attributes['base_ami_name'] = 'replace-me-base'
+        context.package.attributes['base_ami_id'] = 'replace-me-ami-id'
+        context.package.attributes['base_ami_version'] = 'replace-me-ami-version'
+	#context.ami.name = 'nflx-base-0.1-x86_64-2013061054-ebs'
+	#context.ami.tags = {}
+	#context.ami.tags.name = 'k-test-1.0'
+
+         
+        #    tag_formats: !bunch.Bunch {appversion: '{name}-{version}-{release}', base_ami_version: '{base_ami_version}'}
 
     def _deactivate_provisioning_service_block(self):
         """
@@ -151,28 +170,33 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 	"""
 	
        # TODO stage JSON
+        log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
 	context = self._config.context
         config = self._config
+	context.package.dir = config.plugins[self.full_name].get('chef_dir', '/var/chef')
+
+	chef_dir = context.package.dir  # hold onto these as _stage_pkg mutates context.package.arg
+        chef_json = context.package.arg
 
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
 
-        log.debug('Entering chroot at {0}'.format(self._mountpoint))
+	log.debug('before _stage_pkg context.package.dir = {0}'.format(context.package.dir))
+	log.debug('before _stage_pkg context.package.arg = {0}'.format(context.package.arg))
 
-        src_file = context.package.arg.replace('file://', '')
-        dst_file_path = config.plugins[self.full_name].get('chef_dir', '/var/chef')
+        if not self._stage_pkg():
+            log.critical('failed to stage {0}'.format(context.package.arg))
+            return False
 
-        #dst_file = dst_file_path + "/" + src_file
-	log.debug('moving {0} to {1}'.format(src_file, dst_file_path))
-
-        shutil.move(src_file, dst_file_path)
+	log.debug('after _stage_pkg context.package.dir = {0}'.format(context.package.dir))
+	log.debug('after _stage_pkg context.package.arg = {0}'.format(context.package.arg))
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
 
             log.debug('Preparing to run chef-solo')
-            result = chef_solo(dst_file_path, context.package.arg)  # TODO: create own property context.chef.json.arg?
+            result = chef_solo(chef_dir, chef_json)  # TODO: create own property context.chef.json.arg?
             if not result.success:
                 log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
                 return False
@@ -194,7 +218,9 @@ def chef_solo(chef_dir, chef_json):
     # if runlist:
     #     return 'chef-solo -j /tmp/node.json -c /tmp/solo.rb -o {0}'.format(runlist)
     # else:
-    return 'chef-solo -j /{0}/{1} -c /{0}/solo.rb'.format(chef_dir, chef_json)
+    log.debug('Preparing to run chef-solo {0}'.format(chef_json))
+    #return 'chef-solo -j /{0}/{1} -c /{0}/solo.rb'.format(chef_dir, chef_json)
+    return 'chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json)
 
 @command()
 def fetch_chef_payload(payload_url):
