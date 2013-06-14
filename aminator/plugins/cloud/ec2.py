@@ -327,8 +327,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
         bdm = BlockDeviceMapping(connection=self._connection)
         bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id,
                                                  delete_on_termination=True)
-        for (os_dev, ec2_dev) in block_device_map:
-            bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
+        if not block_device_map is None:
+            for (os_dev, ec2_dev) in block_device_map:
+                bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
         return bdm
 
     @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
