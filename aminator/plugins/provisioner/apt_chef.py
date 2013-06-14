@@ -51,12 +51,12 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         context = self._config.context
         chef_config = self._parser.add_argument_group(title='Chef Solo Options', description='Options for the chef solo provisioner')
 
-        chef_config.add_argument('-j', '--json-attributes', dest='chef_json', help='Chef JSON file (the same as running chef-solo -j)',
-                                 action=conf_action(self._config.plugins[self.full_name]))
-
-        chef_config.add_argument('-o', '--override-runlist', dest='chef_json', help='Run this comma-separated list of items (the same as running chef-solo -o)',
-                                 action=conf_action(self._config.plugins[self.full_name]))
-
+        chef_config.add_argument('-j', '--json-attributes', dest='json', 
+				 help='Chef JSON file (the same as running chef-solo -j)',
+				 action=conf_action(config=context.chef))
+        chef_config.add_argument('-o', '--override-runlist', dest='override', 
+                                 help='Run this comma-separated list of items (the same as running chef-solo -o)',
+				 action=conf_action(config=context.chef))
 
     def _refresh_package_metadata(self):
         """
@@ -154,7 +154,10 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
 	# hold onto these as _stage_pkg mutates context.package.arg
 	context.chef.setdefault('dir', context.package.dir)
-	context.chef.setdefault('json', context.package.arg)
+        if context.package.arg.startswith('http://'):
+	    context.chef.setdefault('json', context.package.arg.split('/')[-1])
+	else:
+	    context.chef.setdefault('json', context.package.arg)
 
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
