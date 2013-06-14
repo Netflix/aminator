@@ -40,7 +40,7 @@ log = logging.getLogger(__name__)
 CommandResult = namedtuple('CommandResult', 'success result')
 CommandOutput = namedtuple('CommandOutput', 'std_out std_err')
 
-class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class AptChefProvisionerPlugin(AptProvisionerPlugin):
     """
     AptChefProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
     See BaseLinuxProvisionerPlugin for details
@@ -57,13 +57,6 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         chef_config.add_argument('-o', '--override-runlist', dest='override', 
                                  help='Run this comma-separated list of items (the same as running chef-solo -o)',
 				 action=conf_action(config=context.chef))
-
-    def _refresh_package_metadata(self):
-        """
-	Pass thru to the AptProvisioner method
-        """
-        apt_provisioner = AptProvisionerPlugin()
-        return apt_provisioner._refresh_package_metadata()
 
 
     def _provision_package(self):
@@ -88,48 +81,6 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 	context = self._config.context
         context.package.attributes = { 'name': context.chef.json, 'version': 0.1, 'release': 0 }
 
-
-    def _deactivate_provisioning_service_block(self):
-        """
-        Prevent packages installing in the chroot from starting
-        For debian based distros, we add /usr/sbin/policy-rc.d
-        """
-
-        config = self._config.plugins[self.full_name]
-        path = self._mountpoint + config.get('policy_file_path', '')
-        filename = path + "/" + config.get('policy_file')
-
-        if not os.path.isdir(path):
-            log.debug("creating %s", path)
-            os.makedirs(path)
-            log.debug("created %s", path)
-
-        with open(filename, 'w') as f:
-            log.debug("writing %s", filename)
-            f.write(config.get('policy_file_content'))
-            log.debug("wrote %s", filename)
-
-        os.chmod(filename, config.get('policy_file_mode', ''))
-
-        return True
-
-    def _activate_provisioning_service_block(self):
-        """
-        Remove policy-rc.d file so that things start when the AMI launches
-        """
-        config = self._config.plugins[self.full_name]
-
-        policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
-            config.get('policy_file', '')
-
-        if os.path.isfile(policy_file):
-            log.debug("removing %s", policy_file)
-            os.remove(policy_file)
-        else:
-            log.debug("The %s was missing, this is unexpected as the "
-                      "AptChefProvisionerPlugin should manage this file", policy_file)
-
-        return True
 
     def provision(self):
         context = self._config.context
