@@ -25,6 +25,7 @@ basic ubuntu chef provisioner.  assumes the base ami has chef installed
 """
 import logging
 import os
+import shutil
 from collections import namedtuple
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
@@ -151,23 +152,29 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
 	
        # TODO stage JSON
 
+	context = self._config.context
+        config = self._config
+
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
 
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
+        src_file = context.package.arg.replace('file://', '')
+        dst_file_path = config.plugins[self.full_name].get('chef_dir', '/var/chef')
+
+        #dst_file = dst_file_path + "/" + src_file
+	log.debug('moving {0} to {1}'.format(src_file, dst_file_path))
+
+        shutil.move(src_file, dst_file_path)
+
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
-        
-            log.debug('Copying chef json file {0} to chroot'.format(context.package.arg))
-            if not self._stage_pkg():
-                log.critical('failed to stage {0}'.format(context.package.arg))
-                return False
 
             log.debug('Preparing to run chef-solo')
-            result = chef_solo(context.package.arg)  # TODO: create own property context.chef.json.arg?
+            result = chef_solo(dst_file_path, context.package.arg)  # TODO: create own property context.chef.json.arg?
             if not result.success:
-                log.critical('chef-solo run  failed: {0.std_err}'.format(result.result))
+                log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
                 return False
 
             self._store_package_metadata()
@@ -182,12 +189,12 @@ class AptChefProvisionerPlugin(BaseLinuxProvisionerPlugin):
         return True
 
 @command()
-def chef_solo(chef_json):
+def chef_solo(chef_dir, chef_json):
     # If run list is not specific, dont override it on the command line
     # if runlist:
     #     return 'chef-solo -j /tmp/node.json -c /tmp/solo.rb -o {0}'.format(runlist)
     # else:
-    return 'chef-solo -j /tmp/{0} -c /tmp/solo.rb'.format(chef_json)
+    return 'chef-solo -j /{0}/{1} -c /{0}/solo.rb'.format(chef_dir, chef_json)
 
 @command()
 def fetch_chef_payload(payload_url):
