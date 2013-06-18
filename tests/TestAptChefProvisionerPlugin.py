@@ -36,7 +36,6 @@ class TestAptChefProvisionerPlugin(object):
     def setup_method(self, method):
         self.chef_provisioner = AptChefProvisionerPlugin()
         self.chef_provisioner._config = Config()
-        # self.config.plugins = Config()
         self.chef_provisioner._config.context = Config()
         self.chef_provisioner._config.context.chef = Config()
         self.chef_provisioner._config.context.package = Config()
@@ -46,7 +45,8 @@ class TestAptChefProvisionerPlugin(object):
 
     def test_parse_json(self):
 
-        # given a JSON doc, what's the name, version, release string
+        # given a JSON doc, what's the name, version, release string, etc
+        # this is more a direct test of the ChefJSON mapping
 
         with open(self.chef_provisioner._get_chef_json_full_path()) as chef_json_file:
             my_json = json.load(chef_json_file)
@@ -58,10 +58,7 @@ class TestAptChefProvisionerPlugin(object):
         assert isinstance (my_json['run_list'], list)
         assert "recipe[engtools::mimir]" == my_json['run_list'][0]
 
-
     def test_metadata(self):
         self.chef_provisioner._store_package_metadata()
-        # context.package.attributes = {'name': context.chef.json, 'version': 0.1, 'release': 0}
-        # assert "mimird" == self.chef_provisioner._config.context.chef.json.name
         assert "1.0" == self.chef_provisioner._config.context.package.attributes['version']
         assert "277" == self.chef_provisioner._config.context.package.attributes['release']

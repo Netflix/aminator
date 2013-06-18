@@ -21,7 +21,15 @@
 """
 aminator.plugins.provisioner.apt_chef
 ================================
-basic apt chef provisioner.  assumes the base ami has chef installed
+    Chef provisioner for debian family hosts
+
+    Currently, it expects the Chef recipes to be pre-installed in the chef_dir so that the
+    execution of this plugin can simply be triggered by supplying the usual chef-solo JSON node
+    file.
+
+    TODOs:
+        * -r equivalent which will enable amination using a tar.gz recipe file (file or http).
+        * install chef from file or http for cases where we may be on a Chef-less install (can skip building a Base)
 """
 import logging
 from collections import namedtuple
@@ -41,16 +49,8 @@ CommandOutput = namedtuple('CommandOutput', 'std_out std_err')
 
 class AptChefProvisionerPlugin(AptProvisionerPlugin):
     """
-    AptChefProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
-    See BaseLinuxProvisionerPlugin for details
-
-    Currently, it expects the Chef recipes to be pre-installed in the chef_dir so that the
-    execution of this plugin can simply be triggered by supplying the usual chef-solo JSON node
-    file.
-
-    TODOs:
-        * -r equivalent which will enable amination using a tar.gz recipe file (file or http).
-        * install chef from file or http for cases where we may be on a Chef-less install (can skip building a Base)
+    AptChefProvisionerPlugin takes the majority of its behavior from AptProvisionerPlugin
+    See AptProvisionerPlugin for details
     """
     _name = 'apt_chef'
 
@@ -71,22 +71,25 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
     def _store_package_metadata(self):
         """
-        these values come from the chef JSON node file
+        these values come from the chef JSON node file since we can't query the package for these attributes
         """
 
         context = self._config.context
         log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
         with open(self._get_chef_json_full_path()) as chef_json_file:
             chef_json = json.load(chef_json_file)
-            log.debug('setting metadata attributes name=[{0}], version=[{1}], release=[{2}]'.format(chef_json['name'],
-                      chef_json['version'], chef_json['release']))
+            log.debug(
+                'metadata attrs name=[{0}], version=[{1}], release=[{2}], build_job=[{3}], build_number=[{4}]'.format(
+                    chef_json['name'], chef_json['version'], chef_json['release'], chef_json['build_job'],
+                    chef_json['build_number']))
 
         context.package.attributes = {'name': chef_json['name'],
                                       'version': chef_json['version'],
-                                      'release': chef_json['release']}
+                                      'release': chef_json['release'],
+                                      'build_job': chef_json['build_job'],
+                                      'build_number': chef_json['build_number']}
 
     def provision(self):
-        context = self._config.context
 
         # for simple chef run, we need a json file (or -o?) tell what recipes to execute
         # - JSON file
@@ -96,7 +99,6 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         #    - support -o
         #    - copy in cookbooks?
 
-        # TODO stage JSON
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
         context = self._config.context
@@ -113,15 +115,10 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
 
-        log.debug('before _stage_pkg context.package.dir = {0}'.format(context.package.dir))
-        log.debug('before _stage_pkg context.package.arg = {0}'.format(context.package.arg))
-
+        # copy the JSON file to chef_dir
         if not self._stage_pkg():
             log.critical('failed to stage {0}'.format(context.package.arg))
             return False
-
-        log.debug('after _stage_pkg context.package.dir = {0}'.format(context.package.dir))
-        log.debug('after _stage_pkg context.package.arg = {0}'.format(context.package.arg))
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
@@ -148,10 +145,10 @@ class ChefNode(object):
     """
     Provide a convenient object mapping from a JSON string for a Chef JSON node
     """
+
     def __init__(self, name, description, version, release,
                  change, bug_id, build_job, built_by, build_date,
                  build_number, build_id, run_list):
-
         self.name = name
         self.description = description
         self.version = version
@@ -169,7 +166,7 @@ class ChefNode(object):
         if '__type__' in obj and obj['__type__'] == 'ChefNode':
             return ChefNode(obj['name'], obj['description'], obj['version'],
                             obj['release'], obj['change'], obj['bug-id'], obj['build_job'],
-                            obj['built_by'], obj['build_date'], obj['build_number'], obj['build_id'])
+                            obj['built_by'], obj['build_date'], obj['build_number'], obj['build_id'], obj['run_list'])
         return obj
 
 
