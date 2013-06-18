@@ -122,7 +122,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
             log.debug('Inside chroot')
 
             # install chef if needed
-            if context.chef.chef_package_url is not None:
+            if 'chef_package_url' in context.chef:
                 log.debug('prepping target dir {0}'.format(context.chef.dir))
                 mkdirs(context.chef.dir)
                 log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url, context.chef.dir))
