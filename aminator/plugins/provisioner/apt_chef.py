@@ -136,7 +136,12 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                 dpkg_install(chef_package_name)
 
             log.debug('Preparing to run chef-solo')
-            result = chef_solo(context.chef.dir, context.chef.json, context.chef.recipe_url)
+
+            if 'recipe_url' in context.chef:
+                result = chef_solo(context.chef.dir, context.chef.json, context.chef.recipe_url)
+            else:
+                result = chef_solo(context.chef.dir, context.chef.json, None)
+
             if not result.success:
                 log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
                 return False
