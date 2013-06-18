@@ -111,7 +111,9 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         else:
             context.chef.setdefault('json', context.package.arg)
 
-        # copy the JSON file to chef_dir
+        # copy the JSON file to chef_dir.  mkdirs in case we've never installed chef
+        full_chef_dir_path = self._mountpoint + context.chef.dir
+        mkdirs(full_chef_dir_path)
         if not self._stage_pkg():
             log.critical('failed to stage {0}'.format(context.package.arg))
             return False
