@@ -67,7 +67,8 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                  action=conf_action(config=context.chef))
 
     def _get_chef_json_full_path(self):
-        return self._mountpoint + '/' + self._config.context.chef.json
+        return self._mountpoint + '/' + self._config.context.chef.dir.lstrip('/') + '/' + \
+               self._config.context.chef.json.lstrip('/')
 
     def _store_package_metadata(self):
         """
