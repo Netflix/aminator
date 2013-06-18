@@ -67,8 +67,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                  action=conf_action(config=context.chef))
 
     def _get_chef_json_full_path(self):
-        return self._mountpoint + '/' + self._config.context.chef.dir.lstrip('/') + '/' + \
-               self._config.context.chef.json.lstrip('/')
+        return self._config.context.chef.dir + '/' + self._config.context.chef.json.lstrip('/')
 
     def _store_package_metadata(self):
         """
@@ -76,9 +75,8 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         """
 
         context = self._config.context
+        log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
         with open(self._get_chef_json_full_path()) as chef_json_file:
-            # chef_json_file_full_path = self._mountpoint + chef_json_file
-            log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
             chef_json = json.load(chef_json_file)
             log.debug('setting metadata attributes name=[{0}], version=[{1}], release=[{2}]'.format(chef_json['name'],
                       chef_json['version'], chef_json['release']))

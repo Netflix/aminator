@@ -41,10 +41,8 @@ class TestAptChefProvisionerPlugin(object):
         self.chef_provisioner._config.context.chef = Config()
         self.chef_provisioner._config.context.package = Config()
         self.chef_provisioner._config.context.package.attributes = Config()
-        # self.config.context.chef.json = "test_chef_node.json"
-        self.chef_provisioner._config.context.chef.dir = "/aminator-chef/tests"  # e.g. /var/chef
+        self.chef_provisioner._config.context.chef.dir = "/Users/kvick/Projects/github/netflix/aminator/aminator-chef/tests"  # e.g. /var/chef
         self.chef_provisioner._config.context.chef.json = "test_chef_node.json"
-        self.chef_provisioner._mountpoint = '/Users/kvick/Projects/github/netflix/aminator'
 
     def test_parse_json(self):
 
