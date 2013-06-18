@@ -67,10 +67,10 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                                       description='Options for the chef solo provisioner')
 
         chef_config.add_argument('-u', '--recipe-url', dest='recipe_url',
-                                 help='URL to tar.gz containing recipes (see chef-solo -r)',
+                                 help='URL to tar.gz containing recipes (see chef-solo -r)', default=None,
                                  action=conf_action(config=context.chef))
         chef_config.add_argument('-i', '--install-chef', dest='chef_package_url',
-                                 help='Install chef-solo from URL)',
+                                 help='Install chef-solo from URL)', default=None,
                                  action=conf_action(config=context.chef))
 
     def _get_chef_json_full_path(self):
