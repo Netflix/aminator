@@ -128,7 +128,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Installation of provisioning config failed')
                 return False
 
-	log.debug("starting short_circuit ")
+        log.debug("starting short_circuit ")
 
         #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
@@ -136,7 +136,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Failure short-circuiting files')
                 return False
 
-	log.debug("finished short_circuit")
+        log.debug("finished short_circuit")
 
         log.debug('Chroot environment ready')
         return True
@@ -255,7 +255,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         except Exception:
             log.exception('Error encountered while staging package')
             return False
-        # reset to chrooted file path
+            # reset to chrooted file path
         context.package.arg = os.path.join(context.package.dir, context.package.file)
         return True
 

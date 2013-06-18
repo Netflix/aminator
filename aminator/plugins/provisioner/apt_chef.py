@@ -43,6 +43,14 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
     """
     AptChefProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
     See BaseLinuxProvisionerPlugin for details
+
+    Currently, it expects the Chef recipes to be pre-installed in the chef_dir so that the
+    execution of this plugin can simply be triggered by supplying the usual chef-solo JSON node
+    file.
+
+    TODOs:
+        * -r equivalent which will enable amination using a tar.gz recipe file (file or http).
+        * install chef from file or http for cases where we may be on a Chef-less install (can skip building a Base)
     """
     _name = 'apt_chef'
 
@@ -58,14 +66,21 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                  help='Run this comma-separated list of items (the same as running chef-solo -o)',
                                  action=conf_action(config=context.chef))
 
+    def _get_chef_json_full_path(self):
+        return self._mountpoint + '/' + self._config.context.chef.json
+
     def _store_package_metadata(self):
         """
         these values come from the chef JSON node file
         """
 
         context = self._config.context
-        with open(self._config.context.chef.json) as chef_json_file:
+        with open(self._get_chef_json_full_path()) as chef_json_file:
+            # chef_json_file_full_path = self._mountpoint + chef_json_file
+            log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
             chef_json = json.load(chef_json_file)
+            log.debug('setting metadata attributes name=[{0}], version=[{1}], release=[{2}]'.format(chef_json['name'],
+                      chef_json['version'], chef_json['release']))
 
         context.package.attributes = {'name': chef_json['name'],
                                       'version': chef_json['version'],
@@ -131,6 +146,9 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
 
 class ChefNode(object):
+    """
+    Provide a convenient object mapping from a JSON string for a Chef JSON node
+    """
     def __init__(self, name, description, version, release,
                  change, bug_id, build_job, built_by, build_date,
                  build_number, build_id, run_list):
@@ -151,8 +169,8 @@ class ChefNode(object):
     def object_decoder(self, obj):
         if '__type__' in obj and obj['__type__'] == 'ChefNode':
             return ChefNode(obj['name'], obj['description'], obj['version'],
-                            obj['release'], obj['change'], obj['bug-id'], obj['build-job'],
-                            obj['built-by'], obj['build-date'], obj['build-number'], obj['build-id'])
+                            obj['release'], obj['change'], obj['bug-id'], obj['build_job'],
+                            obj['built_by'], obj['build_date'], obj['build_number'], obj['build_id'])
         return obj
 
 

@@ -4,16 +4,15 @@
     "description": "Continuous Delivery Console",
     "version": "1.0",
     "release": "277",
-    "Change": "33a9d1cac7686c8a46c1f330add2e8d36850fd15",
-    "Bug-Id": "",
-    "Build-Job": "WE-WAPP-mimir",
-    "Built-By": "builds",
-    "Build-Date": "2013-06-14_16:22:24",
-    "Build-Number": "277",
-    "Build-Id": "2013-06-12_09-22-21",
+    "change": "33a9d1cac7686c8a46c1f330add2e8d36850fd15",
+    "bug_id": "",
+    "build_job": "WE-WAPP-mimir",
+    "built_by": "builds",
+    "build_date": "2013-06-14_16:22:24",
+    "build_number": "277",
+    "build_id": "2013-06-12_09-22-21",
     "run_list": [
-        "recipe[engtools::mimir]",
-        "recipe[engtools::foo]"
+        "recipe[engtools::mimir]"
     ],
     "default_attributes": {
         "mimir": {
