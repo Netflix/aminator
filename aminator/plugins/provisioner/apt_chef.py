@@ -27,15 +27,22 @@ aminator.plugins.provisioner.apt_chef
     execution of this plugin can simply be triggered by supplying the usual chef-solo JSON node
     file.
 
+    The JSON file (which is assumed to be the package_spec) is required as it will contain the recipes/roles to execute
+    as well as the metadata we need for tagging since we won't be able to query a package for that data.
+
     TODOs:
         * -r equivalent which will enable amination using a tar.gz recipe file (file or http).
         * install chef from file or http for cases where we may be on a Chef-less install (can skip building a Base)
+
+
+        https://opscode-omnibus-packages.s3.amazonaws.com/ubuntu/11.04/x86_64/chef_10.26.0-1.ubuntu.11.04_amd64.deb
 """
 import logging
 from collections import namedtuple
 import json
 
-from aminator.plugins.provisioner.apt import AptProvisionerPlugin
+from aminator.plugins.provisioner.apt import AptProvisionerPlugin, dpkg_install
+from aminator.util import download_file
 from aminator.util.linux import command
 from aminator.util.linux import Chroot
 from aminator.config import conf_action
@@ -59,11 +66,11 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         chef_config = self._parser.add_argument_group(title='Chef Solo Options',
                                                       description='Options for the chef solo provisioner')
 
-        chef_config.add_argument('-j', '--json-attributes', dest='json',
-                                 help='Chef JSON file (the same as running chef-solo -j)',
+        chef_config.add_argument('-u', '--recipe-url', dest='recipe_url',
+                                 help='URL to tar.gz containing recipes (see chef-solo -r)',
                                  action=conf_action(config=context.chef))
-        chef_config.add_argument('-o', '--override-runlist', dest='override',
-                                 help='Run this comma-separated list of items (the same as running chef-solo -o)',
+        chef_config.add_argument('-i', '--install-chef', dest='chef_package_url',
+                                 help='Install chef-solo from URL)',
                                  action=conf_action(config=context.chef))
 
     def _get_chef_json_full_path(self):
@@ -91,14 +98,6 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
     def provision(self):
 
-        # for simple chef run, we need a json file (or -o?) tell what recipes to execute
-        # - JSON file
-        #    - solo.rb
-        #    next steps:
-        #    - load JSON from URL
-        #    - support -o
-        #    - copy in cookbooks?
-
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
         context = self._config.context
@@ -112,19 +111,32 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         else:
             context.chef.setdefault('json', context.package.arg)
 
-        log.debug('Pre chroot command block')
-        self._pre_chroot_block()
-
         # copy the JSON file to chef_dir
         if not self._stage_pkg():
             log.critical('failed to stage {0}'.format(context.package.arg))
             return False
 
+        # if install chef, copy the deb to the volume
+
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
 
+            # install chef if needed
+            if context.chef.chef_package_url is not None:
+                log.debug('prepping target dir {0}'.format(context.chef.dir))
+                mkdirs(context.chef.dir)
+                log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url, context.chef.dir))
+                download_file(context.chef.chef_package_url, context.chef.dir, context.package.get('timeout', 1))
+                # get the package name so we can dpkg -i on it
+                if context.chef.chef_package_url.stastartswith('http://'):
+                    chef_package_name = context.chef.chef_package_url.split('/')[-1]
+                else:
+                    chef_package_name = context.chef.chef_package_url
+                log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
+                dpkg_install(chef_package_name)
+
             log.debug('Preparing to run chef-solo')
-            result = chef_solo(context.chef.dir, context.chef.json)
+            result = chef_solo(context.chef.dir, context.chef.json, context.chef.recipe_url)
             if not result.success:
                 log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
                 return False
@@ -132,9 +144,6 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
             self._store_package_metadata()
 
         log.debug('Exited chroot')
-
-        log.debug('Post chroot command block')
-        self._post_chroot_block()
 
         log.info('Provisioning succeeded!')
 
@@ -171,10 +180,17 @@ class ChefNode(object):
 
 
 @command()
-def chef_solo(chef_dir, chef_json):
-    # If run list is not specific, dont override it on the command line
-    # if runlist:
-    #     return 'chef-solo -j /tmp/node.json -c /tmp/solo.rb -o {0}'.format(runlist)
-    # else:
-    log.debug('Preparing to run chef-solo {0}'.format(chef_json))
-    return 'chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json)
+def mkdirs(chef_dir):
+    return 'mkdir -p {0}'.format(chef_dir)
+
+@command()
+def chef_solo(chef_dir, chef_json, chef_recipe_url=None):
+
+    if chef_recipe_url is None:
+        # we've have recipes pre-installed in chef_dir
+        log.debug('Preparing to run chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json))
+        return 'chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json)
+    else:
+        log.debug('Preparing to run chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json))
+        return 'chef-solo -j {0}/{1} -r {2}'.format(chef_dir, chef_json, chef_recipe_url)
+
