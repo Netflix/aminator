@@ -113,6 +113,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
         # copy the JSON file to chef_dir.  mkdirs in case we've never installed chef
         full_chef_dir_path = self._mountpoint + context.chef.dir
+        log.debug('prepping chef_dir {0}'.format(full_chef_dir_path))
         mkdirs(full_chef_dir_path)
         if not self._stage_pkg():
             log.critical('failed to stage {0}'.format(context.package.arg))
@@ -125,15 +126,17 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
             # install chef if needed
             if 'chef_package_url' in context.chef:
-                log.debug('prepping target dir {0}'.format(context.chef.dir))
-                mkdirs(context.chef.dir)
-                log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url, context.chef.dir))
-                download_file(context.chef.chef_package_url, context.chef.dir, context.package.get('timeout', 1))
+                log.debug('chef install selected')
                 # get the package name so we can dpkg -i on it
-                if context.chef.chef_package_url.stastartswith('http://'):
+                if context.chef.chef_package_url.startswith('http://'):
                     chef_package_name = context.chef.chef_package_url.split('/')[-1]
                 else:
                     chef_package_name = context.chef.chef_package_url
+
+                local_chef_package_file = context.chef.dir + '/' + chef_package_name
+                log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url,
+                                                                    local_chef_package_file))
+                download_file(context.chef.chef_package_url, local_chef_package_file, context.package.get('timeout', 1))
                 log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
                 dpkg_install(chef_package_name)
 
