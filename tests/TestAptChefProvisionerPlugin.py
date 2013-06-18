@@ -60,5 +60,8 @@ class TestAptChefProvisionerPlugin(object):
 
     def test_metadata(self):
         self.chef_provisioner._store_package_metadata()
+        assert "mimir" == self.chef_provisioner._config.context.package.attributes['name']
         assert "1.0" == self.chef_provisioner._config.context.package.attributes['version']
         assert "277" == self.chef_provisioner._config.context.package.attributes['release']
+        assert "WE-WAPP-mimir" == self.chef_provisioner._config.context.package.attributes['Build-Job']
+        assert "277" == self.chef_provisioner._config.context.package.attributes['Build-Number']

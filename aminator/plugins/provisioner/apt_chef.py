@@ -86,8 +86,8 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         context.package.attributes = {'name': chef_json['name'],
                                       'version': chef_json['version'],
                                       'release': chef_json['release'],
-                                      'build_job': chef_json['build_job'],
-                                      'build_number': chef_json['build_number']}
+                                      'Build-Job': chef_json['build_job'],
+                                      'Build-Number': chef_json['build_number']}
 
     def provision(self):
 
