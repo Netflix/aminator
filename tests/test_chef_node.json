@@ -1,0 +1,26 @@
+{
+    "__type__": "ChefNode",
+    "name": "mimir",
+    "description": "Continuous Delivery Console",
+    "version": "1.0",
+    "release": "277",
+    "Change": "33a9d1cac7686c8a46c1f330add2e8d36850fd15",
+    "Bug-Id": "",
+    "Build-Job": "WE-WAPP-mimir",
+    "Built-By": "builds",
+    "Build-Date": "2013-06-14_16:22:24",
+    "Build-Number": "277",
+    "Build-Id": "2013-06-12_09-22-21",
+    "run_list": [
+        "recipe[engtools::mimir]",
+        "recipe[engtools::foo]"
+    ],
+    "default_attributes": {
+        "mimir": {
+            "server": {
+                "home": "/var/lib/mimir",
+                "war_checksum": "7e676062231f6b80b60e53dc982eb89c36759bdd2da7f82ad8b35a002a36da9a"
+            }
+        }
+    }
+}

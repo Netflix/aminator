@@ -7,6 +7,5 @@ logutils
 pyyaml
 requests
 stevedore
-logging_tree
 simplejson
 pyyaml

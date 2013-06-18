@@ -25,6 +25,7 @@ basic apt chef provisioner.  assumes the base ami has chef installed
 """
 import logging
 from collections import namedtuple
+import json
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.util.linux import command
@@ -58,16 +59,17 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                  action=conf_action(config=context.chef))
 
     def _store_package_metadata(self):
-        # Pass thru to the AptProvisioner method, but using our configs
-        # since there isn't a package to get this info from, we'll need to be told
-        # this stuff.  I'm thinking we could add it to the json file which is 
-        # name = cookbook/role name
-        # version = cookbook version
-        # hopefully auto-generated from Jenkins
-
+        """
+        these values come from the chef JSON node file
+        """
 
         context = self._config.context
-        context.package.attributes = {'name': context.chef.json, 'version': 0.1, 'release': 0}
+        with open(self._config.context.chef.json) as chef_json_file:
+            chef_json = json.load(chef_json_file)
+
+        context.package.attributes = {'name': chef_json['name'],
+                                      'version': chef_json['version'],
+                                      'release': chef_json['release']}
 
     def provision(self):
         context = self._config.context
