@@ -138,7 +138,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                                                     local_chef_package_file))
                 download_file(context.chef.chef_package_url, local_chef_package_file, context.package.get('timeout', 1))
                 log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
-                dpkg_install(chef_package_name)
+                dpkg_install(local_chef_package_file)
 
             log.debug('Preparing to run chef-solo')
 
