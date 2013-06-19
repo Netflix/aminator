@@ -23,19 +23,16 @@ aminator.plugins.provisioner.apt_chef
 ================================
     Chef provisioner for debian family hosts
 
-    Currently, it expects the Chef recipes to be pre-installed in the chef_dir so that the
-    execution of this plugin can simply be triggered by supplying the usual chef-solo JSON node
-    file.
+    This plugin works by requiring a JSON file that contains the standard chef-solo node attributes.  To support
+    the metadata that aminator adds to the finished AMI, we'll add some additional fields that will be set in the
+    context by _store_package_metadata that will be used during the tagging finalizer (e.g. Jenkins job and build
+    number)
 
-    The JSON file (which is assumed to be the package_spec) is required as it will contain the recipes/roles to execute
-    as well as the metadata we need for tagging since we won't be able to query a package for that data.
+    Since the package_arg is required by aminator we'll use it for the JSON file and works via http or a local file.
+    Note, if specified locally, that file will be moved to the chroot and lost.
 
-    TODOs:
-        * -r equivalent which will enable amination using a tar.gz recipe file (file or http).
-        * install chef from file or http for cases where we may be on a Chef-less install (can skip building a Base)
-
-
-        https://opscode-omnibus-packages.s3.amazonaws.com/ubuntu/11.04/x86_64/chef_10.26.0-1.ubuntu.11.04_amd64.deb
+    This plugin will also allow you to install Chef omnibus from a URL.  Recipes can also be provided via http in
+    a tar.gz.  This supports aminating on an EBS volume that doesn't have chef pre-installed.
 """
 import logging
 from collections import namedtuple
@@ -70,15 +67,20 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                  help='URL to tar.gz containing recipes (see chef-solo -r)', default=None,
                                  action=conf_action(config=context.chef))
         chef_config.add_argument('-i', '--install-chef', dest='chef_package_url',
-                                 help='Install chef-solo from URL)', default=None,
+                                 help='Install chef-solo from URL', default=None,
                                  action=conf_action(config=context.chef))
 
     def _get_chef_json_full_path(self):
+        """
+        :return the fully qualified path of the JSON file in the chroot
+        """
         return self._config.context.chef.dir + '/' + self._config.context.chef.json.lstrip('/')
 
     def _store_package_metadata(self):
         """
-        these values come from the chef JSON node file since we can't query the package for these attributes
+        save info for the AMI we're building in the context so that it can be incorporated into tags and the description
+        during finalization. these values come from the chef JSON node file since we can't query the package for these
+        attributes
         """
 
         context = self._config.context
@@ -86,7 +88,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         with open(self._get_chef_json_full_path()) as chef_json_file:
             chef_json = json.load(chef_json_file)
             log.debug(
-                'metadata attrs name=[{0}], version=[{1}], release=[{2}], build_job=[{3}], build_number=[{4}]'.format(
+                'metadata name=[{0}], version=[{1}], release=[{2}], build_job=[{3}], build_number=[{4}]'.format(
                     chef_json['name'], chef_json['version'], chef_json['release'], chef_json['build_job'],
                     chef_json['build_number']))
 
@@ -97,6 +99,12 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                                       'Build-Number': chef_json['build_number']}
 
     def provision(self):
+        """
+        overrides the base provision
+          * store the chef JSON file information in the context
+          * install chef from a URL if specified
+          * call chef-solo
+        """
 
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
@@ -104,22 +112,21 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         config = self._config
         context.package.dir = config.plugins[self.full_name].get('chef_dir', '/var/chef')
 
-        # hold onto these as _stage_pkg mutates context.package.arg
+        # hold onto the JSON info as _stage_pkg mutates context.package.arg
         context.chef.setdefault('dir', context.package.dir)
         if context.package.arg.startswith('http://'):
             context.chef.setdefault('json', context.package.arg.split('/')[-1])
         else:
             context.chef.setdefault('json', context.package.arg)
 
-        # copy the JSON file to chef_dir.  mkdirs in case we've never installed chef
+        # copy the JSON file to chef_dir in the chroot.  mkdirs in case we've never installed chef
         full_chef_dir_path = self._mountpoint + context.chef.dir
         log.debug('prepping chef_dir {0}'.format(full_chef_dir_path))
         mkdirs(full_chef_dir_path)
+
         if not self._stage_pkg():
             log.critical('failed to stage {0}'.format(context.package.arg))
             return False
-
-        # if install chef, copy the deb to the volume
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
@@ -197,10 +204,10 @@ def mkdirs(chef_dir):
 def chef_solo(chef_dir, chef_json, chef_recipe_url=None):
 
     if chef_recipe_url is None:
-        # we've have recipes pre-installed in chef_dir
+        # we have recipes pre-installed in chef_dir
         log.debug('Preparing to run chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json))
         return 'chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json)
     else:
-        log.debug('Preparing to run chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json))
+        log.debug('Preparing to run chef-solo -j {0}/{1} -r {2}'.format(chef_dir, chef_json, chef_recipe_url))
         return 'chef-solo -j {0}/{1} -r {2}'.format(chef_dir, chef_json, chef_recipe_url)
 
