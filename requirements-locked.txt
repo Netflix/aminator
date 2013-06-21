@@ -1,10 +1,10 @@
 PyYAML==3.10
-boto==2.9.2
+boto==2.9.6
 bunch==1.0.1
 decorator==3.4.0
-distribute==0.6.38
+distribute==0.6.45
 envoy==0.0.2
 logutils==0.3.3
-requests==1.2.0
-stevedore==0.8
+requests==1.2.3
+stevedore==0.9.1
 wsgiref==0.1.2
