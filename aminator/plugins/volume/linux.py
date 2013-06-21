@@ -83,6 +83,8 @@ class LinuxVolumePlugin(BaseVolumePlugin):
         return self._mountpoint
 
     def __exit__(self, exc_type, exc_value, trace):
+        if exc_type and self._config.context.preserve_on_error:
+            return False
         self._unmount()
         self._detach()
         self._delete()
