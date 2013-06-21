@@ -40,7 +40,7 @@ class TestAptChefProvisionerPlugin(object):
         self.chef_provisioner._config.context.chef = Config()
         self.chef_provisioner._config.context.package = Config()
         self.chef_provisioner._config.context.package.attributes = Config()
-        self.chef_provisioner._config.context.chef.dir = "/Users/kvick/Projects/github/netflix/aminator/aminator-chef/tests"  # e.g. /var/chef
+        self.chef_provisioner._config.context.chef.dir = "./tests"
         self.chef_provisioner._config.context.chef.json = "test_chef_node.json"
 
     def test_parse_json(self):
@@ -50,18 +50,18 @@ class TestAptChefProvisionerPlugin(object):
 
         with open(self.chef_provisioner._get_chef_json_full_path()) as chef_json_file:
             my_json = json.load(chef_json_file)
-        assert "mimir" == my_json['name']
-        assert "WE-WAPP-mimir" == my_json['build_job']
+        assert "helloworld" == my_json['name']
+        assert "APP-helloworld" == my_json['build_job']
         assert "1.0" == my_json['version']
         assert "277" == my_json['release']
         assert "33a9d1cac7686c8a46c1f330add2e8d36850fd15" == my_json['change']
         assert isinstance (my_json['run_list'], list)
-        assert "recipe[engtools::mimir]" == my_json['run_list'][0]
+        assert "recipe[helloworld]" == my_json['run_list'][0]
 
     def test_metadata(self):
         self.chef_provisioner._store_package_metadata()
-        assert "mimir" == self.chef_provisioner._config.context.package.attributes['name']
+        assert "helloworld" == self.chef_provisioner._config.context.package.attributes['name']
         assert "1.0" == self.chef_provisioner._config.context.package.attributes['version']
         assert "277" == self.chef_provisioner._config.context.package.attributes['release']
-        assert "WE-WAPP-mimir" == self.chef_provisioner._config.context.package.attributes['Build-Job']
+        assert "APP-helloworld" == self.chef_provisioner._config.context.package.attributes['Build-Job']
         assert "277" == self.chef_provisioner._config.context.package.attributes['Build-Number']
