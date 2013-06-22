@@ -196,8 +196,8 @@ def rpm_package_metadata(package, queryformat, local=False):
 
 
 @keyval_parse()
-def deb_package_metadata(package, queryformat):
-    return deb_query(package, queryformat)
+def deb_package_metadata(package, queryformat, local=False):
+    return deb_query(package, queryformat, local)
 
 
 class Chroot(object):
