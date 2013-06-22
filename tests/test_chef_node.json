@@ -1,0 +1,25 @@
+{
+    "__type__": "ChefNode",
+    "name": "helloworld",
+    "description": "Hello World",
+    "version": "1.0",
+    "release": "277",
+    "change": "33a9d1cac7686c8a46c1f330add2e8d36850fd15",
+    "bug_id": "",
+    "build_job": "APP-helloworld",
+    "built_by": "builds",
+    "build_date": "2013-06-14_16:22:24",
+    "build_number": "277",
+    "build_id": "2013-06-12_09-22-21",
+    "run_list": [
+        "recipe[helloworld]"
+    ],
+    "default_attributes": {
+        "helloworld": {
+            "server": {
+                "home": "/var/lib/helloworld",
+                "war_checksum": "7e676062231f6b80b60e53dc982eb89c36759bdd2da7f82ad8b35a002a36da9a"
+            }
+        }
+    }
+}
