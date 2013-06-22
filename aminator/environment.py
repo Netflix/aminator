@@ -24,7 +24,6 @@ aminator.environment
 The orchestrator
 """
 import logging
-from pprint import pformat
 import yaml
 
 log = logging.getLogger(__name__)
