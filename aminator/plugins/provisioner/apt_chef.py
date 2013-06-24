@@ -87,10 +87,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
         with open(self._get_chef_json_full_path()) as chef_json_file:
             chef_json = json.load(chef_json_file)
-            log.debug(
-                'metadata name=[{0}], version=[{1}], release=[{2}], build_job=[{3}], build_number=[{4}]'.format(
-                    chef_json['name'], chef_json['version'], chef_json['release'], chef_json['build_job'],
-                    chef_json['build_number']))
+            log.debug(chef_json.dump)
 
         context.package.attributes = {}
         for x in self._config.pkg_attributes:
