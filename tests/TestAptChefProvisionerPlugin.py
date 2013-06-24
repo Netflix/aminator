@@ -39,7 +39,7 @@ class TestAptChefProvisionerPlugin(object):
         self.chef_provisioner._config.context = Config()
         self.chef_provisioner._config.context.chef = Config()
         self.chef_provisioner._config.context.package = Config()
-        self.chef_provisioner._config.context.package.attributes = Config()
+        self.chef_provisioner._config.pkg_attributes = ['name', 'version', 'release', 'build_job', 'build_number']
         self.chef_provisioner._config.context.chef.dir = "./tests"
         self.chef_provisioner._config.context.chef.json = "test_chef_node.json"
 
@@ -55,7 +55,7 @@ class TestAptChefProvisionerPlugin(object):
         assert "1.0" == my_json['version']
         assert "277" == my_json['release']
         assert "33a9d1cac7686c8a46c1f330add2e8d36850fd15" == my_json['change']
-        assert isinstance (my_json['run_list'], list)
+        assert isinstance(my_json['run_list'], list)
         assert "recipe[helloworld]" == my_json['run_list'][0]
 
     def test_metadata(self):
@@ -63,5 +63,5 @@ class TestAptChefProvisionerPlugin(object):
         assert "helloworld" == self.chef_provisioner._config.context.package.attributes['name']
         assert "1.0" == self.chef_provisioner._config.context.package.attributes['version']
         assert "277" == self.chef_provisioner._config.context.package.attributes['release']
-        assert "APP-helloworld" == self.chef_provisioner._config.context.package.attributes['Build-Job']
-        assert "277" == self.chef_provisioner._config.context.package.attributes['Build-Number']
+        assert "APP-helloworld" == self.chef_provisioner._config.context.package.attributes['build_job']
+        assert "277" == self.chef_provisioner._config.context.package.attributes['build_number']

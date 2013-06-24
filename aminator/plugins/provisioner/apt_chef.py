@@ -92,11 +92,9 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                     chef_json['name'], chef_json['version'], chef_json['release'], chef_json['build_job'],
                     chef_json['build_number']))
 
-        context.package.attributes = {'name': chef_json['name'],
-                                      'version': chef_json['version'],
-                                      'release': chef_json['release'],
-                                      'Build-Job': chef_json['build_job'],
-                                      'Build-Number': chef_json['build_number']}
+        context.package.attributes = {}
+        for x in self._config.pkg_attributes:
+            context.package.attributes[x] = chef_json.get(x, None)
 
     def provision(self):
         """
@@ -205,9 +203,9 @@ class ChefNode(object):
 def mkdirs(chef_dir):
     return 'mkdir -p {0}'.format(chef_dir)
 
+
 @command()
 def chef_solo(chef_dir, chef_json, chef_recipe_url=None):
-
     if chef_recipe_url is None:
         # we have recipes pre-installed in chef_dir
         log.debug('Preparing to run chef-solo -j {0}/{1} -c {0}/solo.rb'.format(chef_dir, chef_json))
