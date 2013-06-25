@@ -24,7 +24,7 @@ aminator.environment
 The orchestrator
 """
 import logging
-
+import yaml
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,9 @@ class Environment(object):
             plugin = self._plugin_manager.find_by_kind(kind, name)
             setattr(self, kind, plugin.obj)
             log.debug('Attached: {0}'.format(getattr(self, kind)))
+        log.debug("============= BEGIN YAML representation of loaded configs ===============")
+        log.debug(yaml.dump(self._config))
+        log.debug("============== END YAML representation of loaded configs ================")
 
     def provision(self):
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
