@@ -8,4 +8,3 @@ pyyaml
 requests
 stevedore
 simplejson
-pyyaml
