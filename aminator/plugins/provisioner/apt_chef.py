@@ -151,11 +151,6 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
             if not result.success:
                 log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
-                # log chef stacktrace before the chroot disappears
-                stacktrace_file = context.chef.dir + '/cache/chef-stacktrace.out'
-                with open(stacktrace_file, 'r'):
-                    stacktrace = stacktrace_file.read()
-                    log.critical(stacktrace)
                 return False
 
             self._store_package_metadata()
