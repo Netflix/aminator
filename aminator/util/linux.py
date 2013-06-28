@@ -154,7 +154,8 @@ def rpm_query(package, queryformat, local=False):
 @command()
 def deb_query(package, queryformat, local=False):
     if local:
-        cmd = 'dpkg -I'.split()
+        cmd = 'dpkg-deb -W'.split()
+        cmd.append('--showformat={0}'.format(queryformat))
     else:
         cmd = 'dpkg-query -W'.split()
         cmd.append('-f={0}'.format(queryformat))
