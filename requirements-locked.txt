@@ -2,7 +2,7 @@ PyYAML==3.10
 boto==2.9.6
 bunch==1.0.1
 decorator==3.4.0
-distribute==0.6.45
+distribute==0.6.48
 envoy==0.0.2
 logutils==0.3.3
 requests==1.2.3
