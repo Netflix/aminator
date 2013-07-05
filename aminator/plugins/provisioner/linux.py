@@ -28,10 +28,12 @@ import logging
 import os
 import shutil
 
+from glob import glob
+
 from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util import download_file
-from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
+from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount, command
 from aminator.util.linux import install_provision_configs, remove_provision_configs
 
 
@@ -108,6 +110,13 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             if context.package.local_install and not context.package.get('preserve', False):
                 os.remove(context.package.arg)
 
+            # run scripts that may have been delivered in the package
+            scripts_dir = self._config.plugins[self.full_name].get('scripts_dir', '/var/local')
+            log.debug('scripts_dir = {0}'.format(scripts_dir))
+
+            if scripts_dir:
+                self._run_provision_scripts(scripts_dir)
+
         log.debug('Exited chroot')
 
         log.debug('Post chroot command block')
@@ -115,6 +124,28 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
         log.info('Provisioning succeeded!')
         return True
+
+    def _run_provision_scripts(self, scripts_dir):
+        python_script_files = glob(scripts_dir + '*.py')
+        log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
+        shell_script_files = glob(scripts_dir + '*.sh')
+        log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
+
+        # if not python_script_files && not shell_script_files:
+        #     log.debug()
+
+        if python_script_files:
+            for script in python_script_files:
+                log.debug('executing python {0}'.format(script))
+                run_script('python {0}'.format(script))
+
+        if shell_script_files:
+            for script in python_script_files:
+                log.debug('executing sh {0}'.format(script))
+                run_script('sh {0}'.format(script))
+
+        log.debug('forcing the chef run')
+        run_script('python /var/local/install_and_run_chef_solo.py')
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
@@ -287,3 +318,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def __call__(self, mountpoint):
         self._mountpoint = mountpoint
         return self
+
+@command()
+def run_script(script):
+    return '{0}'.format(script)

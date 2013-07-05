@@ -21,3 +21,5 @@ pkg_extension: rpm
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
+
+scripts_dir: /var/local

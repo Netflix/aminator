@@ -26,3 +26,5 @@ policy_file_mode: 0755
 policy_file_content: |
   #!/bin/sh
   exit 101
+
+scripts_dir: /var/local
