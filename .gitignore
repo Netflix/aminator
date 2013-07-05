@@ -45,3 +45,4 @@ nosetests.xml
 
 # Vim 
 *.swp
+distribute-*.tar.gz
