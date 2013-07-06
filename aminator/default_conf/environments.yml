@@ -17,3 +17,9 @@ ec2_apt_chef_linux:
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
+ec2_apt_puppet_linux:
+    cloud: ec2
+    provisioner: apt_puppet
+    volume: linux
+    blockdevice: linux
+    finalizer: tagging_ebs
