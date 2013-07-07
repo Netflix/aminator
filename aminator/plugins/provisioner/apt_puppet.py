@@ -70,7 +70,7 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
         """
         context = self._config.context
 
-	context.package.attributes = {"foo": "bar", 'name': context.package.arg, 'version': 'mumble', 'release': time.strftime("%Y%m%d%H%M") }
+	context.package.attributes = {'name': context.package.arg, 'version': 'puppet', 'release': time.strftime("%Y%m%d%H%M") }
 
     def _makedirs(self, dirs):
 	log.debug('creating directory {0} if it does not exist'.format(dirs))    
