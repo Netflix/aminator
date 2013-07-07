@@ -22,6 +22,8 @@
 aminator.plugins.provisioner.apt_puppet
 ================================
 """
+import os
+import shutil
 import time
 import socket
 import logging
@@ -77,12 +79,12 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
 
     def copy_puppet_certs(self, pem_file_name, certs_dir = '/var/lib/puppet/ssl/certs', private_keys_dir = '/var/lib/puppet/ssl/private_keys'):
 	# TODO make this configurable     
-	log.debug('Placing certs for {0} into mountpoint {0}'.format(pem_file_name, self._mountpoint))
+	log.debug('Placing certs for {0} into mountpoint {1}'.format(pem_file_name, self._mountpoint))
         self._makedirs(self._mountpoint + certs_dir)
         self._makedirs(self._mountpoint + private_keys_dir)
 	shutil.copy(certs_dir        + '/ca.pem',           self._mountpoint + certs_dir)
-	shutil.copy(certs_dir        + '/' + pem_file_name, self._mountpoint + certs_dir)
-	shutil.copy(private_keys_dir + '/' + pem_file_name, self._mountpoint + private_keys_dir)
+	shutil.copy(certs_dir        + '/' + pem_file_name + '.pem', self._mountpoint + certs_dir)
+	shutil.copy(private_keys_dir + '/' + pem_file_name + '.pem', self._mountpoint + private_keys_dir)
 
     def provision(self):
         """
@@ -102,7 +104,7 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
 	# generate the certificate or check that the specified file exists
 	generate_certificate(context.package.arg)
 
-	copy_puppet_certs(context.package.arg)
+	self.copy_puppet_certs(context.package.arg)
 
 
         with Chroot(self._mountpoint):
@@ -113,7 +115,12 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
             apt_get_install("puppet")
             
             log.info('Running pupet agent')
-            puppet(context.package.arg, context.puppet.get('puppet_master_hostname', socket.gethostname())
+            result = puppet(context.package.arg, context.puppet.get('puppet_master_hostname', socket.gethostname()))
+
+            if not result.success:
+                log.critical('puppet agent run failed: {0.std_err}'.format(result.result))
+                return False
+
             self._store_package_metadata()
 
         log.debug('Exited chroot')
@@ -125,10 +132,10 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
 
 @command()
 def puppet(certname, puppet_master_hostname):
-    return 'puppet agent --no-daemonize --logdest console --onetime --certname {0} --server {1}'.format(certname, puppet_master_hostname)
+    return 'puppet agent --color=false --no-daemonize --logdest console --onetime --certname {0} --server {1}'.format(certname, puppet_master_hostname)
 
 @command()
-def generate_certificate(certname)
+def generate_certificate(certname):
     log.debug('Generating certificate for {0}'.format(certname))
     return 'puppetca generate {0}'.format(certname)
 
