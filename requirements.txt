@@ -7,3 +7,4 @@ logutils
 pyyaml
 requests
 stevedore
+simplejson
