@@ -37,6 +37,7 @@ entry_points = {
     ],
     'aminator.plugins.cloud': [
         'ec2 = aminator.plugins.cloud.ec2:EC2CloudPlugin',
+        'euca = aminator.plugins.cloud.euca:EucaCloudPlugin',
     ],
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
@@ -47,9 +48,11 @@ entry_points = {
     ],
     'aminator.plugins.blockdevice': [
         'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',
+        'virtio = aminator.plugins.blockdevice.virtio:VirtioBlockDevicePlugin',
     ],
     'aminator.plugins.finalizer': [
         'tagging_ebs = aminator.plugins.finalizer.tagging_ebs:TaggingEBSFinalizerPlugin',
+        'tagging_ebs_euca = aminator.plugins.finalizer.tagging_ebs_euca:TaggingEBSEucaFinalizerPlugin',
     ],
 }
 
