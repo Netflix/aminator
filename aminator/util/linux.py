@@ -74,6 +74,9 @@ def mounted(path):
     with open('/proc/mounts') as mounts:
         return any(pat in mount for mount in mounts)
 
+@command()
+def mkdirs(dirs):
+    return 'mkdir -p {0}'.format(dirs)
 
 @command()
 def fsck(dev):
