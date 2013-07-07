@@ -23,6 +23,7 @@ aminator.plugins.provisioner.apt_puppet
 ================================
 """
 import time
+import socket
 import logging
 from collections import namedtuple
 import json
@@ -51,9 +52,12 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
         context = self._config.context
         puppet_config = self._parser.add_argument_group(title='Puppet Options',
                                                       description='Options for the puppet provisioner')
-        puppet_config.add_argument('-H', '--puppet-agent-hostname', dest='puppet_agent_hostname',
+        puppet_config.add_argument('-H', '--puppet-agent-certname', dest='puppet_agent_certname',
                                     action=conf_action(config=context.puppet),
-                                    help='A temporary hostname for the chrooted environment that indicates to puppet what catalog to apply')
+                                    help='A certname for the chrooted environment that indicates to puppet what catalog to apply')
+        puppet_config.add_argument('-P', '--puppet-master-hostname', dest='puppet_master_hostname',
+                                    action=conf_action(config=context.puppet),
+                                    help='The puppet master hostname')
 
 
     def _store_package_metadata(self):
@@ -66,12 +70,27 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
 
 	context.package.attributes = {"foo": "bar", 'name': context.package.arg, 'version': 'mumble', 'release': time.strftime("%Y%m%d%H%M") }
 
+    def _makedirs(self, dirs):
+	log.debug('creating directory {0} if it does not exist'.format(dirs))    
+        if not os.path.exists(dirs):
+            os.makedirs(dirs)
+
+    def copy_puppet_certs(self, pem_file_name, certs_dir = '/var/lib/puppet/ssl/certs', private_keys_dir = '/var/lib/puppet/ssl/private_keys'):
+	# TODO make this configurable     
+	log.debug('Placing certs for {0} into mountpoint {0}'.format(pem_file_name, self._mountpoint))
+        self._makedirs(self._mountpoint + certs_dir)
+        self._makedirs(self._mountpoint + private_keys_dir)
+	shutil.copy(certs_dir        + '/ca.pem',           self._mountpoint + certs_dir)
+	shutil.copy(certs_dir        + '/' + pem_file_name, self._mountpoint + certs_dir)
+	shutil.copy(private_keys_dir + '/' + pem_file_name, self._mountpoint + private_keys_dir)
+
     def provision(self):
         """
         overrides the base provision
-          * install puppet
-	  * configure puppet 
-	  * run the puppet agent
+	  * generate certificates
+	  * install the certificates on the target volume
+          * install puppet on the target volume
+	  * run the puppet agent in the target chroot environment
         """
 
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
@@ -79,14 +98,22 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
         context = self._config.context
         config = self._config
 
+        # TODO
+	# generate the certificate or check that the specified file exists
+	generate_certificate(context.package.arg)
+
+	copy_puppet_certs(context.package.arg)
+
+
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
 
             apt_get_update
-            apt_get_install("puppet git")
-
-            log.debug('Preparing to run puppet')
-
+            log.info('Installing puppet agent')
+            apt_get_install("puppet")
+            
+            log.info('Running pupet agent')
+            puppet(context.package.arg, context.puppet.get('puppet_master_hostname', socket.gethostname())
             self._store_package_metadata()
 
         log.debug('Exited chroot')
@@ -97,5 +124,14 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
 
 
 @command()
-def puppet():
-    pass
+def puppet(certname, puppet_master_hostname):
+    return 'puppet agent --no-daemonize --logdest console --onetime --certname {0} --server {1}'.format(certname, puppet_master_hostname)
+
+@command()
+def generate_certificate(certname)
+    log.debug('Generating certificate for {0}'.format(certname))
+    return 'puppetca generate {0}'.format(certname)
+
+
+
+
