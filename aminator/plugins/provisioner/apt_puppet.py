@@ -22,14 +22,14 @@
 aminator.plugins.provisioner.apt_puppet
 ================================
 """
-import pprint
+import time
 import logging
 from collections import namedtuple
 import json
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin, dpkg_install
 from aminator.util import download_file
-from aminator.util.linux import command
+from aminator.util.linux import command, mkdirs, apt_get_update, apt_get_install
 from aminator.util.linux import Chroot
 from aminator.config import conf_action
 
@@ -64,42 +64,26 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
         """
         context = self._config.context
 
-	context.package.attributes = {"foo": "bar"}
+	context.package.attributes = {"foo": "bar", 'name': context.package.arg, 'version': 'mumble', 'release': time.strftime("%Y%m%d%H%M") }
 
     def provision(self):
         """
         overrides the base provision
-          * store the chef JSON file information in the context
-          * install chef from a URL if specified
-          * call chef-solo
+          * install puppet
+	  * configure puppet 
+	  * run the puppet agent
         """
 
         log.debug('Entering chroot at {0}'.format(self._mountpoint))
 
         context = self._config.context
         config = self._config
-        context.package.dir = config.plugins[self.full_name].get('puppet_dir', '/var/chef')
-
-        # hold onto the JSON info as _stage_pkg mutates context.package.arg
-        context.chef.setdefault('dir', context.package.dir)
-        if context.package.arg.startswith('http://'):
-            context.chef.setdefault('json', context.package.arg.split('/')[-1])
-        else:
-            context.chef.setdefault('json', context.package.arg)
-
-        # copy the JSON file to chef_dir in the chroot.  mkdirs in case we've never installed chef
-        full_chef_dir_path = self._mountpoint + context.chef.dir
-        log.debug('prepping chef_dir {0}'.format(full_chef_dir_path))
-        mkdirs(full_chef_dir_path)
-
-        if not self._stage_pkg():
-            log.critical('failed to stage {0}'.format(context.package.arg))
-            return False
 
         with Chroot(self._mountpoint):
             log.debug('Inside chroot')
 
-            dpkg_install("puppet")
+            apt_get_update
+            apt_get_install("puppet git")
 
             log.debug('Preparing to run puppet')
 
@@ -110,11 +94,6 @@ class AptPuppetProvisionerPlugin(AptProvisionerPlugin):
         log.info('Provisioning succeeded!')
 
         return True
-
-
-@command()
-def mkdirs(dirs):
-    return 'mkdir -p {0}'.format(dirs)
 
 
 @command()
