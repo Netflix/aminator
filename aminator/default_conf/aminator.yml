@@ -49,3 +49,4 @@ context:
   web_log: {}
   cloud: {}
   chef: {}
+  puppet: {}          

@@ -42,6 +42,7 @@ entry_points = {
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
         'apt_chef = aminator.plugins.provisioner.apt_chef:AptChefProvisionerPlugin',
+        'apt_puppet = aminator.plugins.provisioner.apt_puppet:AptPuppetProvisionerPlugin',
     ],
     'aminator.plugins.volume': [
         'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',
