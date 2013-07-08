@@ -24,7 +24,11 @@ aminator.plugins.volume.virtio
 basic virtio volume allocator
 """
 import logging
-from aminator.plugins.blockdevice.linux import LinuxBlockDevicePlugin
+import os
+import fcntl
+from aminator.exceptions import DeviceException
+from aminator.plugins.blockdevice.linux import LinuxBlockDevicePlugin, BlockDevice
+from aminator.util.linux import locked, native_device_prefix
 
 __all__ = ('VirtioBlockDevicePlugin',)
 log = logging.getLogger(__name__)
@@ -33,9 +37,24 @@ log = logging.getLogger(__name__)
 class VirtioBlockDevicePlugin(LinuxBlockDevicePlugin):
     _name = 'virtio'
 
-    def _attach(self, blockdevice):
-        with blockdevice(self._cloud) as dev:
-            self._dev = self._cloud.attach_volume(self._dev)
+    def configure(self, config, parser):
+        super(VirtioBlockDevicePlugin, self).configure(config, parser)
+
+        block_config = self._config.plugins[self.full_name]
+
+        if self._config.lock_dir.startswith(('/', '~')):
+            self._lock_dir = os.path.expanduser(self._config.lock_dir)
+        else:
+            self._lock_dir = os.path.join(self._config.aminator_root, self._config.lock_dir)
+
+        self._lock_file = self.__class__.__name__
+
+        majors = block_config.device_letters
+        self._device_prefix = native_device_prefix(block_config.device_prefixes)
+        device_format = '/dev/{0}{1}'
+
+        self._allowed_devices = [device_format.format(self._device_prefix, major)
+                                 for major in majors]
 
 
 

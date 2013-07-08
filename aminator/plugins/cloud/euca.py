@@ -25,24 +25,16 @@ euca cloud provider
 """
 import logging
 from time import sleep
-
-from boto.ec2 import connect_to_region
-from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
-from boto.ec2.image import Image
-from boto.ec2.instance import Instance
 from boto.ec2.volume import Volume
 from boto.exception import EC2ResponseError
 from boto.regioninfo import RegionInfo
 from boto.utils import get_instance_metadata, boto
 from decorator import decorator
-import re
-
 from aminator.config import conf_action
-from aminator.exceptions import FinalizerException, VolumeException
-from aminator.plugins.cloud.base import BaseCloudPlugin
+from aminator.exceptions import VolumeException
 from aminator.plugins.cloud.ec2 import EC2CloudPlugin
 from aminator.util import retry
-from aminator.util.linux import device_prefix, native_block_device, os_node_exists, get_device
+from aminator.util.linux import device_prefix, native_block_device, command
 
 
 __all__ = ('EucaCloudPlugin',)
@@ -81,37 +73,18 @@ def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, b
         return False
     return _retry
 
+@command()
+def get_device(device):
+    return "ls -1 " + device
 
-class EucaCloudPlugin(BaseCloudPlugin):
+class EucaCloudPlugin(EC2CloudPlugin):
     _name = 'euca'
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
-        # base_ami = self._parser.add_argument_group(title='Base AMI', description='EITHER AMI id OR name, not both!')
-        # base_ami_mutex = base_ami.add_mutually_exclusive_group(required=True)
-        # base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name',
-        #                             action=conf_action(config=context.ami),
-        #                             help='The name of the base AMI used in provisioning')
-        # base_ami_mutex.add_argument('-B', '--base-ami-id', dest='base_ami_id',
-        #                             action=conf_action(config=context.ami),
-        #                             help='The id of the base AMI used in provisioning')
         cloud = self._parser.add_argument_group(title='EC2 Options', description='EC2 Connection Information')
-        cloud.add_argument('--host', dest='host', help='EC2 endpoint to connect to ',
+        cloud.add_argument('--ec2-endpoint', dest='ec2_endpoint', help='EC2 endpoint  to connect to',
                            action=conf_action(config=context.cloud))
-        cloud.add_argument('--access-key', dest='access_key', help='EC2 Access Key',
-                           action=conf_action(config=context.cloud))
-        cloud.add_argument('--secret-key', dest='secret_key', help='EC2 Secret Key',
-                           action=conf_action(config=context.cloud))
-        cloud.add_argument('-p', '--port', dest='port', help='EC2 URL Port', type=int,
-                           action=conf_action(config=context.cloud), default=8773)
-        cloud.add_argument('--path', dest='path', help='EC2 URL Path',
-                           action=conf_action(config=context.cloud), default="/services/Eucalyptus")
-        cloud.add_argument('--device', dest='device', help='Device to attach volume as',
-                           action=conf_action(config=context.cloud), default="/dev/vdb")
-        # cloud.add_argument('--boto-secure', dest='is_secure',  help='Connect via https',
-        #                    action=conf_action(config=context.cloud, action='store_true'))
-        # cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
-        #                    action=conf_action(config=context.cloud, action='store_true'))
 
     def configure(self, config, parser):
         super(EucaCloudPlugin, self).configure(config, parser)
@@ -132,27 +105,28 @@ class EucaCloudPlugin(BaseCloudPlugin):
         cloud_config = self._config.plugins[self.full_name]
         context = self._config.context
         self._instance_metadata = get_instance_metadata()
+        euca_path = "/services/Eucalyptus"
+        euca_port = 8773
         ec2_region = RegionInfo()
         ec2_region.name = 'eucalyptus'
-        ec2_region.endpoint = context.cloud.host
-        connection_args = { 'aws_access_key_id' : context.cloud.access_key,
-                            'aws_secret_access_key': context.cloud.secret_key,
-                            'is_secure': False,
+        ec2_region.endpoint = context.cloud.ec2_endpoint
+        connection_args = { 'is_secure': False,
                             'debug': 0,
-                            'port' : int(context.cloud.port),
-                            'path' : context.cloud.path,
-                            'host' : context.cloud.host}
+                            'port' : 8773,
+                            'path' : euca_path,
+                            'host' : context.cloud.ec2_endpoint,
+                            'api_version': '2012-07-20',
+                            'region': ec2_region }
 
-        if re.search('2.6', boto.__version__):
+        if float(boto.__version__[0:3]) >= 2.6:
             connection_args['validate_certs'] = False
 
-        try:
-            connection_args['api_version'] = '2012-07-20'
-            connection_args['region'] = ec2_region
-            self._connection = boto.connect_ec2(**connection_args)
-        except Exception, e:
-            log.critical("Was unable to create ec2 connection because of exception: " + str(e))
-        log.info('Aminating in region {0}: http://{1}'.format(ec2_region.name, context.cloud.host))
+        self._connection = boto.connect_ec2(**connection_args)
+
+        log.info('Aminating in region {0}: http://{1}:{2}{3}'.format(ec2_region.name,
+                                                                      context.cloud.ec2_endpoint,
+                                                                      euca_port,
+                                                                      euca_path))
 
     def allocate_base_volume(self, tag=True):
         cloud_config = self._config.plugins[self.full_name]
@@ -179,17 +153,16 @@ class EucaCloudPlugin(BaseCloudPlugin):
         self._volume.update()
         log.debug('Volume {0} created'.format(self._volume.id))
 
-    @retry(VolumeException, tries=2, delay=1, backoff=2, logger=log)
+    @retry(VolumeException, tries=2, delay=1, backoff=1, logger=log)
     def attach_volume(self, blockdevice, tag=True):
         self.allocate_base_volume(tag=tag)
         # must do this as amazon still wants /dev/sd*
-        # ec2_device_name = blockdevice.replace('xvd', 'sd')
-        ec2_device_name = self._config.context.cloud.device
+        ec2_device_name = blockdevice.replace('sd', 'vd')
         log.debug('Attaching volume {0} to {1}:{2}({3})'.format(self._volume.id, self._instance.id, ec2_device_name,
                                                                 blockdevice))
         self._volume.attach(self._instance.id, ec2_device_name)
         attached_device = self.is_volume_attached(ec2_device_name)
-        if attached_device != self._config.context.cloud.device:
+        if attached_device != ec2_device_name:
             log.debug('{0} attachment to {1}:{2}({3}) timed out'.format(self._volume.id, self._instance.id,
                                                                         ec2_device_name, blockdevice))
             self._volume.add_tag('status', 'used')
@@ -198,7 +171,7 @@ class EucaCloudPlugin(BaseCloudPlugin):
                                                                                               self._instance.id,
                                                                                           blockdevice))
         log.debug('Volume {0} attached to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
-        return self._config.context.cloud.device
+        return blockdevice
 
     def is_volume_attached(self, ec2_device_name):
         try:
@@ -209,7 +182,7 @@ class EucaCloudPlugin(BaseCloudPlugin):
             return False
         return attached_device
 
-    @retry(VolumeException, tries=10, delay=10, backoff=2, logger=log)
+    @retry(VolumeException, tries=10, delay=10, backoff=1, logger=log)
     def _volume_attached(self, ec2_device_name):
         status = self._volume.update()
         if status != 'in-use':
@@ -219,109 +192,6 @@ class EucaCloudPlugin(BaseCloudPlugin):
             raise VolumeException('No change in device list yet. Unable to find device: {0}'.format(ec2_device_name))
         else:
             return ec2_device_name
-
-    def snapshot_volume(self, description=None):
-        context = self._config.context
-        if not description:
-            description = context.snapshot.get('description', '')
-        log.debug('Creating snapshot with description {0}'.format(description))
-        self._snapshot = self._volume.create_snapshot(description)
-        if not self._snapshot_complete():
-            log.critical('Failed to create snapshot')
-            return False
-        else:
-            log.debug('Snapshot complete. id: {0}'.format(self._snapshot.id))
-            return True
-
-    def _state_check(self, obj, state):
-        obj.update()
-        classname = obj.__class__.__name__
-        if classname in ('Snapshot', 'Volume'):
-            return obj.status == state
-        else:
-            return obj.state == state
-
-    @retry(VolumeException, tries=600, delay=0.5, backoff=1.5, logger=log)
-    def _wait_for_state(self, resource, state):
-        if self._state_check(resource, state):
-            log.debug('{0} reached state {1}'.format(resource.__class__.__name__, state))
-            return True
-        else:
-            raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id,
-                                                                                     state,
-                                                                                     resource.status))
-
-    def _ami_available(self):
-        return self._wait_for_state(self._ami, 'available')
-
-    def _snapshot_complete(self):
-        return self._wait_for_state(self._snapshot, 'completed')
-
-    def _volume_available(self):
-        return self._wait_for_state(self._volume, 'available')
-
-    def detach_volume(self, blockdevice):
-        log.debug('Detaching volume {0} from {1}'.format(self._volume.id, self._instance.id))
-        self._volume.detach()
-        if not self._volume_detached(blockdevice):
-            raise VolumeException('Time out waiting for {0} to detach from {1]'.format(self._volume.id,
-                                                                                       self._instance.id))
-        log.debug('Successfully detached volume {0} from {1}'.format(self._volume.id, self._instance.id))
-
-    @retry(VolumeException, tries=7, delay=1, backoff=2, logger=log)
-    def _volume_detached(self, blockdevice):
-        status = self._volume.update()
-        if status != 'available':
-            raise VolumeException('Volume {0} not yet detached from {1}'.format(self._volume.id, self._instance.id))
-        elif os_node_exists(blockdevice):
-            raise VolumeException('Device node {0} still exists'.format(blockdevice))
-        else:
-            return True
-
-    def delete_volume(self):
-        log.debug('Deleting volume {0}'.format(self._volume.id))
-        self._volume.delete()
-        return self._volume_deleted()
-
-    def _volume_deleted(self):
-        try:
-            self._volume.update()
-        except EC2ResponseError, e:
-            if e.code == 'InvalidVolume.NotFound':
-                log.debug('Volume {0} successfully deleted'.format(self._volume.id))
-                return True
-            return False
-
-    def is_stale_attachment(self, dev, prefix):
-        log.debug('Checking for stale attachment. dev: {0}, prefix: {1}'.format(dev, prefix))
-        if dev in self.attached_block_devices(prefix) and not os_node_exists(dev):
-            log.debug('{0} is stale, rejecting'.format(dev))
-            return True
-        log.debug('{0} not stale, using'.format(dev))
-        return False
-
-    @registration_retry(tries=3, delay=1, backoff=1)
-    def _register_image(self, **ami_metadata):
-        context = self._config.context
-        ami = Image(connection=self._connection)
-        ami.id = self._connection.register_image(**ami_metadata)
-        if ami.id is None:
-            return False
-        else:
-            while True:
-                # spin until Amazon recognizes the AMI ID it told us about
-                try:
-                    sleep(2)
-                    ami.update()
-                    break
-                except EC2ResponseError, e:
-                    if e.error_code == 'InvalidAMIID.NotFound':
-                        log.debug('{0} not found, retrying'.format(ami.id))
-                    else:
-                        raise e
-            log.info('AMI registered: {0} {1}'.format(ami.id, ami.name))
-            context.ami.image = self._ami = ami
-            return True
 
     def register_image(self, block_device_map, root_block_device):
         context = self._config.context
@@ -339,46 +209,6 @@ class EucaCloudPlugin(BaseCloudPlugin):
             return False
         return True
 
-    def _make_block_device_map(self, block_device_map, root_block_device):
-        bdm = BlockDeviceMapping(connection=self._connection)
-        bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id,
-                                                 delete_on_termination=True)
-        for (os_dev, ec2_dev) in block_device_map:
-            bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
-        return bdm
-
-    @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
-    def add_tags(self, resource_type):
-        context = self._config.context
-
-        log.debug('Adding tags for resource type {0}'.format(resource_type))
-
-        tags = context[resource_type].get('tags', None)
-        if not tags:
-            log.critical('Unable to locate tags for {0}'.format(resource_type))
-            return False
-
-        instance_var = '_' + resource_type
-        try:
-            instance = getattr(self, instance_var)
-        except Exception:
-            log.exception('Unable to find local instance var {0}'.format(instance_var))
-            log.critical('Tagging failed')
-            return False
-        else:
-            try:
-                self._connection.create_tags([instance.id], tags)
-            except EC2ResponseError:
-                log.exception('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
-                raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type,
-                                                                                                    instance.id))
-            else:
-                log.debug('Successfully tagged {0}({1})'.format(resource_type, instance.id))
-                instance.update()
-                tagstring = '\n'.join('='.join((key, val)) for (key, val) in tags.iteritems())
-                log.debug('Tags: \n{0}'.format(tagstring))
-                return True
-
     def attached_block_devices(self, prefix):
         log.debug('Checking for currently attached block devices. prefix: {0}'.format(prefix))
         self._instance.update()
@@ -386,34 +216,3 @@ class EucaCloudPlugin(BaseCloudPlugin):
             return dict((native_block_device(dev, prefix), mapping)
                         for (dev, mapping) in self._instance.block_device_mapping.iteritems())
         return self._instance.block_device_mapping
-
-    def _resolve_baseami(self):
-        log.info('Resolving base AMI')
-        context = self._config.context
-        cloud_config = self._config.plugins[self.full_name]
-        try:
-            ami_id = context.ami.get('base_ami_name', cloud_config.get('base_ami_name', None))
-            if ami_id is None:
-                ami_id = context.ami.get('base_ami_id', cloud_config.get('base_ami_id', None))
-                if ami_id is None:
-                    raise RuntimeError('Must configure or provide either a base ami name or id')
-                else:
-                    context.ami['ami_id'] = ami_id
-                    log.info('looking up base AMI with ID {0}'.format(ami_id))
-                    baseami = self._connection.get_all_images(image_ids=[ami_id])[0]
-            else:
-                log.info('looking up base AMI with name {0}'.format(ami_id))
-                baseami = self._connection.get_all_images(filters={'name': ami_id})[0]
-        except IndexError:
-            raise RuntimeError('Could not locate base AMI with identifier: {0}'.format(ami_id))
-        log.info('Successfully resolved {0.name}({0.id})'.format(baseami))
-        context['base_ami'] = baseami
-
-    def __enter__(self):
-        self.connect()
-        self._resolve_baseami()
-        self._instance = Instance(connection=self._connection)
-        self._instance.id = get_instance_metadata()['instance-id']
-        self._instance.update()
-
-        return self

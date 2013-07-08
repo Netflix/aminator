@@ -131,10 +131,6 @@ def mount(mountspec):
     return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
 
 @command()
-def get_device(device):
-    return "ls -1 " + device
-
-@command()
 def unmount(dev):
     return 'umount {0}'.format(dev)
 

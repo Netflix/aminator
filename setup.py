@@ -46,6 +46,7 @@ entry_points = {
     ],
     'aminator.plugins.volume': [
         'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',
+        'virtio = aminator.plugins.volume.virtio:VirtioVolumePlugin',
     ],
     'aminator.plugins.blockdevice': [
         'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',

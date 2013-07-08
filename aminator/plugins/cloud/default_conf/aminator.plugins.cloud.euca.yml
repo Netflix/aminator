@@ -5,5 +5,4 @@ boto_debug: false
 ephemeral_devices:
   - /dev/sdb
 is_secure: true
-root_device: /dev/xvda
-#region:
+root_device: /dev/sda

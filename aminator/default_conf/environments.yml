@@ -14,13 +14,13 @@ ec2_apt_linux:
 euca_yum_linux:
     cloud: euca
     provisioner: yum
-    volume: linux
+    volume: virtio
     blockdevice: virtio
     finalizer: tagging_ebs_euca
 euca_apt_linux:
     cloud: euca
     provisioner: apt
-    volume: linux
+    volume: virtio
     blockdevice: virtio
     finalizer: tagging_ebs_euca
 ec2_apt_chef_linux:
