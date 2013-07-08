@@ -126,26 +126,32 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return True
 
     def _run_provision_scripts(self, scripts_dir):
-        python_script_files = glob(scripts_dir + '*.py')
-        log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
-        shell_script_files = glob(scripts_dir + '*.sh')
-        log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
+        """
+        execute every python or shell script found in scripts_dir
+            1. run python scripts in lexical order
+            2. run shell scripts in lexical order
 
-        # if not python_script_files && not shell_script_files:
-        #     log.debug()
+        :param scripts_dir: path in chroot to look for python and shell scripts
+        :return: None
+        """
 
-        if python_script_files:
+        python_script_files = sorted(glob(scripts_dir + '/*.py'))
+        if python_script_files is None:
+            log.debug('no python scripts found in {0}'.format(scripts_dir))
+        else:
+            log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
             for script in python_script_files:
                 log.debug('executing python {0}'.format(script))
                 run_script('python {0}'.format(script))
 
-        if shell_script_files:
+        shell_script_files = sorted(glob(scripts_dir + '/*.sh'))
+        if shell_script_files is None:
+            log.debug('no shell scripts found in {0}'.format(scripts_dir))
+        else:
+            log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
             for script in python_script_files:
                 log.debug('executing sh {0}'.format(script))
                 run_script('sh {0}'.format(script))
-
-        log.debug('forcing the chef run')
-        run_script('python /var/local/install_and_run_chef_solo.py')
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
