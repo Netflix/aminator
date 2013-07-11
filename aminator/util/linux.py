@@ -154,7 +154,8 @@ def rpm_query(package, queryformat, local=False):
 @command()
 def deb_query(package, queryformat, local=False):
     if local:
-        cmd = 'dpkg -I'.split()
+        cmd = 'dpkg-deb -W'.split()
+        cmd.append('--showformat={0}'.format(queryformat))
     else:
         cmd = 'dpkg-query -W'.split()
         cmd.append('-f={0}'.format(queryformat))
@@ -426,7 +427,7 @@ def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
             os.symlink(dst, fullpath)
             log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuting {0} to {1}'.format(fullpath, dst))
+            log.exception('Error encountered while short circuiting {0} to {1}'.format(fullpath, dst))
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(fullpath, dst))
