@@ -109,7 +109,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
 
         # hold onto the JSON info as _stage_pkg mutates context.package.arg
         context.chef.setdefault('dir', context.package.dir)
-        if context.package.arg.startswith('http://'):
+        if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
             context.chef.setdefault('json', context.package.arg.split('/')[-1])
         else:
             context.chef.setdefault('json', context.package.arg)
@@ -130,7 +130,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
             if 'chef_package_url' in context.chef:
                 log.debug('chef install selected')
                 # get the package name so we can dpkg -i on it
-                if context.chef.chef_package_url.startswith('http://'):
+                if any(protocol in context.chef_package_url for protocol in ['http://', 'https://']):
                     chef_package_name = context.chef.chef_package_url.split('/')[-1]
                 else:
                     chef_package_name = context.chef.chef_package_url
