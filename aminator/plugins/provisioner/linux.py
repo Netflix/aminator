@@ -285,7 +285,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
-            if context.package.arg.startswith('http://'):
+            if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)
             else:
                 self._move_pkg(context)
