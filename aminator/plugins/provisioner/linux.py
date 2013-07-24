@@ -285,7 +285,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
-            if context.package.arg.startswith('http://'):
+            if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)
             else:
                 self._move_pkg(context)
@@ -302,7 +302,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         pkg_url = context.package.arg
         dst_file_path = context.package.full_path
         log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
-        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1))
+        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1),
+                      verify_https=context.get('verify_https', False))
 
     def _move_pkg(self, context):
         src_file = context.package.arg.replace('file://', '')

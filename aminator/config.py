@@ -231,6 +231,8 @@ def add_base_arguments(parser, config):
                           help='The environment configuration for amination')
     parser.add_config_arg('--preserve-on-error', action='store_true', config=config.context,
                           help='For Debugging. Preserve build chroot on error')
+    parser.add_config_arg('--verify-https', action='store_true', config=config.context,
+                          help='Specify if one wishes for plugins to verify SSL certs when hitting https URLs')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
     parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
 
