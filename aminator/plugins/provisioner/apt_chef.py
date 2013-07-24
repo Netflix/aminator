@@ -130,7 +130,8 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                 local_chef_package_file = context.chef.dir + '/' + chef_package_name
                 log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url,
                                                                     local_chef_package_file))
-                download_file(context.chef.chef_package_url, local_chef_package_file, context.package.get('timeout', 1))
+                download_file(context.chef.chef_package_url, local_chef_package_file,
+                              context.package.get('timeout', 1), verify_https=context.get('verify_https', False))
                 log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
                 dpkg_install(local_chef_package_file)
 

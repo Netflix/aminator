@@ -37,6 +37,8 @@ plugins:
         class: VolumePluginManager
 
 context:
+  # used by some plugins when fetching resources
+  verify_https: false
   package:
     # AMI directory to store package files
     dir: /tmp
