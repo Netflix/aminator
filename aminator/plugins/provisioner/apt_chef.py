@@ -34,9 +34,10 @@ aminator.plugins.provisioner.apt_chef
     This plugin will also allow you to install Chef omnibus from a URL.  Recipes can also be provided via http in
     a tar.gz.  This supports aminating on an EBS volume that doesn't have chef pre-installed.
 """
-import logging
-from collections import namedtuple
 import json
+import logging
+import os.path
+from collections import namedtuple
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin, dpkg_install
 from aminator.util import download_file
@@ -107,12 +108,7 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         config = self._config
         context.package.dir = config.plugins[self.full_name].get('chef_dir', '/var/chef')
 
-        # hold onto the JSON info as _stage_pkg mutates context.package.arg
         context.chef.setdefault('dir', context.package.dir)
-        if context.package.arg.startswith('http://'):
-            context.chef.setdefault('json', context.package.arg.split('/')[-1])
-        else:
-            context.chef.setdefault('json', context.package.arg)
 
         # copy the JSON file to chef_dir in the chroot.  mkdirs in case we've never installed chef
         full_chef_dir_path = self._mountpoint + context.chef.dir
@@ -130,24 +126,21 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
             if 'chef_package_url' in context.chef:
                 log.debug('chef install selected')
                 # get the package name so we can dpkg -i on it
-                if context.chef.chef_package_url.startswith('http://'):
-                    chef_package_name = context.chef.chef_package_url.split('/')[-1]
-                else:
-                    chef_package_name = context.chef.chef_package_url
-
+                chef_package_name = os.path.basename(context.chef.chef_package_url)
                 local_chef_package_file = context.chef.dir + '/' + chef_package_name
                 log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url,
                                                                     local_chef_package_file))
-                download_file(context.chef.chef_package_url, local_chef_package_file, context.package.get('timeout', 1))
+                download_file(context.chef.chef_package_url, local_chef_package_file,
+                              context.package.get('timeout', 1), verify_https=context.get('verify_https', False))
                 log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
                 dpkg_install(local_chef_package_file)
 
             log.debug('Preparing to run chef-solo')
 
             if 'recipe_url' in context.chef:
-                result = chef_solo(context.chef.dir, context.chef.json, context.chef.recipe_url)
+                result = chef_solo(context.chef.dir, context.package.file, context.chef.recipe_url)
             else:
-                result = chef_solo(context.chef.dir, context.chef.json, None)
+                result = chef_solo(context.chef.dir, context.package.file, None)
 
             if not result.success:
                 log.critical('chef-solo run failed: {0.std_err}'.format(result.result))
