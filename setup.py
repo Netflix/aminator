@@ -37,20 +37,25 @@ entry_points = {
     ],
     'aminator.plugins.cloud': [
         'ec2 = aminator.plugins.cloud.ec2:EC2CloudPlugin',
+        'euca = aminator.plugins.cloud.euca:EucaCloudPlugin',
     ],
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
         'apt_chef = aminator.plugins.provisioner.apt_chef:AptChefProvisionerPlugin',
+        'apt_script = aminator.plugins.provisioner.apt_script:AptScriptProvisionerPlugin',
     ],
     'aminator.plugins.volume': [
         'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',
+        'virtio = aminator.plugins.volume.virtio:VirtioVolumePlugin',
     ],
     'aminator.plugins.blockdevice': [
         'linux = aminator.plugins.blockdevice.linux:LinuxBlockDevicePlugin',
+        'virtio = aminator.plugins.blockdevice.virtio:VirtioBlockDevicePlugin',
     ],
     'aminator.plugins.finalizer': [
         'tagging_ebs = aminator.plugins.finalizer.tagging_ebs:TaggingEBSFinalizerPlugin',
+        'tagging_ebs_euca = aminator.plugins.finalizer.tagging_ebs_euca:TaggingEBSEucaFinalizerPlugin',
     ],
 }
 

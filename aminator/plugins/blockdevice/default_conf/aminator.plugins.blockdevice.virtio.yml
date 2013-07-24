@@ -1,0 +1,5 @@
+enabled: true
+# possible OS device prefixes
+device_prefixes: [vd]
+# think device_prefix + device letter (sda, sdb, xvda, etc)
+device_letters: 'bcdefghijklmnop'
