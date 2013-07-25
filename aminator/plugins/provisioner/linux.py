@@ -28,10 +28,12 @@ import logging
 import os
 import shutil
 
+from glob import glob
+
 from aminator.exceptions import VolumeException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util import download_file
-from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
+from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount, command
 from aminator.util.linux import install_provision_configs, remove_provision_configs
 
 
@@ -108,6 +110,13 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             if context.package.local_install and not context.package.get('preserve', False):
                 os.remove(context.package.arg)
 
+            # run scripts that may have been delivered in the package
+            scripts_dir = self._config.plugins[self.full_name].get('scripts_dir', '/var/local')
+            log.debug('scripts_dir = {0}'.format(scripts_dir))
+
+            if scripts_dir:
+                self._run_provision_scripts(scripts_dir)
+
         log.debug('Exited chroot')
 
         log.debug('Post chroot command block')
@@ -115,6 +124,34 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
 
         log.info('Provisioning succeeded!')
         return True
+
+    def _run_provision_scripts(self, scripts_dir):
+        """
+        execute every python or shell script found in scripts_dir
+            1. run python scripts in lexical order
+            2. run shell scripts in lexical order
+
+        :param scripts_dir: path in chroot to look for python and shell scripts
+        :return: None
+        """
+
+        python_script_files = sorted(glob(scripts_dir + '/*.py'))
+        if python_script_files is None:
+            log.debug('no python scripts found in {0}'.format(scripts_dir))
+        else:
+            log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
+            for script in python_script_files:
+                log.debug('executing python {0}'.format(script))
+                run_script('python {0}'.format(script))
+
+        shell_script_files = sorted(glob(scripts_dir + '/*.sh'))
+        if shell_script_files is None:
+            log.debug('no shell scripts found in {0}'.format(scripts_dir))
+        else:
+            log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
+            for script in python_script_files:
+                log.debug('executing sh {0}'.format(script))
+                run_script('sh {0}'.format(script))
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
@@ -128,11 +165,15 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                 log.critical('Installation of provisioning config failed')
                 return False
 
+        log.debug("starting short_circuit ")
+
         #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
             if not self._deactivate_provisioning_service_block():
                 log.critical('Failure short-circuiting files')
                 return False
+
+        log.debug("finished short_circuit")
 
         log.debug('Chroot environment ready')
         return True
@@ -244,14 +285,14 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
-            if context.package.arg.startswith('http://'):
+            if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)
             else:
                 self._move_pkg(context)
         except Exception:
             log.exception('Error encountered while staging package')
             return False
-        # reset to chrooted file path
+            # reset to chrooted file path
         context.package.arg = os.path.join(context.package.dir, context.package.file)
         return True
 
@@ -261,7 +302,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         pkg_url = context.package.arg
         dst_file_path = context.package.full_path
         log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
-        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1))
+        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1),
+                      verify_https=context.get('verify_https', False))
 
     def _move_pkg(self, context):
         src_file = context.package.arg.replace('file://', '')
@@ -274,6 +316,8 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
+        if exc_type and self._config.context.preserve_on_error:
+            return False
         if not self._teardown_chroot():
             raise VolumeException('Error tearing down chroot')
         return False
@@ -281,3 +325,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     def __call__(self, mountpoint):
         self._mountpoint = mountpoint
         return self
+
+@command()
+def run_script(script):
+    return '{0}'.format(script)

@@ -12,7 +12,7 @@ chroot_mounts:
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
 
 pkg_query_format: "name:${Package}\\nversion:${Version}\\nrelease:${Release}"
-pkg_attributes: [name, version, release]
+pkg_attributes: []
 
 pkg_extension: deb
 
@@ -26,5 +26,3 @@ policy_file_mode: 0755
 policy_file_content: |
   #!/bin/sh
   exit 101
-
-scripts_dir: /var/local

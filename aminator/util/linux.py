@@ -130,7 +130,6 @@ def mount(mountspec):
 
     return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
 
-
 @command()
 def unmount(dev):
     return 'umount {0}'.format(dev)
@@ -154,7 +153,8 @@ def rpm_query(package, queryformat, local=False):
 @command()
 def deb_query(package, queryformat, local=False):
     if local:
-        cmd = 'dpkg -I'.split()
+        cmd = 'dpkg-deb -W'.split()
+        cmd.append('--showformat={0}'.format(queryformat))
     else:
         cmd = 'dpkg-query -W'.split()
         cmd.append('-f={0}'.format(queryformat))
@@ -183,7 +183,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
-                metadata[key] = val.strip()
+                metadata[key.strip()] = val.strip()
         else:
             log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
         return metadata
@@ -426,7 +426,7 @@ def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
             os.symlink(dst, fullpath)
             log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuting {0} to {1}'.format(fullpath, dst))
+            log.exception('Error encountered while short circuiting {0} to {1}'.format(fullpath, dst))
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(fullpath, dst))
