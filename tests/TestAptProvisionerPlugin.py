@@ -19,6 +19,8 @@
 #
 import logging
 import os
+#from  tempfile import tempfile
+
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.config import Config
 
@@ -33,18 +35,25 @@ class TestAptProvisionerPlugin(object):
     def setup_method(self, method):
         self.config = Config()
         self.config.plugins = Config()
-        self.config.plugins['aminator.plugins.provisioner.apt'] = self.config.from_file(yaml_file='apt_test.yml')
 
+        # TODO: this is fragile as it may depend on the dir the tests were run from
+        self.config.plugins['aminator.plugins.provisioner.apt'] = self.config.from_file(yaml_file='aminator/plugins/provisioner/default_conf/aminator.plugins.provisioner.apt.yml')
+
+        log.info(self.config.plugins)
         self.plugin = AptProvisionerPlugin()
+
         self.plugin._config = self.config
 
         config = self.plugin._config.plugins['aminator.plugins.provisioner.apt']
 
+        # use /tmp if not configured, ideally to use tempfile, but needs C build
         self.full_path = config.get('mountpoint', '/tmp') + "/" + \
                          config.get('policy_file_path', '/usr/sbin') + "/" + \
                          config.get('policy_file', 'policy-rc.d')
 
         self.plugin._mountpoint = config.get('mountpoint', '/tmp')
+
+        # cleanup
         if os.path.isfile(self.full_path):
             os.remove(self.full_path)
 

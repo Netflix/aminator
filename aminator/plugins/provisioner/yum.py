@@ -41,7 +41,9 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
     _name = 'yum'
 
     def _refresh_package_metadata(self):
-        return yum_clean_metadata()
+        context = self._config.context
+        config = self._config.plugins[self.full_name]
+        return yum_clean_metadata(config.get('clean_repos', []))
 
     def _provision_package(self):
         context = self._config.context

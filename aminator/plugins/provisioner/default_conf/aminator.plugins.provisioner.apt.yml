@@ -19,3 +19,10 @@ pkg_extension: deb
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
+
+policy_file_path: /usr/sbin
+policy_file: policy-rc.d
+policy_file_mode: 0755
+policy_file_content: |
+  #!/bin/sh
+  exit 101
