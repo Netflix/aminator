@@ -35,7 +35,7 @@ except ImportError:
             def emit(self, record):
                 pass
 
-__version__ = '1.2.155-dev'
+__version__ = '1.2.156-dev'
 __versioninfo__ = __version__.split('.')
 __all__ = ()
 
