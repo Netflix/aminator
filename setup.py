@@ -41,6 +41,7 @@ entry_points = {
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
+        'ansible = aminator.plugins.provisioner.ansible:AnsibleProvisionerPlugin',
     ],
     'aminator.plugins.volume': [
         'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',
