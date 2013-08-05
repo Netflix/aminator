@@ -149,7 +149,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('no shell scripts found in {0}'.format(scripts_dir))
         else:
             log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
-            for script in python_script_files:
+            for script in shell_script_files:
                 log.debug('executing sh {0}'.format(script))
                 run_script('sh {0}'.format(script))
 
@@ -316,7 +316,7 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type and self._config.context.preserve_on_error:
+        if exc_type and self._config.context.get("preserve_on_error", False):
             return False
         if not self._teardown_chroot():
             raise VolumeException('Error tearing down chroot')
