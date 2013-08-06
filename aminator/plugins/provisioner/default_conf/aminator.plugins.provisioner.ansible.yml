@@ -20,7 +20,7 @@ inventory_file_content: |
 
 # This is the path to all Ansible playbooks on the Aminator server
 # (outside the chroot environment). These will be copied to 'playbooks_path_dest'
-playbooks_path_source: /home/pas/netflixoss-ansible/playbooks
+playbooks_path_source: /usr/local/netflixoss-ansible/playbooks
 
 # The location to store playbooks on the AMI
 playbooks_path_dest: /var/lib/ansible/playbooks
