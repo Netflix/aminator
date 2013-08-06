@@ -20,13 +20,14 @@ aminator.plugins.provisioner.ansible
 ================================
 Ansible provisioner
 """
+
 import logging
 import os
 import shutil
 
 from aminator.config import conf_action
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, command, Chroot
+from aminator.util.linux import command, Chroot
 
 __all__ = ('AnsibleProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
     _name = 'ansible'
     
+    
     def add_plugin_args(self):
         """ Add Ansible specific variables """
         
@@ -47,8 +49,10 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
         ansible_config.add_argument('-ev', '--extra-vars', dest='extravars', help='A set of additional key=value variables to be used in the playbook',
                                  action=conf_action(self._config.plugins[self.full_name]))
 
+
     def provision(self):
-        log.debug("PAS: provision")
+        """ The main provisioning flow """
+        
         context = self._config.context
 
         log.debug('Pre chroot command block')
@@ -69,6 +73,8 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
                 log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
                 return False
             self._store_package_metadata()
+            
+            self._ansible_cleanup()
 
         log.debug('Exited chroot')
 
@@ -77,6 +83,7 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         log.info('Provisioning succeeded!')
         return True
+    
     
     def _write_local_inventory(self):
         """ Writes a local inventory file inside the chroot environment """
@@ -99,12 +106,16 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         return True
     
+    
     def _pre_chroot_block(self):
-        """ run commands after mounting the volume, but before chroot'ing """
+        """ Run commands after mounting the volume, but before chroot'ing """
+        
         self._copy_playbooks()
     
+    
     def _copy_playbooks(self):
-        """ Copies all playbook files from the aminator server to the chroot environment """
+        """ Copies all playbook files from the aminator server (outside the
+            chroot) to the chroot environment """
 
         config = self._config.plugins[self.full_name]
         playbooks_path_source = config.get('playbooks_path_source')
@@ -121,8 +132,10 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         return True
 
+
     def _provision_package(self):
-        log.debug("PAS: _provision_package")
+        """ Sets up the command to get Ansible to run """
+        
         context = self._config.context
         config = self._config.plugins[self.full_name]
         extra_vars = config.get('extravars', '')
@@ -130,8 +143,10 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
         return run_ansible_playbook(context.package.inventory, extra_vars, path, context.package.arg)
 
+
     def _store_package_metadata(self):
-        log.debug("PAS: _store_package_metadata")
+        """ Store metadata about the AMI created """
+        
         context = self._config.context
         config = self._config.plugins[self.full_name]
         metadata = {}
@@ -140,6 +155,18 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
         metadata['release'] = ''
         metadata['extra_vars'] = config.get('extravars', '')
         context.package.attributes = metadata
+
+
+    def _ansible_cleanup(self):
+        """ Clean up any Ansible files left over (if necessary) """
+        
+        config = self._config.plugins[self.full_name]
+        keep_playbooks = config.get('keep_playbooks')
+        
+        if not keep_playbooks:
+            playbooks_path_dest = config.get('playbooks_path_dest')
+            shutil.rmtree(playbooks_path_dest)
+            
 
     def _refresh_package_metadata(self):
         """ Empty until Aminator is reorganized - end of August 2013 """
@@ -155,7 +182,7 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
 
 
 @command()
-def run_ansible_playbook(inventory, extra_vars, dir, playbook):
-    log.debug("PAS: run_ansible_playbook: (%s, %s, %s)", inventory, extra_vars, playbook)
-    return 'ansible-playbook -c local -i {0} -e \\\'ami_build=True {1}\\\' {2}'.format(inventory, extra_vars, dir + '/' + playbook)
+def run_ansible_playbook(inventory, extra_vars, playbook_dir, playbook):
+    path = playbook_dir + '/' + playbook
+    return 'ansible-playbook -c local -i {0} -e \\\'ami_build=True {1}\\\' {2}'.format(inventory, extra_vars, path)
 
