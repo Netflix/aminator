@@ -11,3 +11,9 @@ ec2_apt_linux:
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
+ec2_ansible_linux:
+    cloud: ec2
+    provisioner: ansible
+    volume: linux
+    blockdevice: linux
+    finalizer: tagging_ebs

@@ -56,7 +56,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             os.makedirs(self._mountpoint)
 
         if not mounted(self._mountpoint):
-            mountspec = MountSpec(self._dev, None, self._mountpoint, None)
+            mountspec = MountSpec(self._dev, None, self._mountpoint, 'nouuid')
             result = mount(mountspec)
             if not result.success:
                 msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)
