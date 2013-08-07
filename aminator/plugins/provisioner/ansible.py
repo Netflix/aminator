@@ -141,7 +141,7 @@ class AnsibleProvisionerPlugin(BaseLinuxProvisionerPlugin):
         extra_vars = config.get('extravars', '')
         path = config.get('playbooks_path_dest')
 
-        log.info('Running Ansible playbook {0}...', context.package.arg)
+        log.info('Running Ansible playbook %s...', context.package.arg)
         return run_ansible_playbook(context.package.inventory, extra_vars, path, context.package.arg)
 
 
