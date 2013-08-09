@@ -75,7 +75,9 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         """
         :return the fully qualified path of the JSON file in the chroot
         """
-        return self._config.context.chef.dir + '/' + self._config.context.chef.json.lstrip('/')
+        context = self._config.context
+        json_file = os.path.basename(context.package.file)
+        return os.path.join(context.chef.dir, json_file)
 
     def _store_package_metadata(self):
         """
@@ -130,8 +132,13 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
                 local_chef_package_file = context.chef.dir + '/' + chef_package_name
                 log.debug('preparing to download {0} to {1}'.format(context.chef.chef_package_url,
                                                                     local_chef_package_file))
-                download_file(context.chef.chef_package_url, local_chef_package_file,
-                              context.package.get('timeout', 1), verify_https=context.get('verify_https', False))
+                download_success = download_file(context.chef.chef_package_url,
+                                                 local_chef_package_file,
+                                                 context.package.get('timeout', 1),
+                                                 verify_https=context.get('verify_https', False))
+                if not download_success:
+                    log.critical('Unable to download Chef package {0}'.format(context.chef.chef_package_url))
+                    return False
                 log.debug('preparing to do a dpkg -i {0}'.format(chef_package_name))
                 dpkg_install(local_chef_package_file)
 
@@ -198,4 +205,3 @@ def chef_solo(chef_dir, chef_json, chef_recipe_url=None):
     else:
         log.debug('Preparing to run chef-solo -j {0}/{1} -r {2}'.format(chef_dir, chef_json, chef_recipe_url))
         return 'chef-solo -j {0}/{1} -r {2}'.format(chef_dir, chef_json, chef_recipe_url)
-
