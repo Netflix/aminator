@@ -87,13 +87,14 @@ class AptChefProvisionerPlugin(AptProvisionerPlugin):
         """
 
         context = self._config.context
+        config = self._config.plugins[self.full_name]
         log.debug('processing chef_json file {0} for package metadata'.format(self._get_chef_json_full_path()))
         with open(self._get_chef_json_full_path()) as chef_json_file:
             chef_json = json.load(chef_json_file)
             log.debug(chef_json)
 
         context.package.attributes = {}
-        for x in self._config.pkg_attributes:
+        for x in config.pkg_attributes:
             context.package.attributes[x] = chef_json.get(x, None)
 
     def provision(self):
