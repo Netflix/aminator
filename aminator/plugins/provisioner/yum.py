@@ -27,7 +27,6 @@ import logging
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
 from aminator.util.linux import yum_clean_metadata, yum_install, yum_localinstall, rpm_package_metadata
-from aminator.util.linux import short_circuit_files, rewire_files
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -63,3 +62,39 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
+
+
+@command()
+def yum_install(package):
+    return 'yum --nogpgcheck -y install {0}'.format(package)
+
+
+@command()
+def yum_localinstall(path):
+    if not os.path.isfile(path):
+        log.critical('Package {0} not found'.format(path))
+        return None
+    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+
+
+@command()
+def yum_clean_metadata(repos=None):
+    clean='yum clean metadata'
+    if repos:
+        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
+    return clean
+
+
+@command()
+def rpm_query(package, queryformat, local=False):
+    cmd = 'rpm -q --qf'.split()
+    cmd.append(queryformat)
+    if local:
+        cmd.append('-p')
+    cmd.append(package)
+    return cmd
+
+
+@keyval_parse()
+def rpm_package_metadata(package, queryformat, local=False):
+    return rpm_query(package, queryformat, local)

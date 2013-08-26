@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata, command
+from aminator.util.linux import command
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -95,3 +95,31 @@ def apt_get_localinstall(package):
     if not apt_ret.success:
             log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
     return apt_ret
+
+
+@command()
+def deb_query(package, queryformat, local=False):
+    if local:
+        cmd = 'dpkg-deb -W'.split()
+        cmd.append('--showformat={0}'.format(queryformat))
+    else:
+        cmd = 'dpkg-query -W'.split()
+        cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
+
+
+@command()
+def apt_get_update():
+    return 'apt-get update'
+
+
+@command()
+def apt_get_install(package):
+    return 'apt-get -y install {0}'.format(package)
+
+
+@keyval_parse()
+def deb_package_metadata(package, queryformat, local=False):
+    return deb_query(package, queryformat, local)
+

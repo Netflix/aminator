@@ -19,7 +19,7 @@
 #
 
 """
-aminator.plugins.provisioner.manager
+aminator.plugins.distro.manager
 ====================================
 Provisioner plugin manager(s) and utils
 """
@@ -31,9 +31,9 @@ from aminator.plugins.manager import BasePluginManager
 log = logging.getLogger(__name__)
 
 
-class ProvisionerPluginManager(BasePluginManager):
-    """ Provisioner Plugin Manager """
-    _entry_point = 'aminator.plugins.provisioner'
+class DistroPluginManager(BasePluginManager):
+    """OS Distribution Plugin Manager """
+    _entry_point = 'aminator.plugins.distro'
 
     @property
     def entry_point(self):

@@ -78,9 +78,9 @@ class BaseProvisionerPlugin(BasePlugin):
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
 
-        log.debug('Entering chroot at {0}'.format(self._mountpoint))
+        log.debug('Entering chroot at {0}'.format(self._distro._mountpoint))
 
-        with Chroot(self._mountpoint):
+        with Chroot(self._distro._mountpoint):
             log.debug('Inside chroot')
 
             result = self._provision_package()
@@ -181,8 +181,8 @@ class BaseProvisionerPlugin(BasePlugin):
         dst_file_path = context.package.full_path
         shutil.move(src_file, dst_file_path)
 
-    def __call__(self, mountpoint):
-        self._mountpoint = mountpoint
+    def __call__(self, distro):
+        self._distro = distro
         return self
 
 @command()

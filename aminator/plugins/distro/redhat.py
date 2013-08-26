@@ -19,26 +19,25 @@
 #
 
 """
-aminator.plugins.distro.yum
+aminator.plugins.distro.redhat
 ================================
-basic yum distro
+basic redhat distro
 """
 import logging
 
 from aminator.plugins.distro.linux import BaseLinuxDistroPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install, yum_localinstall, rpm_package_metadata
 from aminator.util.linux import short_circuit_files, rewire_files
 
-__all__ = ('YumProvisionerPlugin',)
+__all__ = ('RedHatDistroPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumDistroPlugin(BaseLinuxDistroPlugin):
+class RedHatDistroPlugin(BaseLinuxDistroPlugin):
     """
-    YumDistroPlugin takes the majority of its behavior from BaseLinuxDistroPlugin
+    RedHatDistroPlugin takes the majority of its behavior from BaseLinuxDistroPlugin
     See BaseLinuxDistroPlugin for details
     """
-    _name = 'yum'
+    _name = 'RedHat'
 
     def _deactivate_provisioning_service_block(self):
         """

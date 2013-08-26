@@ -81,36 +81,6 @@ def fsck(dev):
 
 
 @command()
-def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
-
-
-@command()
-def yum_localinstall(path):
-    if not os.path.isfile(path):
-        log.critical('Package {0} not found'.format(path))
-        return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
-
-
-@command()
-def yum_clean_metadata(repos=None):
-    clean='yum clean metadata'
-    if repos:
-        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
-    return clean
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
-
-
-@command()
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
         log.error('Must provide dev or mountpoint')
@@ -140,28 +110,6 @@ def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
 
 
-@command()
-def rpm_query(package, queryformat, local=False):
-    cmd = 'rpm -q --qf'.split()
-    cmd.append(queryformat)
-    if local:
-        cmd.append('-p')
-    cmd.append(package)
-    return cmd
-
-
-@command()
-def deb_query(package, queryformat, local=False):
-    if local:
-        cmd = 'dpkg-deb -W'.split()
-        cmd.append('--showformat={0}'.format(queryformat))
-    else:
-        cmd = 'dpkg-query -W'.split()
-        cmd.append('-f={0}'.format(queryformat))
-    cmd.append(package)
-    return cmd
-
-
 def sanitize_metadata(word):
     chars = list(word)
     for index, char in enumerate(chars):
@@ -188,16 +136,6 @@ def keyval_parse(record_sep='\n', field_sep=':'):
             log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
         return metadata
     return _parse
-
-
-@keyval_parse()
-def rpm_package_metadata(package, queryformat, local=False):
-    return rpm_query(package, queryformat, local)
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat, local=False):
-    return deb_query(package, queryformat, local)
 
 
 class Chroot(object):
