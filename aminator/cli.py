@@ -41,6 +41,7 @@ def run():
     # but we don't touch it there :P
     bootstrap_parser = Argparser(add_help=False)
     bootstrap_parser.add_argument('--debug', action='store_true')
+    bootstrap_parser.add_argument('-e', "--environment", dest="env")
     args, argv = bootstrap_parser.parse_known_args()
     sys.argv = [sys.argv[0]] + argv
 
@@ -48,4 +49,4 @@ def run():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
-    sys.exit(Aminator(debug=args.debug).aminate())
+    sys.exit(Aminator(debug=args.debug, envname=args.env).aminate())
