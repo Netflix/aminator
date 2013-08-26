@@ -40,12 +40,15 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
     """
     _name = 'yum'
 
-    def _refresh_package_metadata(self):
-        context = self._config.context
+    def _refresh_repo_metadata(self):
         config = self._config.plugins[self.full_name]
         return yum_clean_metadata(config.get('clean_repos', []))
 
     def _provision_package(self):
+        result = self._refresh_repo_metadata()
+        if not result.success:
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
+            return False
         context = self._config.context
         if context.package.get('local_install', False):
             return yum_localinstall(context.package.arg)
@@ -60,39 +63,3 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
-
-    def _deactivate_provisioning_service_block(self):
-        """
-        Prevent packages installing the chroot from starting
-        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
-        """
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not short_circuit_files(self._mountpoint, files):
-                log.critical('Unable to short circuit {0} to {1}')
-                return False
-            else:
-                log.debug('Files short-circuited successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured')
-            return True
-
-    def _activate_provisioning_service_block(self):
-        """
-        Enable service startup so that things work when the AMI starts
-        For RHEL-like systems, we undo the short_circuit
-        """
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not rewire_files(self._mountpoint, files):
-                log.critical('Unable to rewire {0} to {1}')
-                return False
-            else:
-                log.debug('Files rewired successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured, no rewiring done')
-        return True

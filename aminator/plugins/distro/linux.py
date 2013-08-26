@@ -26,14 +26,10 @@ Simple base class for cases where there are small distro-specific corner cases
 import abc
 import logging
 import os
-import shutil
-
-from glob import glob
 
 from aminator.exceptions import VolumeException
 from aminator.plugins.distro.base import BaseDistroPlugin
-from aminator.util import download_file
-from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount, command
+from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
 
 
@@ -55,14 +51,6 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
     @abc.abstractmethod
     def _deactivate_provisioning_service_block(self):
         """ prevent service startup when packages are installed in chroot """
-
-    def _pre_chroot_block(self):
-        """ run commands after mounting the volume, but before chroot'ing """
-        pass
-
-    def _post_chroot_block(self):
-        """ commands to run after the exiting the chroot, but before unmounting / finalizing """
-        pass
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
