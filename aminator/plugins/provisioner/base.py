@@ -19,7 +19,7 @@
 #
 
 """
-aminator.plugins.provisioner.linux
+aminator.plugins.provisioner.base
 ==================================
 Simple base class for cases where there are small distro-specific corner cases
 """
@@ -45,6 +45,7 @@ class BaseProvisionerPlugin(BasePlugin):
     leaving the differences in the actual implementations
     """
     __metaclass__ = abc.ABCMeta
+    _entry_point = 'aminator.plugins.provisioner'
 
     @abc.abstractmethod
     def _provision_package(self):

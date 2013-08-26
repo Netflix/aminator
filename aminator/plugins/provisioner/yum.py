@@ -24,18 +24,19 @@ aminator.plugins.provisioner.yum
 basic yum provisioner
 """
 import logging
+import os
 
-from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install, yum_localinstall, rpm_package_metadata
+from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.util.linux import command, keyval_parse
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class YumProvisionerPlugin(BaseProvisionerPlugin):
     """
-    YumProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
-    See BaseLinuxProvisionerPlugin for details
+    YumProvisionerPlugin takes the majority of its behavior from BaseProvisionerPlugin
+    See BaseProvisionerPlugin for details
     """
     _name = 'yum'
 

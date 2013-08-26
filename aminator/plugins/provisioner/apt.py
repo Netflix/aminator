@@ -26,17 +26,17 @@ basic apt provisioner
 import logging
 import os
 
-from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import command
+from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.util.linux import command, keyval_parse
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class AptProvisionerPlugin(BaseProvisionerPlugin):
     """
-    AptProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
-    See BaseLinuxProvisionerPlugin for details
+    AptProvisionerPlugin takes the majority of its behavior from BaseProvisionerPlugin
+    See BaseProvisionerPlugin for details
     """
     _name = 'apt'
 
