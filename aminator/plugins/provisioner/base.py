@@ -30,6 +30,7 @@ import shutil
 
 from glob import glob
 
+from aminator.config import conf_action
 from aminator.plugins.base import BasePlugin
 from aminator.util import download_file
 from aminator.util.linux import Chroot, command
@@ -63,6 +64,11 @@ class BaseProvisionerPlugin(BasePlugin):
         """ commands to run after the exiting the chroot"""
         pass
 
+    def add_plugin_args(self, *args, **kwargs):
+        context = self._config.context
+        prov = self._parser.add_argument_group(title='Provisioning')
+        prov.add_argument("-i", "--interactive", dest='interactive', help="interactive session after provivioning", action=conf_action(config=context.package, action="store_true"))
+
     def provision(self):
         context = self._config.context
 
@@ -85,6 +91,10 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('Inside chroot')
 
             result = self._provision_package()
+            
+            if context.package.interactive:
+                os.system("bash")
+
             if not result.success:
                 log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
                 return False
