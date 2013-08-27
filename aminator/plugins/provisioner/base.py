@@ -153,7 +153,7 @@ class BaseProvisionerPlugin(BasePlugin):
         """
         context = self._config.context
         context.package.file = os.path.basename(context.package.arg)
-        context.package.full_path = os.path.join(self._mountpoint,
+        context.package.full_path = os.path.join(self._distro._mountpoint,
                                                  context.package.dir.lstrip('/'),
                                                  context.package.file)
         try:
