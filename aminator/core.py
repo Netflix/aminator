@@ -51,11 +51,10 @@ class Aminator(object):
         self.parser.parse_args()
         log.debug('Args parsed')
 
-        if 'init' in self.config.context and self.config.context.init:
-            mkdir_p(self.config.log_root)
-            mkdir_p(os.path.join(self.config.aminator_root, self.config.lock_dir))
-            mkdir_p(os.path.join(self.config.aminator_root, self.config.volume_dir))
-            log.debug('Creating initial folder structure')
+        log.debug('Creating initial folder structure if needed')
+        mkdir_p(self.config.log_root)
+        mkdir_p(os.path.join(self.config.aminator_root, self.config.lock_dir))
+        mkdir_p(os.path.join(self.config.aminator_root, self.config.volume_dir))
 
         if self.config.logging.aminator.enabled:
             log.debug('Configuring per-package logging')
