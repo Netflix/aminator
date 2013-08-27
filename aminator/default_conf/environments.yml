@@ -1,42 +1,49 @@
 default: ec2_yum_linux
 ec2_chef_linux:
     cloud: ec2
+    distro: redhat
     provisioner: chef
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
 ec2_yum_linux:
     cloud: ec2
+    distro: redhat
     provisioner: yum
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
 ec2_apt_linux:
     cloud: ec2
+    distro: debian
     provisioner: apt
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
 euca_yum_linux:
     cloud: euca
+    distro: redhat
     provisioner: yum
     volume: virtio
     blockdevice: virtio
     finalizer: tagging_ebs_euca
 euca_apt_linux:
     cloud: euca
+    distro: debian
     provisioner: apt
     volume: virtio
     blockdevice: virtio
     finalizer: tagging_ebs_euca
 euca_apt_script_linux:
     cloud: euca
+    distro: debian
     provisioner: apt_script
     volume: virtio
     blockdevice: virtio
     finalizer: tagging_ebs_euca
 ec2_apt_chef_linux:
     cloud: ec2
+    distro: debian
     provisioner: apt_chef
     volume: linux
     blockdevice: linux
