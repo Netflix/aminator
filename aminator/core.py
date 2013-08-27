@@ -24,10 +24,12 @@ aminator.core
 aminator core amination logic
 """
 import logging
+import os
 
 from aminator.config import init_defaults, configure_datetime_logfile
 from aminator.environment import Environment
 from aminator.plugins import PluginManager
+from aminator.util.linux import mkdir_p
 
 __all__ = ('Aminator', )
 log = logging.getLogger(__name__)
@@ -48,6 +50,11 @@ class Aminator(object):
         log.debug('Plugins loaded')
         self.parser.parse_args()
         log.debug('Args parsed')
+
+        log.debug('Creating initial folder structure if needed')
+        mkdir_p(self.config.log_root)
+        mkdir_p(os.path.join(self.config.aminator_root, self.config.lock_dir))
+        mkdir_p(os.path.join(self.config.aminator_root, self.config.volume_dir))
 
         if self.config.logging.aminator.enabled:
             log.debug('Configuring per-package logging')
