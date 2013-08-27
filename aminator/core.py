@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 
 
 class Aminator(object):
-    def __init__(self, config=None, parser=None, plugin_manager=PluginManager, environment=Environment, debug=False):
+    def __init__(self, config=None, parser=None, plugin_manager=PluginManager, environment=Environment, debug=False, envname=None):
         log.info('Aminator starting...')
         if not all((config, parser)):
             log.debug('Loading default configuration')
@@ -42,7 +42,9 @@ class Aminator(object):
         self.config = config
         self.parser = parser
         log.debug('Configuration loaded')
-        self.plugin_manager = plugin_manager(self.config, self.parser)
+        if not envname:
+            envname = self.config.environments.default
+        self.plugin_manager = plugin_manager(self.config, self.parser, plugins=self.config.environments[envname])
         log.debug('Plugins loaded')
         self.parser.parse_args()
         log.debug('Args parsed')
