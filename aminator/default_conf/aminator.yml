@@ -26,6 +26,9 @@ plugins:
       cloud:
         entry_point: aminator.plugins.cloud
         class: CloudPluginManager
+      distro:
+        entry_point: aminator.plugins.distro
+        class: DistroPluginManager
       finalizer:
         entry_point: aminator.plugins.finalizer
         class: FinalizerPluginManager
