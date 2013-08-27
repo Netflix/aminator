@@ -50,8 +50,8 @@ class Environment(object):
         with self.cloud as cloud:
             with self.finalizer(cloud) as finalizer:
                 with self.volume(self.cloud, self.blockdevice) as volume:
-                    with self.distro(volume) as distro:
-                        success = self.provisioner(distro).provision()
+                    with self.distro(volume) as mountpoint:
+                        success = self.provisioner(mountpoint).provision()
                         if not success:
                             log.critical('Provisioning failed!')
                             return False
