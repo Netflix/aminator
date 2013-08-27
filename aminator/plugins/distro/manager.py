@@ -19,24 +19,26 @@
 #
 
 """
-aminator
-========
-Create images from packages for deployment in various cloud formations
+aminator.plugins.distro.manager
+====================================
+Provisioner plugin manager(s) and utils
 """
 import logging
-try:
-    from logging import NullHandler
-except ImportError:
-    # py26
-    try:
-        from logutils import NullHandler
-    except ImportError:
-        class NullHandler(logging.Handler):
-            def emit(self, record):
-                pass
 
-__version__ = '1.2.167-dev'
-__versioninfo__ = __version__.split('.')
-__all__ = ()
+from aminator.plugins.manager import BasePluginManager
 
-logging.getLogger(__name__).addHandler(NullHandler())
+
+log = logging.getLogger(__name__)
+
+
+class DistroPluginManager(BasePluginManager):
+    """OS Distribution Plugin Manager """
+    _entry_point = 'aminator.plugins.distro'
+
+    @property
+    def entry_point(self):
+        return self._entry_point
+
+    @staticmethod
+    def check_func(plugin):
+        return True

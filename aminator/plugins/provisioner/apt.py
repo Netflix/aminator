@@ -26,24 +26,28 @@ basic apt provisioner
 import logging
 import os
 
-from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import apt_get_install, apt_get_update, deb_package_metadata, command
+from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.util.linux import command, keyval_parse
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class AptProvisionerPlugin(BaseProvisionerPlugin):
     """
-    AptProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
-    See BaseLinuxProvisionerPlugin for details
+    AptProvisionerPlugin takes the majority of its behavior from BaseProvisionerPlugin
+    See BaseProvisionerPlugin for details
     """
     _name = 'apt'
 
-    def _refresh_package_metadata(self):
+    def _refresh_repo_metadata(self):
         return apt_get_update()
 
     def _provision_package(self):
+        result = self._refresh_repo_metadata()
+        if not result.success:
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
+            return False
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         if context.package.get('local_install', False):
@@ -73,48 +77,6 @@ class AptProvisionerPlugin(BaseLinuxProvisionerPlugin):
             metadata.setdefault(x, None)
         context.package.attributes = metadata
 
-    def _deactivate_provisioning_service_block(self):
-        """
-        Prevent packages installing in the chroot from starting
-        For debian based distros, we add /usr/sbin/policy-rc.d
-        """
-
-        config = self._config.plugins[self.full_name]
-        path = self._mountpoint + config.get('policy_file_path', '')
-        filename = path + "/" + config.get('policy_file')
-
-        if not os.path.isdir(path):
-            log.debug("creating %s", path)
-            os.makedirs(path)
-            log.debug("created %s", path)
-
-        with open(filename, 'w') as f:
-            log.debug("writing %s", filename)
-            f.write(config.get('policy_file_content'))
-            log.debug("wrote %s", filename)
-
-        os.chmod(filename, config.get('policy_file_mode', ''))
-
-        return True
-
-    def _activate_provisioning_service_block(self):
-        """
-        Remove policy-rc.d file so that things start when the AMI launches
-        """
-        config = self._config.plugins[self.full_name]
-
-        policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
-            config.get('policy_file', '')
-
-        if os.path.isfile(policy_file):
-            log.debug("removing %s", policy_file)
-            os.remove(policy_file)
-        else:
-            log.debug("The %s was missing, this is unexpected as the "
-                      "AptProvisionerPlugin should manage this file", policy_file)
-
-        return True
-
 
 @command()
 def dpkg_install(package):
@@ -133,3 +95,31 @@ def apt_get_localinstall(package):
     if not apt_ret.success:
             log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
     return apt_ret
+
+
+@command()
+def deb_query(package, queryformat, local=False):
+    if local:
+        cmd = 'dpkg-deb -W'.split()
+        cmd.append('--showformat={0}'.format(queryformat))
+    else:
+        cmd = 'dpkg-query -W'.split()
+        cmd.append('-f={0}'.format(queryformat))
+    cmd.append(package)
+    return cmd
+
+
+@command()
+def apt_get_update():
+    return 'apt-get update'
+
+
+@command()
+def apt_get_install(package):
+    return 'apt-get -y install {0}'.format(package)
+
+
+@keyval_parse()
+def deb_package_metadata(package, queryformat, local=False):
+    return deb_query(package, queryformat, local)
+

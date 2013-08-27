@@ -40,6 +40,10 @@ entry_points = {
         'ec2 = aminator.plugins.cloud.ec2:EC2CloudPlugin',
         'euca = aminator.plugins.cloud.euca:EucaCloudPlugin',
     ],
+    'aminator.plugins.distro': [
+        'debian = aminator.plugins.distro.debian:DebianDistroPlugin',
+        'redhat = aminator.plugins.distro.redhat:RedHatDistroPlugin',
+    ],
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',

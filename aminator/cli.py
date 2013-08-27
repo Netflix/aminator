@@ -44,6 +44,9 @@ def run():
     bootstrap_parser.add_argument('-e', "--environment", dest="env")
     args, argv = bootstrap_parser.parse_known_args()
     sys.argv = [sys.argv[0]] + argv
+    # add -e argument back argv for when we parse the args again
+    if args.env:
+        sys.argv.extend(["-e",args.env])
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
