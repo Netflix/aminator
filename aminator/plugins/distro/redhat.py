@@ -37,7 +37,7 @@ class RedHatDistroPlugin(BaseLinuxDistroPlugin):
     RedHatDistroPlugin takes the majority of its behavior from BaseLinuxDistroPlugin
     See BaseLinuxDistroPlugin for details
     """
-    _name = 'RedHat'
+    _name = 'redhat'
 
     def _deactivate_provisioning_service_block(self):
         """
