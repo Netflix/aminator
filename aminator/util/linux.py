@@ -405,3 +405,16 @@ def rewire_files(root, cmds, ext='short_circuit'):
         if not rewire(root, cmd, ext):
             return False
     return True
+
+
+def mkdir_p(path):
+    try:
+        if os.path.isdir(path):
+            return
+
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            raise e
