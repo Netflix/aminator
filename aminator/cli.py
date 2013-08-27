@@ -53,3 +53,119 @@ def run():
     else:
         logging.basicConfig()
     sys.exit(Aminator(debug=args.debug, envname=args.env).aminate())
+
+def plugin_manager():
+    import subprocess
+    import requests
+    import argparse
+    import tempfile
+    import tarfile
+    import shutil
+    import yaml
+    import re
+    import os
+
+    from cStringIO import StringIO
+
+    parser = argparse.ArgumentParser(description='Aminator plugin install utility')
+
+    parser.add_argument('--branch', help='Which branch to pull the plugin list from. Valid options: production, testing, alpha. Default value: production',
+                        default='production', choices=['production', 'testing', 'alpha'], dest='branch', metavar='branch')
+    parser.add_argument('--type', help='The type of plugin to search for. Valid options: cloud, volume, blockdevice, provision, distro, finalizer',
+                        choices=['cloud', 'volume', 'blockdevice', 'provision', 'distro', 'finalizer'], dest='type', metavar='plugin-type')
+    parser.add_argument('command', help='Command to run. Valid commands: search install list', choices=['search', 'install', 'list'], metavar='command')
+    parser.add_argument('name', help='Name of the plugin', metavar='name', nargs='?')
+    args = parser.parse_args()
+
+    req = requests.get('https://raw.github.com/aminator-plugins/metadata/%s/plugins.yml' % (args.branch))
+    plugins = yaml.load(req.text)
+
+    if args.command == 'search':
+        if not args.name:
+            print "ERROR: You must supply a keyword to search for"
+            sys.exit()
+
+        results = []
+        rgx = re.compile(args.name, re.I)
+        for name, data in plugins.items():
+            m = rgx.search(name)
+            if not m:
+                for alias in data['aliases']:
+                    m = rgx.search(alias)
+                    if m:
+                        break
+            
+            if m:
+                if args.type and args.type != data['type']:
+                    continue
+                results.append("Name:        %s\nAliases:     %s\nType:        %s\nDescription: %s" % (name, ", ".join(data['aliases']), data['type'], data['description']))
+
+        if len(results) == 0:
+            print "No plugins found for keyword %s" % args.name
+        else:
+            print "\n----------\n".join(results)
+
+    elif args.command == 'list':
+        results = []
+        for name, data in plugins.items():
+            if args.type and args.type != data['type']:
+                continue
+            results.append("Name:        %s\nAliases:     %s\nType:        %s\nDescription: %s" % (name, ", ".join(data['aliases']), data['type'], data['description']))
+
+        if len(results) == 0:
+            print "No plugins found"
+        else:
+            print "\n----------\n".join(results)
+
+    elif args.command == 'install':
+        if not args.name:
+            print "ERROR: You must supply a plugin name to install"
+            sys.exit()
+
+        if os.geteuid() != 0:
+            print "ERROR: You must run installs as root (or through sudo)"
+            sys.exit()
+
+        rgx = re.compile('^%s$' % args.name, re.I)
+        plugin = None
+
+        for name, data in plugins.items():
+            m = rgx.match(name)
+            if not m:
+                for alias in data['aliases']:
+                    m = rgx.match(alias)
+                    if m:
+                        plugin = data
+                        break
+            else:
+                plugin = data
+        
+        if not plugin:
+            print "Unable to find a plugin named %s. You should use the search to find the correct name or alias for the plugin you want to install" % args.name
+            sys.exit()
+        else:
+            url = 'https://github.com/aminator-plugins/%s/archive/%s.tar.gz' % (plugin['repo_name'], plugin['branch']) 
+            print "Downloading latest version of %s from %s" % (args.name, url)
+            req = requests.get(url, stream=True)
+
+            tar = tarfile.open(mode="r:*", fileobj=StringIO(req.raw.read()))
+
+            tmpdir = tempfile.mkdtemp()
+            tar.extractall(path=tmpdir)
+
+            install_path = os.path.join(tmpdir, "%s-%s" % (plugin['repo_name'], plugin['branch']))
+            exe = subprocess.Popen([sys.executable, 'setup.py', 'install'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=install_path)
+            out, err = exe.communicate()
+            if exe.returncode > 0:
+                outf = open(os.path.join(tmpdir, "install.log"), 'w')
+                outf.write(out)
+                outf.close()
+
+                errf = open(os.path.join(tmpdir, "install.err"), 'w')
+                errf.write(err)
+                errf.close()
+
+                print "Plugin installation failed. You should look at install.log and install.err in the installation folder, %s, for the cause of the failure" % tmpdir
+            else:
+                print "%s plugin installed successfully, removing temp dir %s" % (args.name, tmpdir)
+                shutil.rmtree(tmpdir)
