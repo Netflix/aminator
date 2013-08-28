@@ -193,7 +193,7 @@ class BaseProvisionerPlugin(BasePlugin):
         shutil.move(src_file, dst_file_path)
 
     def __call__(self, mountpoint):
-        self._mountpoint = mountpoint
+        self._distro = distro
         return self
 
 @command()
