@@ -92,7 +92,7 @@ class BaseProvisionerPlugin(BasePlugin):
 
             result = self._provision_package()
             
-            if context.package.interactive:
+            if context.package.get('interactive', False):
                 os.system("bash")
 
             if not result.success:
