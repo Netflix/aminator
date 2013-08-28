@@ -46,7 +46,6 @@ entry_points = {
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
-        'chef = aminator.plugins.provisioner.chef:ChefProvisionerPlugin',
         'apt_chef = aminator.plugins.provisioner.apt_chef:AptChefProvisionerPlugin',
         'apt_script = aminator.plugins.provisioner.apt_script:AptScriptProvisionerPlugin',
     ],
