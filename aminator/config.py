@@ -79,6 +79,8 @@ def init_defaults(argv=None, debug=False):
         dictConfig(config.logging.base.config.toDict())
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
+        for handler in logging.getLogger().handlers: handler.setLevel(logging.DEBUG)
+
     add_base_arguments(parser=main_parser, config=config)
     plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS,
                               parents=[main_parser])
