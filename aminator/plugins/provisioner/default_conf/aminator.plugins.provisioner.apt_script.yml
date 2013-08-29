@@ -1,0 +1,28 @@
+enabled: true
+
+short_circuit: true
+
+# fstab-esque list of mounts for a chroot environment. ordered.
+# [device, type, mount point, options]
+chroot_mounts:
+    - [proc, proc, /proc, null]
+    - [sysfs, sysfs, /sys, null]
+    - [/dev, bind, /dev, null]
+    - [devpts, devpts, /dev/pts, null]
+    - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
+
+pkg_query_format: "name:${Package}\\nversion:${Version}\\nrelease:${Release}"
+pkg_attributes: []
+
+pkg_extension: deb
+
+provision_configs: true
+provision_config_files:
+  - /etc/resolv.conf
+
+policy_file_path: /usr/sbin
+policy_file: policy-rc.d
+policy_file_mode: 0755
+policy_file_content: |
+  #!/bin/sh
+  exit 101

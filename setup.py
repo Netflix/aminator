@@ -34,14 +34,18 @@ with open('requirements.txt') as fh:
 entry_points = {
     'console_scripts': [
         'aminate = aminator.cli:run',
+        'aminator-plugin = aminator.cli:plugin_manager',
     ],
     'aminator.plugins.cloud': [
         'ec2 = aminator.plugins.cloud.ec2:EC2CloudPlugin',
     ],
+    'aminator.plugins.distro': [
+        'debian = aminator.plugins.distro.debian:DebianDistroPlugin',
+        'redhat = aminator.plugins.distro.redhat:RedHatDistroPlugin',
+    ],
     'aminator.plugins.provisioner': [
         'yum = aminator.plugins.provisioner.yum:YumProvisionerPlugin',
         'apt = aminator.plugins.provisioner.apt:AptProvisionerPlugin',
-        'apt_chef = aminator.plugins.provisioner.apt_chef:AptChefProvisionerPlugin',
     ],
     'aminator.plugins.volume': [
         'linux = aminator.plugins.volume.linux:LinuxVolumePlugin',

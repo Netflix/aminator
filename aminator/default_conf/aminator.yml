@@ -26,6 +26,9 @@ plugins:
       cloud:
         entry_point: aminator.plugins.cloud
         class: CloudPluginManager
+      distro:
+        entry_point: aminator.plugins.distro
+        class: DistroPluginManager
       finalizer:
         entry_point: aminator.plugins.finalizer
         class: FinalizerPluginManager
@@ -37,6 +40,8 @@ plugins:
         class: VolumePluginManager
 
 context:
+  # used by some plugins when fetching resources
+  verify_https: false
   package:
     # AMI directory to store package files
     dir: /tmp
@@ -48,4 +53,3 @@ context:
     tags: {}
   web_log: {}
   cloud: {}
-  chef: {}

@@ -19,10 +19,16 @@
 #
 import logging
 import os
-#from  tempfile import tempfile
+
+from aminator.util.linux import keyval_parse
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.config import Config
+from collections import namedtuple
+
+from envoy.core import Response
+
+CommandResult = namedtuple('CommandResult', 'success result')
 
 log = logging.getLogger(__name__)
 console = logging.StreamHandler()
@@ -73,3 +79,44 @@ class TestAptProvisionerPlugin(object):
 
         assert self.plugin._activate_provisioning_service_block()
         assert False == os.path.isfile(self.full_path)
+
+    def test_metadata(self):
+        """ test that given we get back the metadata we expect
+            this first was a problem when the deb Description field had leading whitespace
+            which caused the keys to contain leading whitespace
+        """
+
+        response = Response()
+        response.std_out = """
+  Package: helloWorld
+  Source: helloWorld
+  Version: 1374197704:1.0.0-h357.6ea8a16
+  Section: None
+  Priority: optional
+  Architecture: all
+  Provides: helloWorld
+  Installed-Size: 102704
+  Maintainer: someone@somewhere.org
+  Description: helloWorld
+   ----------
+   Manifest-Version: 1.1
+   Implementation-Vendor: Hello, Inc.
+   Implementation-Title: helloWorld;1.0.0
+   Implementation-Version: 1.0.0
+   Label: helloWorld-1.0.0
+   Built-By: builder
+   Build-Job: JOB-helloWorld
+   Build-Date: 2013-07-19_01:33:52
+   Build-Number: 357
+   Build-Id: 2013-07-18_18-24-53
+   Change: 6ea8a16
+"""
+        package_query_result = CommandResult(True, response)
+        result = parse_command_result(package_query_result)
+
+        assert result['Build-Number'] == '357'
+        assert result['Build-Job'] == 'JOB-helloWorld'
+
+@keyval_parse()
+def parse_command_result(data):
+    return data
