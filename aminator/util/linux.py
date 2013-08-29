@@ -81,36 +81,6 @@ def fsck(dev):
 
 
 @command()
-def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
-
-
-@command()
-def yum_localinstall(path):
-    if not os.path.isfile(path):
-        log.critical('Package {0} not found'.format(path))
-        return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
-
-
-@command()
-def yum_clean_metadata(repos=None):
-    clean='yum clean metadata'
-    if repos:
-        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
-    return clean
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
-
-
-@command()
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
         log.error('Must provide dev or mountpoint')
@@ -130,7 +100,6 @@ def mount(mountspec):
 
     return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
 
-
 @command()
 def unmount(dev):
     return 'umount {0}'.format(dev)
@@ -139,27 +108,6 @@ def unmount(dev):
 @command()
 def busy_mount(mountpoint):
     return 'lsof -X {0}'.format(mountpoint)
-
-
-@command()
-def rpm_query(package, queryformat, local=False):
-    cmd = 'rpm -q --qf'.split()
-    cmd.append(queryformat)
-    if local:
-        cmd.append('-p')
-    cmd.append(package)
-    return cmd
-
-
-@command()
-def deb_query(package, queryformat, local=False):
-    if local:
-        cmd = 'dpkg -I'.split()
-    else:
-        cmd = 'dpkg-query -W'.split()
-        cmd.append('-f={0}'.format(queryformat))
-    cmd.append(package)
-    return cmd
 
 
 def sanitize_metadata(word):
@@ -183,21 +131,11 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     key, val = record.split(field_sep, 1)
                 except ValueError:
                     continue
-                metadata[key] = val.strip()
+                metadata[key.strip()] = val.strip()
         else:
             log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
         return metadata
     return _parse
-
-
-@keyval_parse()
-def rpm_package_metadata(package, queryformat, local=False):
-    return rpm_query(package, queryformat, local)
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat, local=False):
-    return deb_query(package, queryformat, local)
 
 
 class Chroot(object):
@@ -426,7 +364,7 @@ def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
             os.symlink(dst, fullpath)
             log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuting {0} to {1}'.format(fullpath, dst))
+            log.exception('Error encountered while short circuiting {0} to {1}'.format(fullpath, dst))
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(fullpath, dst))
@@ -467,3 +405,16 @@ def rewire_files(root, cmds, ext='short_circuit'):
         if not rewire(root, cmd, ext):
             return False
     return True
+
+
+def mkdir_p(path):
+    try:
+        if os.path.isdir(path):
+            return
+
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            raise e

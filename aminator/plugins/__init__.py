@@ -43,7 +43,7 @@ class PluginManager(object):
     """ The plugin manager manager, if you will. Responsible for booting plugins """
     _registry = {}
 
-    def __init__(self, config, parser):
+    def __init__(self, config, parser, plugins=None):
         """
         config.plugins.managers is a map of entry points, their kinds, and the actual manager classes
         this populates the registry dict, mapping kind and entry_point to an actual instance of the manager
@@ -60,8 +60,9 @@ class PluginManager(object):
             self._registry[kind] = self._registry[entry_point]
 
             for name, plugin in self._registry[entry_point].by_name.iteritems():
-                plugin.obj.configure(config, parser)
-                log.debug('Loaded plugin {0}.{1}'.format(entry_point, name))
+                if not plugins or plugins[entry_point.split('.')[-1]] == name:
+                    plugin.obj.configure(config, parser)
+                    log.debug('Loaded plugin {0}.{1}'.format(entry_point, name))
 
     def find_by_entry_point(self, entry_point, name):
         return self._registry[entry_point].by_name[name]

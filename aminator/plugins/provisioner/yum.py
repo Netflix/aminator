@@ -24,28 +24,31 @@ aminator.plugins.provisioner.yum
 basic yum provisioner
 """
 import logging
+import os
 
-from aminator.plugins.provisioner.linux import BaseLinuxProvisionerPlugin
-from aminator.util.linux import yum_clean_metadata, yum_install, yum_localinstall, rpm_package_metadata
-from aminator.util.linux import short_circuit_files, rewire_files
+from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.util.linux import command, keyval_parse
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
 
 
-class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
+class YumProvisionerPlugin(BaseProvisionerPlugin):
     """
-    YumProvisionerPlugin takes the majority of its behavior from BaseLinuxProvisionerPlugin
-    See BaseLinuxProvisionerPlugin for details
+    YumProvisionerPlugin takes the majority of its behavior from BaseProvisionerPlugin
+    See BaseProvisionerPlugin for details
     """
     _name = 'yum'
 
-    def _refresh_package_metadata(self):
-        context = self._config.context
+    def _refresh_repo_metadata(self):
         config = self._config.plugins[self.full_name]
         return yum_clean_metadata(config.get('clean_repos', []))
 
     def _provision_package(self):
+        result = self._refresh_repo_metadata()
+        if not result.success:
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
+            return False
         context = self._config.context
         if context.package.get('local_install', False):
             return yum_localinstall(context.package.arg)
@@ -61,38 +64,38 @@ class YumProvisionerPlugin(BaseLinuxProvisionerPlugin):
             metadata.setdefault(x, None)
         context.package.attributes = metadata
 
-    def _deactivate_provisioning_service_block(self):
-        """
-        Prevent packages installing the chroot from starting
-        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
-        """
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not short_circuit_files(self._mountpoint, files):
-                log.critical('Unable to short circuit {0} to {1}')
-                return False
-            else:
-                log.debug('Files short-circuited successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured')
-            return True
 
-    def _activate_provisioning_service_block(self):
-        """
-        Enable service startup so that things work when the AMI starts
-        For RHEL-like systems, we undo the short_circuit
-        """
-        config = self._config.plugins[self.full_name]
-        files = config.get('short_circuit_files', [])
-        if files:
-            if not rewire_files(self._mountpoint, files):
-                log.critical('Unable to rewire {0} to {1}')
-                return False
-            else:
-                log.debug('Files rewired successfully')
-                return True
-        else:
-            log.debug('No short circuit files configured, no rewiring done')
-        return True
+@command()
+def yum_install(package):
+    return 'yum --nogpgcheck -y install {0}'.format(package)
+
+
+@command()
+def yum_localinstall(path):
+    if not os.path.isfile(path):
+        log.critical('Package {0} not found'.format(path))
+        return None
+    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+
+
+@command()
+def yum_clean_metadata(repos=None):
+    clean='yum clean metadata'
+    if repos:
+        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
+    return clean
+
+
+@command()
+def rpm_query(package, queryformat, local=False):
+    cmd = 'rpm -q --qf'.split()
+    cmd.append(queryformat)
+    if local:
+        cmd.append('-p')
+    cmd.append(package)
+    return cmd
+
+
+@keyval_parse()
+def rpm_package_metadata(package, queryformat, local=False):
+    return rpm_query(package, queryformat, local)

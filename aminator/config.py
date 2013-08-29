@@ -79,6 +79,8 @@ def init_defaults(argv=None, debug=False):
         dictConfig(config.logging.base.config.toDict())
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
+        for handler in logging.getLogger().handlers: handler.setLevel(logging.DEBUG)
+
     add_base_arguments(parser=main_parser, config=config)
     plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS,
                               parents=[main_parser])
@@ -231,6 +233,8 @@ def add_base_arguments(parser, config):
                           help='The environment configuration for amination')
     parser.add_config_arg('--preserve-on-error', action='store_true', config=config.context,
                           help='For Debugging. Preserve build chroot on error')
+    parser.add_config_arg('--verify-https', action='store_true', config=config.context,
+                          help='Specify if one wishes for plugins to verify SSL certs when hitting https URLs')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
     parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
 

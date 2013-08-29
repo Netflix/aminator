@@ -19,44 +19,30 @@
 #
 
 """
-aminator.plugins.provisioner.linux
+aminator.plugins.distro.linux
 ==================================
 Simple base class for cases where there are small distro-specific corner cases
 """
 import abc
 import logging
 import os
-import shutil
 
 from aminator.exceptions import VolumeException
-from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-from aminator.util import download_file
-from aminator.util.linux import Chroot, lifo_mounts, mount, mounted, MountSpec, unmount
+from aminator.plugins.distro.base import BaseDistroPlugin
+from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
 
 
-__all__ = ('BaseLinuxProvisionerPlugin',)
+__all__ = ('BaseLinuxDistroPlugin',)
 log = logging.getLogger(__name__)
 
 
-class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
+class BaseLinuxDistroPlugin(BaseDistroPlugin):
     """
     Most of what goes on between apt and yum provisioning is the same, so we factored that out,
     leaving the differences in the actual implementations
     """
     __metaclass__ = abc.ABCMeta
-
-    @abc.abstractmethod
-    def _refresh_package_metadata(self):
-        """ subclasses must implement package metadata refresh logic """
-
-    @abc.abstractmethod
-    def _provision_package(self):
-        """ subclasses must implement package provisioning logic """
-
-    @abc.abstractmethod
-    def _store_package_metadata(self):
-        """ stuff name, version, release into context """
 
     @abc.abstractmethod
     def _activate_provisioning_service_block(self):
@@ -65,56 +51,6 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
     @abc.abstractmethod
     def _deactivate_provisioning_service_block(self):
         """ prevent service startup when packages are installed in chroot """
-
-    def _pre_chroot_block(self):
-        """ run commands after mounting the volume, but before chroot'ing """
-        pass
-
-    def _post_chroot_block(self):
-        """ commands to run after the exiting the chroot, but before unmounting / finalizing """
-        pass
-
-    def provision(self):
-        context = self._config.context
-
-        if self._local_install():
-            log.info('performing a local install of {0}'.format(context.package.arg))
-            context.package.local_install = True
-            if not self._stage_pkg():
-                log.critical('failed to stage {0}'.format(context.package.arg))
-                return False
-        else:
-            log.info('performing a repo install of {0}'.format(context.package.arg))
-            context.package.local_install = False
-
-        log.debug('Pre chroot command block')
-        self._pre_chroot_block()
-
-        log.debug('Entering chroot at {0}'.format(self._mountpoint))
-
-        with Chroot(self._mountpoint):
-            log.debug('Inside chroot')
-
-            result = self._refresh_package_metadata()
-            if not result.success:
-                log.critical('Package metadata refresh failed: {0.std_err}'.format(result.result))
-                return False
-
-            result = self._provision_package()
-            if not result.success:
-                log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
-                return False
-            self._store_package_metadata()
-            if context.package.local_install and not context.package.get('preserve', False):
-                os.remove(context.package.arg)
-
-        log.debug('Exited chroot')
-
-        log.debug('Post chroot command block')
-        self._post_chroot_block()
-
-        log.info('Provisioning succeeded!')
-        return True
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
@@ -226,59 +162,13 @@ class BaseLinuxProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('No provision config files configured')
             return True
 
-    def _local_install(self):
-        """True if context.package.arg ends with a package extension
-        """
-        config = self._config
-        ext = config.plugins[self.full_name].get('pkg_extension', '')
-        if not ext:
-            return False
-
-        # ensure extension begins with a dot
-        ext = '.{0}'.format(ext.lstrip('.'))
-
-        return config.context.package.arg.endswith(ext)
-
-    def _stage_pkg(self):
-        """copy package file into AMI volume.
-        """
-        context = self._config.context
-        context.package.file = os.path.basename(context.package.arg)
-        context.package.full_path = os.path.join(self._mountpoint,
-                                                 context.package.dir.lstrip('/'),
-                                                 context.package.file)
-        try:
-            if context.package.arg.startswith('http://'):
-                self._download_pkg(context)
-            else:
-                self._move_pkg(context)
-        except Exception:
-            log.exception('Error encountered while staging package')
-            return False
-            # reset to chrooted file path
-        context.package.arg = os.path.join(context.package.dir, context.package.file)
-        return True
-
-    def _download_pkg(self, context):
-        """dowload url to context.package.dir
-        """
-        pkg_url = context.package.arg
-        dst_file_path = context.package.full_path
-        log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
-        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1))
-
-    def _move_pkg(self, context):
-        src_file = context.package.arg.replace('file://', '')
-        dst_file_path = context.package.full_path
-        shutil.move(src_file, dst_file_path)
-
     def __enter__(self):
         if not self._configure_chroot():
             raise VolumeException('Error configuring chroot')
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type and self._config.context.preserve_on_error:
+        if exc_type and self._config.context.get("preserve_on_error", False):
             return False
         if not self._teardown_chroot():
             raise VolumeException('Error tearing down chroot')

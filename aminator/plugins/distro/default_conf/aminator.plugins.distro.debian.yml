@@ -1,5 +1,4 @@
 enabled: true
-
 short_circuit: true
 
 # fstab-esque list of mounts for a chroot environment. ordered.
@@ -10,11 +9,6 @@ chroot_mounts:
     - [/dev, bind, /dev, null]
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
-
-pkg_query_format: "name:${Package}\\nversion:${Version}\\nrelease:${Release}"
-pkg_attributes: [name, version, release]
-
-pkg_extension: deb
 
 provision_configs: true
 provision_config_files:
@@ -27,4 +21,3 @@ policy_file_content: |
   #!/bin/sh
   exit 101
 
-chef_dir: /var/chef

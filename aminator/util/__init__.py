@@ -78,9 +78,9 @@ def memoize(obj=None):
 
 
 @retry(requests.HTTPError, tries=5, delay=1, backoff=2)
-def download_file(url, dst, timeout=1):
+def download_file(url, dst, timeout=1, verify_https=False):
     try:
-        response = requests.get(url, timeout=timeout)
+        response = requests.get(url, timeout=timeout, verify=verify_https)
     except requests.RequestException as e:
         if isinstance(e, requests.Timeout):
             # Retry timeouts
