@@ -192,7 +192,7 @@ class BaseProvisionerPlugin(BasePlugin):
         dst_file_path = context.package.full_path
         shutil.move(src_file, dst_file_path)
 
-    def __call__(self, distro):
+    def __call__(self, mountpoint):
         self._distro = distro
         return self
 
