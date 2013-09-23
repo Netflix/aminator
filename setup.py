@@ -22,8 +22,6 @@ if major != 2 or minor < 6:
     print 'Aminator requires Python 2.6.x or 2.7.x'
     sys.exit(1)
 
-from distribute_setup import use_setuptools
-use_setuptools()
 from setuptools import setup, find_packages
 
 import aminator
