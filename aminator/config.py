@@ -209,11 +209,11 @@ class PluginConfig(Config):
 
     @staticmethod
     def set_overrides(plugins, config):
-        if not hasattr(config.context, "plugin_overrides"):
+        if not hasattr(config.context, "plugin_override"):
             return
 
         config_dict = {}
-        for override in config.context.plugin_overrides:
+        for override in config.context.plugin_override:
             split = override.split('=', 1)
             value = split[1].strip('"\'')
             plugin_name = ".".join(split[0].split(".")[0:-1])
