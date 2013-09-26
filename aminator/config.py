@@ -207,6 +207,25 @@ class PluginConfig(Config):
         resource_path = os.path.join(RSRC_DEFAULT_CONF_DIR, resource_file)
         return super(PluginConfig, cls).from_defaults(namespace=namespace, name=resource_path, *args, **kwargs)
 
+    @staticmethod
+    def set_overrides(plugins, overrides):
+        config_dict = {}
+        for override in overrides:
+            split = override.split('=', 1)
+            value = split[1].strip('"\'')
+            plugin_name = ".".join(split[0].split(".")[0:-1])
+            prop = split[0].split(".")[-1]
+            log.debug("setting plugin config for %s to %s for %s" % (plugin_name, value, prop))
+            if plugin_name not in config_dict: config_dict[plugin_name] = {}
+            config_dict[plugin_name][prop] = value
+
+        for plugin in plugins:
+            if plugin.obj.full_name in config_dict:
+                plugin.obj.override_config(config_dict[plugin.obj.full_name])
+            #for attr in dir():
+            #    log.debug("plugin.obj.%s = %s" % (attr, getattr(plugin.obj._config, attr)))
+            #break
+
 
 class Argparser(object):
     """ Argument parser class. Holds the keys to argparse """
@@ -235,6 +254,8 @@ def add_base_arguments(parser, config):
                           help='For Debugging. Preserve build chroot on error')
     parser.add_config_arg('--verify-https', action='store_true', config=config.context,
                           help='Specify if one wishes for plugins to verify SSL certs when hitting https URLs')
+    parser.add_config_arg('-o', '--plugin-override', action='append', config=config.context,
+                          help='Override a plugin option typically stored in it\' YAML config')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
     parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
 
