@@ -208,9 +208,12 @@ class PluginConfig(Config):
         return super(PluginConfig, cls).from_defaults(namespace=namespace, name=resource_path, *args, **kwargs)
 
     @staticmethod
-    def set_overrides(plugins, overrides):
+    def set_overrides(plugins, config):
+        if not hasattr(config.context, "plugin_overrides"):
+            return
+
         config_dict = {}
-        for override in overrides:
+        for override in config.context.plugin_overrides:
             split = override.split('=', 1)
             value = split[1].strip('"\'')
             plugin_name = ".".join(split[0].split(".")[0:-1])

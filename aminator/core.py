@@ -52,7 +52,7 @@ class Aminator(object):
         log.debug('Args parsed')
 
         plugins = [self.plugin_manager.find_by_kind(entry, plugin_entries[entry]) for entry in plugin_entries]
-        PluginConfig.set_overrides(plugins, self.config.context.plugin_override)
+        PluginConfig.set_overrides(plugins, self.config)
         self.plugin_manager.configure_plugins(self.config, plugin_entries)
         log.debug('Plugins loaded')
 
