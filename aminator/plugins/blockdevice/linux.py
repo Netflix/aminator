@@ -43,8 +43,8 @@ BlockDevice = namedtuple('BlockDevice', 'node handle')
 class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     _name = 'linux'
 
-    def configure(self, config, parser):
-        super(LinuxBlockDevicePlugin, self).configure(config, parser)
+    def configure(self):
+        super(LinuxBlockDevicePlugin, self).configure()
 
         block_config = self._config.plugins[self.full_name]
 

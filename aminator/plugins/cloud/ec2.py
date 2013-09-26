@@ -100,13 +100,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
         cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
                            action=conf_action(config=context.cloud, action='store_true'))
 
-    def configure(self, config, parser):
-        super(EC2CloudPlugin, self).configure(config, parser)
-        host = config.context.web_log.get('host', False)
+    def configure(self):
+        super(EC2CloudPlugin, self).configure()
+        host = self._config.context.web_log.get('host', False)
         if not host:
             md = get_instance_metadata()
             pub, ipv4 = 'public-hostname', 'local-ipv4'
-            config.context.web_log['host'] = md[pub] if pub in md else md[ipv4]
+            self._config.context.web_log['host'] = md[pub] if pub in md else md[ipv4]
 
     def connect(self, **kwargs):
         if self._connection:

@@ -26,7 +26,7 @@ aminator core amination logic
 import logging
 import os
 
-from aminator.config import init_defaults, configure_datetime_logfile
+from aminator.config import init_defaults, configure_datetime_logfile, PluginConfig
 from aminator.environment import Environment
 from aminator.plugins import PluginManager
 from aminator.util.linux import mkdir_p
@@ -43,13 +43,18 @@ class Aminator(object):
             config, parser = init_defaults(debug=debug)
         self.config = config
         self.parser = parser
-        log.debug('Configuration loaded')
         if not envname:
             envname = self.config.environments.default
-        self.plugin_manager = plugin_manager(self.config, self.parser, plugins=self.config.environments[envname])
-        log.debug('Plugins loaded')
+        plugin_entries = self.config.environments[envname]
+        self.plugin_manager = plugin_manager(self.config, self.parser, plugins=plugin_entries)
+        log.debug('Configuration loaded')
         self.parser.parse_args()
         log.debug('Args parsed')
+
+        plugins = [self.plugin_manager.find_by_kind(entry, plugin_entries[entry]) for entry in plugin_entries]
+        PluginConfig.set_overrides(plugins, self.config)
+        self.plugin_manager.configure_plugins(self.config, plugin_entries)
+        log.debug('Plugins loaded')
 
         log.debug('Creating initial folder structure if needed')
         mkdir_p(self.config.log_root)

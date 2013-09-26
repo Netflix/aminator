@@ -37,8 +37,8 @@ log = logging.getLogger(__name__)
 class VirtioBlockDevicePlugin(LinuxBlockDevicePlugin):
     _name = 'virtio'
 
-    def configure(self, config, parser):
-        super(VirtioBlockDevicePlugin, self).configure(config, parser)
+    def configure(self):
+        super(VirtioBlockDevicePlugin, self).configure()
 
         block_config = self._config.plugins[self.full_name]
 

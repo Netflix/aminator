@@ -61,7 +61,15 @@ class PluginManager(object):
 
             for name, plugin in self._registry[entry_point].by_name.iteritems():
                 if not plugins or plugins[entry_point.split('.')[-1]] == name:
-                    plugin.obj.configure(config, parser)
+                    plugin.obj.initialize(config, parser)
+                    log.debug('Initialized plugin {0}.{1}'.format(entry_point, name))
+
+    def configure_plugins(self, config, plugins=None):
+        for kind, plugin_info in config.plugins.entry_points.iteritems():
+            entry_point = plugin_info.entry_point
+            for name, plugin in self._registry[entry_point].by_name.iteritems():
+                if not plugins or plugins[entry_point.split('.')[-1]] == name:
+                    plugin.obj.configure()
                     log.debug('Loaded plugin {0}.{1}'.format(entry_point, name))
 
     def find_by_entry_point(self, entry_point, name):
