@@ -89,11 +89,11 @@ def apt_get_localinstall(package):
     dpkg_ret = dpkg_install(package)
     if not dpkg_ret.success:
         log.debug('failure:{0.command} :{0.stderr}'.format(dpkg_ret.result))
-
-    apt_ret = apt_get_install('--fix-missing')
-    if not apt_ret.success:
+        apt_ret = apt_get_install('--fix-missing')
+        if not apt_ret.success:
             log.debug('failure:{0.command} :{0.stderr}'.format(apt_ret.result))
-    return apt_ret
+            return apt_ret
+    return dpkg_ret
 
 
 @command()
