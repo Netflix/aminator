@@ -70,8 +70,10 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         return self._dev.node
 
     def __exit__(self, typ, val, trc):
+        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
         fcntl.flock(self._dev.handle, fcntl.LOCK_UN)
         self._dev.handle.close()
+        return False
 
     def find_available_dev(self):
         log.info('Searching for an available block device')
