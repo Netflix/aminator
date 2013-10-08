@@ -133,7 +133,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     continue
                 metadata[key.strip()] = val.strip()
         else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
+            log.debug('failure:{0.command} :{0.std_err}'.format(ret.result))
         return metadata
     return _parse
 
@@ -153,6 +153,7 @@ class Chroot(object):
         return self
 
     def __exit__(self, typ, exc, trc):
+        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
         log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')

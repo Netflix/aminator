@@ -49,6 +49,7 @@ class BaseVolumePlugin(BasePlugin):
 
     @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, trace):
+        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
         return False
 
     def __call__(self, cloud, blockdevice):
