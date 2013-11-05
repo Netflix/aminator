@@ -6,7 +6,7 @@ decorator==3.4.0
 distribute==0.6.34
 envoy==0.0.2
 logutils==0.3.3
-requests==2.0.0
+requests==2.0.1
 simplejson==3.3.1
 stevedore==0.12
 wsgiref==0.1.2
