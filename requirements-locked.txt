@@ -3,7 +3,6 @@ argparse==1.2.1
 boto==2.20.1
 bunch==1.0.1
 decorator==3.4.0
-distribute==0.6.34
 envoy==0.0.2
 logutils==0.3.3
 requests==2.1.0
