@@ -1,5 +1,5 @@
 PyYAML==3.10
--e git+git@github.com:Netflix/aminator.git@7a4a32deacae64e19f4a0e12d4b3e05284a9c12f#egg=aminator-origin/testing
+-e git+git@github.com:Netflix/aminator.git@734a9bbbd04b0c2f3378518e449e78246c575157#egg=aminator-origin/testing
 argparse==1.2.1
 boto==2.22.1
 bunch==1.0.1
