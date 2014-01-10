@@ -153,7 +153,7 @@ class Chroot(object):
         return self
 
     def __exit__(self, typ, exc, trc):
-        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
+        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,exc))
         log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')
