@@ -114,7 +114,8 @@ class TaggingEBSFinalizerPlugin(BaseFinalizerPlugin):
         for resource in ('snapshot', 'ami'):
             try:
                 self._cloud.add_tags(resource)
-            except FinalizerException, e:
+                break
+            except FinalizerException:
                 log.exception('Error adding tags to {0}'.format(resource))
                 return False
             log.info('Successfully tagged {0}'.format(resource))

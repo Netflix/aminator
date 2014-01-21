@@ -47,11 +47,11 @@ class Environment(object):
 
     def provision(self):
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
-        with self.cloud as cloud:
-            with self.finalizer(cloud) as finalizer:
-                with self.volume(self.cloud, self.blockdevice) as volume:
-                    with self.distro(volume) as distro:
-                        success = self.provisioner(distro).provision()
+        with self.cloud as cloud:                                          # pylint: disable=no-member
+            with self.finalizer(cloud) as finalizer:                       # pylint: disable=no-member
+                with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
+                    with self.distro(volume) as distro:                    # pylint: disable=no-member
+                        success = self.provisioner(distro).provision()     # pylint: disable=no-member
                         if not success:
                             log.critical('Provisioning failed!')
                             return False

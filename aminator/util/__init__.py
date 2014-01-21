@@ -87,12 +87,10 @@ def download_file(url, dst, timeout=1, verify_https=False):
             raise requests.HTTPError('Timeout exceeded.')
         else:
             raise e
-            return False
 
     if response.status_code >= 500:
         # retry service errors
         raise requests.HTTPError('{0.status_code} {0.reason}'.format(response))
-        return False
 
     if response.status_code != 200:
         return False
