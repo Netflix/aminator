@@ -96,5 +96,4 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                 log.debug('device locked. fh = {0}, dev = {1}'.format(str(fh), dev))
                 log.info('Block device {0} allocated'.format(dev))
                 return BlockDevice(dev, fh)
-        else:
-            raise DeviceException('Exhausted all devices, none free')
+        raise DeviceException('Exhausted all devices, none free')

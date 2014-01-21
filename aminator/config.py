@@ -40,7 +40,7 @@ import bunch
 from pkg_resources import resource_string, resource_exists
 
 try:
-    from yaml import CLoader as Loader
+    from yaml import CLoader as Loader # pylint: disable=redefined-outer-name
 except ImportError:
     from yaml import Loader
 
@@ -94,7 +94,7 @@ class Config(bunch.Bunch):
     resource_default = RSRC_DEFAULT_CONFS['main']
 
     @classmethod
-    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs):
+    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs): # pylint: disable=redefined-outer-name
         return cls(cls.fromYAML(yaml_data, Loader=Loader, *args, **kwargs))
 
     @classmethod

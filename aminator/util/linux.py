@@ -185,11 +185,11 @@ def copy_image(src=None, dst=None):
         dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
         blks = 0
         blksize = 64 * 1024
-        log.debug("copying %s to %s" % (src, dst))
+        log.debug("copying {} to {}".format(src,dst))
         while True:
             buf = os.read(src_fd, blksize)
             if len(buf) <= 0:
-                log.debug("%d %d blocks written." % (blks, blksize))
+                log.debug("{} {} blocks written.".format(blks,blksize))
                 os.close(src_fd)
                 os.close(dst_fd)
                 break
@@ -198,7 +198,7 @@ def copy_image(src=None, dst=None):
                 log.debug('wrote {0} bytes.'.format(out))
             blks += 1
     except OSError as e:
-        log.debug("%s: errno[%d]: %s." % (e.filename, e.errno, e.strerror))
+        log.debug("{}: errno[{}]: {}.".format(e.filename, e.errno, e.strerror))
         return False
     return True
 
@@ -247,9 +247,8 @@ def native_device_prefix(prefixes):
         if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
             log.debug('Native prefix is {0}'.format(prefix))
             return prefix
-    else:
-        log.debug('{0} contains no native device prefixes'.format(prefixes))
-        return None
+    log.debug('{0} contains no native device prefixes'.format(prefixes))
+    return None
 
 
 def device_prefix(source_device):

@@ -88,9 +88,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
                 if not result.success:
                     log.critical('Unable to configure chroot: {0.std_err}'.format(result))
                     return False
-        else:
-            log.debug('Mounts configured')
-            return True
+        log.debug('Mounts configured')
+        return True
 
     def _install_provision_configs(self):
         config = self._config.plugins[self.full_name]
