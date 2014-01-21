@@ -50,7 +50,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         """install deb file with dpkg then resolve dependencies
         """
         dpkg_ret = cls.dpkg_install(package)
-        pkgname = re.sub(r'_.*$', "", basename(pkgname))
+        pkgname = re.sub(r'_.*$', "", basename(package))
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             aptitude_ret = cls.aptitude("hold", pkgname)
