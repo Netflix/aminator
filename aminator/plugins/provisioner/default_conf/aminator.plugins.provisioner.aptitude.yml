@@ -1,0 +1,7 @@
+enabled: true
+scripts_dir: /var/local
+
+pkg_query_format: "name:${Package}\\nversion:${Version}\\nrelease:${Release}"
+pkg_attributes: [name, version, release]
+
+pkg_extension: deb
