@@ -55,7 +55,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
                              help='temp directory used by ec2-bundle-vol')
         tagging.add_argument('--arch', dest='arch', default='x86_64', action=conf_action(context.ami),
                              help="target architecture used by ec2-bundle-vol")
-        tagging.add_argument('--size', dest='size', default='1024', action=conf_action(context.ami),
+        tagging.add_argument('--size', dest='size', default='10240', action=conf_action(context.ami),
                              help="the size, in MB, of the image")
         tagging.add_argument('--kernel', dest='kernel', action=conf_action(context.ami),
                              help="Id of the default kernel to launch the AMI with, used by ec2-bundle-vol")
@@ -89,18 +89,18 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         volume = self._config.context.volume
         ami = self._config.context.ami
         cmd = ['ec2-bundle-vol']
-        cmd.append(['-c', ami["cert"]])
-        cmd.append(['-k', ami["privatekey"]])
-        cmd.append(['-u', ami["ec2_user"]])
-        cmd.append(['-p', volume["mountpoint"]])
-        cmd.append(['-d', self.tmpdir()])
-        cmd.append(['-r', ami["arch"]])
+        cmd.extend(['-c', ami["cert"]])
+        cmd.extend(['-k', ami["privatekey"]])
+        cmd.extend(['-u', ami["ec2_user"]])
+        cmd.extend(['-p', volume["mountpoint"]])
+        cmd.extend(['-d', self.tmpdir()])
+        cmd.extend(['-r', ami["arch"]])
         if "kernel" in ami:
-            cmd.append(['--kernel', ami["kernel"]])
+            cmd.extend(['--kernel', ami["kernel"]])
         if "ramdisk" in ami:
-            cmd.append(['--ramdisk', ami["ramdisk"]])
-        cmd.append(['-B', ami["block_device_mapping"]])
-        cmd.append(['--no-inherit'])
+            cmd.extend(['--ramdisk', ami["ramdisk"]])
+        cmd.extend(['-B', ami["block_device_mapping"]])
+        cmd.extend(['--no-inherit'])
         return cmd
 
     @command()
@@ -113,13 +113,13 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         tk = provider.get_security_token()
 
         cmd = ['ec2-upload-bundle']
-        cmd.append(['-b', ami["bucket"]])
-        cmd.append(['-a', ak])
-        cmd.append(['-s', sk])
+        cmd.extend(['-b', ami["bucket"]])
+        cmd.extend(['-a', ak])
+        cmd.extend(['-s', sk])
         if tk:
-            cmd.append(['-t', tk])
-        cmd.append(['-m', "{0}/{0}.manifest.xml".format(self.tmpdir())])
-        cmd.append(['--retry'])
+            cmd.extend(['-t', tk])
+        cmd.extend(['-m', "{0}/{0}.manifest.xml".format(self.tmpdir())])
+        cmd.extend(['--retry'])
         return cmd
 
     def finalize(self):
