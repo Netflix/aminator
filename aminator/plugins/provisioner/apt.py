@@ -41,7 +41,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     _name = 'apt'
 
     def _refresh_repo_metadata(self):
-        return apt_get_update()
+        return self.apt_get_update()
 
     def _provision_package(self):
         result = self._refresh_repo_metadata()
@@ -51,14 +51,14 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         if context.package.get('local_install', False):
-            return apt_get_localinstall(context.package.arg)
+            return self.apt_get_localinstall(context.package.arg)
         else:
-            return apt_get_install(context.package.arg)
+            return self.apt_get_install(context.package.arg)
 
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
+        metadata = self.deb_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
             if x == 'version' and x in metadata:
                 if ':' in metadata[x]:
@@ -77,48 +77,48 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             metadata.setdefault(x, None)
         context.package.attributes = metadata
 
+    @staticmethod
+    @command()
+    def dpkg_install(package):
+        return 'dpkg -i {0}'.format(package)
+    
+    @classmethod
+    def apt_get_localinstall(cls, package):
+        """install deb file with dpkg then resolve dependencies
+        """
+        dpkg_ret = cls.dpkg_install(package)
+        if not dpkg_ret.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
+            apt_ret = cls.apt_get_install('--fix-missing')
+            if not apt_ret.success:
+                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
+            return apt_ret
+        return dpkg_ret
+    
+    @staticmethod
+    @command()
+    def deb_query(package, queryformat, local=False):
+        if local:
+            cmd = 'dpkg-deb -W'.split()
+            cmd.append('--showformat={0}'.format(queryformat))
+        else:
+            cmd = 'dpkg-query -W'.split()
+            cmd.append('-f={0}'.format(queryformat))
+        cmd.append(package)
+        return cmd
+    
 
-@command()
-def dpkg_install(package):
-    return 'dpkg -i {0}'.format(package)
-
-
-def apt_get_localinstall(package):
-    """install deb file with dpkg then resolve dependencies
-    """
-    dpkg_ret = dpkg_install(package)
-    if not dpkg_ret.success:
-        log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-        apt_ret = apt_get_install('-f')
-        if not apt_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
-        return apt_ret
-    return dpkg_ret
-
-
-@command()
-def deb_query(package, queryformat, local=False):
-    if local:
-        cmd = 'dpkg-deb -W'.split()
-        cmd.append('--showformat={0}'.format(queryformat))
-    else:
-        cmd = 'dpkg-query -W'.split()
-        cmd.append('-f={0}'.format(queryformat))
-    cmd.append(package)
-    return cmd
-
-
-@command()
-def apt_get_update():
-    return 'apt-get update'
-
-
-@command()
-def apt_get_install(package):
-    return 'apt-get -y install {0}'.format(package)
-
-
-@keyval_parse()
-def deb_package_metadata(package, queryformat, local=False):
-    return deb_query(package, queryformat, local)
-
+    @staticmethod
+    @command()
+    def apt_get_update():
+        return 'apt-get update'
+    
+    @classmethod
+    @command()
+    def apt_get_install(cls, package):
+        return 'apt-get -y install {0}'.format(package)
+    
+    @classmethod
+    @keyval_parse()
+    def deb_package_metadata(cls, package, queryformat, local=False):
+        return cls.deb_query(package, queryformat, local)
