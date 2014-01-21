@@ -13,3 +13,10 @@ ec2_apt_linux:
     volume: linux
     blockdevice: linux
     finalizer: tagging_ebs
+ec2_aptitude_linux:
+    cloud: ec2
+    distro: debian
+    provisioner: aptitude
+    volume: linux
+    blockdevice: linux
+    finalizer: tagging_ebs
