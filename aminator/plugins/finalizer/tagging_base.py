@@ -87,14 +87,12 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         for resource in resources:
             try:
                 self._cloud.add_tags(resource)
-                break
             except FinalizerException:
                 log.exception('Error adding tags to {0}'.format(resource))
                 return False
             log.info('Successfully tagged {0}'.format(resource))
-        else:
-            log.info('Successfully tagged objects')
-            return True
+        log.info('Successfully tagged objects')
+        return True
 
     def _log_ami_metadata(self):
         context = self._config.context

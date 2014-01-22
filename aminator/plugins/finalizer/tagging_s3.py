@@ -116,6 +116,41 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         return cmd
 
     @command()
+    def _bundle_volume(self):
+        context = self._config.context
+
+        config = self._config.plugins[self.full_name]
+        block_device_map = config.default_block_device_map
+        root_device = config.default_root_device
+
+        bdm = "root={}".format(root_device)
+        for bd in block_device_map:
+            bdm += ",{}={}".format(bd[1],bd[0])
+        bdm += ",ami={}".format(root_device)
+        
+        tmpdir=self.tmpdir()
+        if not isdir(tmpdir):
+            makedirs(tmpdir)
+
+        cmd = ['ec2-bundle-vol']
+        cmd.extend(['-c', context.ami.get("cert", config.default_cert)])
+        cmd.extend(['-k', context.ami.get("privatekey", config.default_privatekey)])
+        cmd.extend(['-u', context.ami.get("ec2_user", config.default_ec2_user)])
+        cmd.extend(['-p', context.ami.name])
+        cmd.extend(['-v', context.volume.mountpoint])
+        cmd.extend(['-d', self.tmpdir()])
+        cmd.extend(['-s', ami.get('size', '10240')])
+        if context.base_ami.architecture:
+            cmd.extend(['-r', context.base_ami.architecture])
+        if context.base_ami.kernel_id:
+            cmd.extend(['--kernel', context.base_ami.kernel_id])
+        if context.base_ami.ramdisk_id:
+            cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
+        cmd.extend(['-B', bdm])
+        cmd.extend(['--no-inherit'])
+        return cmd
+
+    @command()
     def _upload_bundle(self):
         context = self._config.context
 
@@ -146,12 +181,17 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Finalizing image')
         self._set_metadata()
         
-        ret = self._copy_volume()
-        if not ret.success: # pylint: disable=no-member
-            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
-            return False
+        # ret = self._copy_volume()
+        # if not ret.success: # pylint: disable=no-member
+        #     log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+        #     return False
 
-        ret = self._bundle_image()
+        # ret = self._bundle_image()
+        # if not ret.success: # pylint: disable=no-member
+        #     log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+        #     return False
+
+        ret = self._bundle_volume()
         if not ret.success: # pylint: disable=no-member
             log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False

@@ -51,14 +51,15 @@ class Environment(object):
             with self.finalizer(cloud) as finalizer:                       # pylint: disable=no-member
                 with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
                     with self.distro(volume) as distro:                    # pylint: disable=no-member
-                        success = self.provisioner(distro).provision()     # pylint: disable=no-member
-                        if not success:
-                            log.critical('Provisioning failed!')
-                            return False
-                    success = finalizer.finalize()
-                    if not success:
-                        log.critical('Finalizing failed!')
-                        return False
+                        with self.provisioner(distro) as provisioner:      # pylint: disable=no-member
+                            success = provisioner.provision()     
+                            if not success:
+                                log.critical('Provisioning failed!')
+                                return False
+                            success = finalizer.finalize()
+                            if not success:
+                                log.critical('Finalizing failed!')
+                                return False
         return None
 
     def __enter__(self):
