@@ -41,6 +41,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def _attach(self, blockdevice):
         with blockdevice(self._cloud) as dev:
             self._dev = dev
+            self._config.context.volume["dev"] = self._dev
             self._cloud.attach_volume(self._dev)
 
     def _detach(self):
@@ -80,7 +81,6 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def __enter__(self):
         self._attach(self._blockdevice)
         self._mount()
-        self._config.context.volume["blockdevice"] = self._blockdevice
         self._config.context.volume["mountpoint"] = self._mountpoint
         return self._mountpoint
 
