@@ -165,6 +165,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
     def finalize(self):
         log.info('Finalizing image')
+        context = self._config.context
         self._set_metadata()
 
         # self.fixup_disk_labels()
