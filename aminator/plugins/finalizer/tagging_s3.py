@@ -139,7 +139,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['-p', context.ami.name])
         cmd.extend(['-v', context.volume.mountpoint])
         cmd.extend(['-d', self.tmpdir()])
-        cmd.extend(['-s', ami.get('size', '10240')])
+        cmd.extend(['-s', context.ami.get('size', '10240')])
         if context.base_ami.architecture:
             cmd.extend(['-r', context.base_ami.architecture])
         if context.base_ami.kernel_id:
