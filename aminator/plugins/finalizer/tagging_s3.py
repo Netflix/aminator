@@ -58,7 +58,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
                              help='temp directory used by ec2-bundle-vol')
         tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami),
                              help='the S3 bucket to use for ec2-upload-bundle')
-        tagging.add_argument('--break-copy-volume', dest='break_copy_volume', action=conf_action(context.ami),
+        tagging.add_argument('--break-copy-volume', dest='break_copy_volume', action=conf_action(context.ami, action='store_true'),
                              help='break into shell after copying the volume, for debugging')
 
     def _set_metadata(self):
@@ -174,7 +174,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
-        if context.package.get('break-copy-volume', False):
+        if context.ami.get('break-copy-volume', False):
             system("bash")
             
         ret = self._bundle_image()
