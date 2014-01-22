@@ -175,7 +175,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
-        if context.ami.get('break-copy-volume', False):
+        if context.ami.get('break_copy_volume', False):
             system("bash")
             
         ret = self._bundle_image()
