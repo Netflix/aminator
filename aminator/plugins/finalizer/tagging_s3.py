@@ -53,18 +53,8 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
                              help='ec2 user id for ec2-bundle-vol')
         tagging.add_argument('--tmpdir', dest='tmpdir', action=conf_action(context.ami),
                              help='temp directory used by ec2-bundle-vol')
-        tagging.add_argument('--arch', dest='arch', default='x86_64', action=conf_action(context.ami),
-                             help="target architecture used by ec2-bundle-vol")
-        tagging.add_argument('--size', dest='size', default='10240', action=conf_action(context.ami),
+        tagging.add_argument('--size', dest='size', action=conf_action(context.ami),
                              help="the size, in MB, of the image")
-        tagging.add_argument('--kernel', dest='kernel', action=conf_action(context.ami),
-                             help="Id of the default kernel to launch the AMI with, used by ec2-bundle-vol")
-        tagging.add_argument('--ramdisk', dest='ramdisk', action=conf_action(context.ami),
-                             help='Id of the default ramdisk to launch the AMI with, used by ec2-bundle-vol')
-        tagging.add_argument('--block-device-mapping', dest='block_device_mapping',
-                             default='root=/dev/sda1,ephemeral0=/dev/sdb,ephemeral1=/dev/sdc,ephemeral2=/dev/sdd,ephemeral3=/dev/sde,ami=/dev/sda1',
-                             action=conf_action(context.ami),
-                             help='Default block-device-mapping scheme to launch the AMI with, used by ec2-bundle-vol')
         tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami),
                              help='the S3 bucket to use for ec2-upload-bundle')
 
@@ -88,18 +78,28 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def _bundle_volume(self):
         volume = self._config.context.volume
         ami = self._config.context.ami
+        context = self._config.context
+
+        config = self._config.plugins[self.full_name]
+        block_device_map = config.default_block_device_map
+        root_device = config.default_root_device
+
+        bdm = "root={}".format(root_device)
+        for bd in block_device_map:
+            bdm += ",{}={}".format(bd[1],bd[0])
+        bdm += ",ami={}".format(root_device)
+
         cmd = ['ec2-bundle-vol']
         cmd.extend(['-c', ami["cert"]])
         cmd.extend(['-k', ami["privatekey"]])
         cmd.extend(['-u', ami["ec2_user"]])
         cmd.extend(['-p', volume["mountpoint"]])
         cmd.extend(['-d', self.tmpdir()])
-        cmd.extend(['-r', ami["arch"]])
-        if "kernel" in ami:
-            cmd.extend(['--kernel', ami["kernel"]])
-        if "ramdisk" in ami:
-            cmd.extend(['--ramdisk', ami["ramdisk"]])
-        cmd.extend(['-B', ami["block_device_mapping"]])
+        cmd.extend(['-s', ami.get('size', '10240')])
+        cmd.extend(['-r', context.base_ami.architecture])
+        cmd.extend(['--kernel', context.base_ami.kernel_id])
+        cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
+        cmd.extend(['-B', bdm])
         cmd.extend(['--no-inherit'])
         return cmd
 
@@ -122,19 +122,32 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['--retry'])
         return cmd
 
+    def _register_image(self):
+        log.info('Registering image')
+        if not self._cloud.register_image(manifest="{0}/{0}.manifest.xml".format(self.tmpdir())):
+            return False
+        log.info('Registration success')
+        return True
+
     def finalize(self):
         log.info('Finalizing image')
         self._set_metadata()
         
-        if not self._bundle_volume():
-            log.critical('Error bundling volume')
+        ret = self._bundle_volume()
+        if not ret.success: # pylint: disable=no-member
+            log.debug('Error bundling volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
-        if not self._upload_bundle():
-            log.critical('Error uploading bundled volume')
+        ret = self._upload_bundle()
+        if not ret.success: # pylint: disable=no-member
+            log.debug('Error uploading bundled volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
-        if not self._add_tags():
+        if not self._register_image():
+            log.critical('Error registering image')
+            return False
+
+        if not self._add_tags(['ami']):
             log.critical('Error adding tags')
             return False
 

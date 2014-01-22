@@ -81,10 +81,10 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         context.ami.description = description
         context.snapshot.description = description
 
-    def _add_tags(self):
+    def _add_tags(self, resources):
         context = self._config.context
         context.ami.tags.creation_time = '{0:%F %T UTC}'.format(datetime.utcnow())
-        for resource in ('snapshot', 'ami'):
+        for resource in resources:
             try:
                 self._cloud.add_tags(resource)
                 break

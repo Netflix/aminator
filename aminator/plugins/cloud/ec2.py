@@ -307,18 +307,27 @@ class EC2CloudPlugin(BaseCloudPlugin):
             context.ami.image = self._ami = ami
             return True
 
-    def register_image(self, block_device_map, root_block_device):
+    def register_image(self, *args, **kwargs):
         context = self._config.context
-        bdm = self._make_block_device_map(block_device_map, root_block_device)
-        ami_metadata = {
-            'name': context.ami.name,
-            'description': context.ami.description,
-            'block_device_map': bdm,
-            'root_device_name': root_block_device,
-            'kernel_id': context.base_ami.kernel_id,
-            'ramdisk_id': context.base_ami.ramdisk_id,
-            'architecture': context.base_ami.architecture
-        }
+        if 'manifest' in kwargs:
+            ami_metadata = {
+                'name': context.ami.name,
+                'description': context.ami.description,
+                'image_location': kwargs['manifest']
+            }
+        else:
+            # args will be [block_device_map, root_block_device]
+            block_device_map, root_block_device = args[:2]
+            bdm = self._make_block_device_map(block_device_map, root_block_device)
+            ami_metadata = {
+                'name': context.ami.name,
+                'description': context.ami.description,
+                'block_device_map': bdm,
+                'root_device_name': root_block_device,
+                'kernel_id': context.base_ami.kernel_id,
+                'ramdisk_id': context.base_ami.ramdisk_id,
+                'architecture': context.base_ami.architecture
+            }
         if not self._register_image(**ami_metadata):
             return False
         return True

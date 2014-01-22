@@ -87,7 +87,7 @@ class BaseCloudPlugin(BasePlugin):
         """ consumes tags and applies them to objects """
 
     @abc.abstractmethod
-    def register_image(self, block_device_map, root_block_device):
+    def register_image(self, *args, **kwargs):
         """ Instructs the cloud provider to register a finalized image for launching """
 
     def __enter__(self):

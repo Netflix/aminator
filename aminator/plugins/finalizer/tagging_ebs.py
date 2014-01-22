@@ -86,7 +86,7 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
             log.critical('Error registering image')
             return False
 
-        if not self._add_tags():
+        if not self._add_tags(['snapshot', 'ami']):
             log.critical('Error adding tags')
             return False
 
