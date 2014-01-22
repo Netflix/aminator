@@ -25,8 +25,10 @@ s3 tagging image finalizer
 """
 import logging
 from shutil import rmtree
-from os.path import isdir
+from os.path import isdir, isfile
 from os import makedirs
+from fileinput import FileInput
+import re
 
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
@@ -76,6 +78,25 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def image_location(self):
         context = self._config.context
         return "{}/{}".format(self.tmpdir(), context.ami.name)
+
+    def fixup_disk_labels(self):
+        config = self._config.plugins[self.full_name]
+        context = self._config.context
+        mp = context.volume.mountpoint
+        label=None
+        # if / is mounted with a label we need to replace it
+        # with the desired root device
+        with open("{}/etc/fstab".format(mp), "r") as fd:
+            for line in fd:
+                m = re.match(r'^(LABEL=\S+)\s+/\s+', line)
+                if m:
+                    label=m.group(1)
+                    break
+        if label:
+            for fn in ["/etc/fstab", "/boot/grub/menu.lst", "/boot/grub/grub.cfg"]:
+                if isfile("{}/{}".format(mp,fn)):
+                    for line in FileInput("{}/{}".format(mp,fn), inplace=1):
+                        line.replace(label,config.default_root_device)
         
     @command()
     def _copy_volume(self):
@@ -143,6 +164,8 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def finalize(self):
         log.info('Finalizing image')
         self._set_metadata()
+
+        self.fixup_disk_labels()
         
         ret = self._copy_volume()
         if not ret.success: # pylint: disable=no-member
