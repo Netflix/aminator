@@ -85,7 +85,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         tmpdir=self.tmpdir()
         if not isdir(tmpdir):
             makedirs(tmpdir)
-        return ["dd", "bs=65536", "if={}".format(context.volume.mountpoint), "of={}".format(self.image_location())]
+        return ["dd", "bs=65536", "if={}".format(context.volume.blockdevice), "of={}".format(self.image_location())]
 
     @command()
     def _bundle_image(self):
