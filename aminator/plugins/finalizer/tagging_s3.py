@@ -26,7 +26,7 @@ s3 tagging image finalizer
 import logging
 from shutil import rmtree
 from os.path import isdir, isfile
-from os import makedirs
+from os import makedirs, system
 from fileinput import FileInput
 import re
 
@@ -58,6 +58,8 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
                              help='temp directory used by ec2-bundle-vol')
         tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami),
                              help='the S3 bucket to use for ec2-upload-bundle')
+        tagging.add_argument('--break-copy-volume', dest='break_copy_volume', action=conf_action(context.ami),
+                             help='break into shell after copying the volume, for debugging')
 
     def _set_metadata(self):
         super(TaggingS3FinalizerPlugin, self)._set_metadata()
@@ -79,24 +81,24 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         context = self._config.context
         return "{}/{}".format(self.tmpdir(), context.ami.name)
 
-    def fixup_disk_labels(self):
-        config = self._config.plugins[self.full_name]
-        context = self._config.context
-        mp = context.volume.mountpoint
-        label=None
-        # if / is mounted with a label we need to replace it
-        # with the desired root device
-        with open("{}/etc/fstab".format(mp), "r") as fd:
-            for line in fd:
-                m = re.match(r'^(LABEL=\S+)\s+/\s+', line)
-                if m:
-                    label=m.group(1)
-                    break
-        if label:
-            for fn in ["/etc/fstab", "/boot/grub/menu.lst", "/boot/grub/grub.cfg"]:
-                if isfile("{}/{}".format(mp,fn)):
-                    for line in FileInput("{}/{}".format(mp,fn), inplace=1):
-                        line.replace(label,config.default_root_device)
+    # def fixup_disk_labels(self):
+    #     config = self._config.plugins[self.full_name]
+    #     context = self._config.context
+    #     mp = context.volume.mountpoint
+    #     label=None
+    #     # if / is mounted with a label we need to replace it
+    #     # with the desired root device
+    #     with open("{}/etc/fstab".format(mp), "r") as fd:
+    #         for line in fd:
+    #             m = re.match(r'^(LABEL=\S+)\s+/\s+', line)
+    #             if m:
+    #                 label=m.group(1)
+    #                 break
+    #     if label:
+    #         for fn in ["/etc/fstab", "/boot/grub/menu.lst", "/boot/grub/grub.cfg"]:
+    #             if isfile("{}/{}".format(mp,fn)):
+    #                 for line in FileInput("{}/{}".format(mp,fn), inplace=1):
+    #                     line.replace(label,config.default_root_device)
         
     @command()
     def _copy_volume(self):
@@ -165,13 +167,16 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Finalizing image')
         self._set_metadata()
 
-        self.fixup_disk_labels()
+        # self.fixup_disk_labels()
         
         ret = self._copy_volume()
         if not ret.success: # pylint: disable=no-member
             log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
+        if context.package.get('break-copy-volume', False):
+            system("bash")
+            
         ret = self._bundle_image()
         if not ret.success: # pylint: disable=no-member
             log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
