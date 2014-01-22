@@ -26,6 +26,7 @@ s3 tagging image finalizer
 import logging
 from shutil import rmtree
 from os.path import isdir
+from os import makedirs
 
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
@@ -88,12 +89,16 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         for bd in block_device_map:
             bdm += ",{}={}".format(bd[1],bd[0])
         bdm += ",ami={}".format(root_device)
+        
+        tmpdir=self.tmpdir()
+        if not isdir(tmpdir):
+            makedirs(tmpdir)
 
         cmd = ['ec2-bundle-vol']
         cmd.extend(['-c', ami["cert"]])
         cmd.extend(['-k', ami["privatekey"]])
         cmd.extend(['-u', ami["ec2_user"]])
-        cmd.extend(['-p', volume["mountpoint"]])
+        cmd.extend(['-v', volume["mountpoint"]])
         cmd.extend(['-d', self.tmpdir()])
         cmd.extend(['-s', ami.get('size', '10240')])
         if context.base_ami.architecture:
