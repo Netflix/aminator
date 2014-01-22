@@ -96,9 +96,12 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['-p', volume["mountpoint"]])
         cmd.extend(['-d', self.tmpdir()])
         cmd.extend(['-s', ami.get('size', '10240')])
-        cmd.extend(['-r', context.base_ami.architecture])
-        cmd.extend(['--kernel', context.base_ami.kernel_id])
-        cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
+        if context.base_ami.architecture:
+            cmd.extend(['-r', context.base_ami.architecture])
+        if context.base_ami.kernel_id:
+            cmd.extend(['--kernel', context.base_ami.kernel_id])
+        if context.base_ami.ramdisk_id:
+            cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
         cmd.extend(['-B', bdm])
         cmd.extend(['--no-inherit'])
         return cmd
