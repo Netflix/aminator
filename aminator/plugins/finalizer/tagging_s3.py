@@ -98,6 +98,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['-c', ami["cert"]])
         cmd.extend(['-k', ami["privatekey"]])
         cmd.extend(['-u', ami["ec2_user"]])
+        cmd.extend(['-p', 'image'])
         cmd.extend(['-v', volume["mountpoint"]])
         cmd.extend(['-d', self.tmpdir()])
         cmd.extend(['-s', ami.get('size', '10240')])
@@ -126,13 +127,13 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['-s', sk])
         if tk:
             cmd.extend(['-t', tk])
-        cmd.extend(['-m', "{0}/{0}.manifest.xml".format(self.tmpdir())])
+        cmd.extend(['-m', "{0}/image.manifest.xml".format(self.tmpdir())])
         cmd.extend(['--retry'])
         return cmd
 
     def _register_image(self):
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{0}/{0}.manifest.xml".format(self.tmpdir())):
+        if not self._cloud.register_image(manifest="{0}/image.manifest.xml".format(self.tmpdir())):
             return False
         log.info('Registration success')
         return True
