@@ -6,6 +6,12 @@ tag_formats:
     base_ami_version: '{base_ami_version}'
 suffix_format: '{0:%Y%m%d%H%M}'
 creator: aminator
+# this is where the images are bundles, make sure you have at least 15G free on the device
+default_tmpdir: /tmp
+default_cert: /root/certificate.pem
+default_privatekey: /root/private-key.pem
+# this need to be your aws user number (a 12 digit number)
+default_ec2_user: -1
 default_root_device: /dev/sda1
 default_block_device_map:
   - [/dev/sdb, ephemeral0]

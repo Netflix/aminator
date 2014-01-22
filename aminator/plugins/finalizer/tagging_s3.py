@@ -71,14 +71,24 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         context.ami.name = sanitize_metadata('{0}-s3'.format(ami_name))
 
     def tmpdir(self):
-        volume = self._config.context.volume
+        config = self._config.plugins[self.full_name]
         ami = self._config.context.ami
-        return ami.get("tmpdir", "{}.bundle".format(volume["mountpoint"]))        
+        return ami.get("tmpdir", config.get("default_tmpdir", "/tmp"))
+
+    def image_location(self):
+        context = self._config.context
+        return "{}/{}".format(self.tmpdir(), context.ami.name)
+        
+    @command()
+    def _copy_volume(self):
+        context = self._config.context
+        tmpdir=self.tmpdir()
+        if not isdir(tmpdir):
+            makedirs(tmpdir)
+        return ["dd", "bs=65536", "if={}".format(context.volume.mountpoint), "of={}".format(self.image_location())]
 
     @command()
-    def _bundle_volume(self):
-        volume = self._config.context.volume
-        ami = self._config.context.ami
+    def _bundle_image(self):
         context = self._config.context
 
         config = self._config.plugins[self.full_name]
@@ -90,18 +100,12 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             bdm += ",{}={}".format(bd[1],bd[0])
         bdm += ",ami={}".format(root_device)
         
-        tmpdir=self.tmpdir()
-        if not isdir(tmpdir):
-            makedirs(tmpdir)
-
-        cmd = ['ec2-bundle-vol']
-        cmd.extend(['-c', ami["cert"]])
-        cmd.extend(['-k', ami["privatekey"]])
-        cmd.extend(['-u', ami["ec2_user"]])
-        cmd.extend(['-p', 'image'])
-        cmd.extend(['-v', volume["mountpoint"]])
+        cmd = ['ec2-bundle-image']
+        cmd.extend(['-c', context.ami.get("cert", config.default_cert)])
+        cmd.extend(['-k', context.ami.get("privatekey", config.default_privatekey)])
+        cmd.extend(['-u', context.ami.get("ec2_user", config.default_ec2_user)])
+        cmd.extend(['-i', self.image_location()])
         cmd.extend(['-d', self.tmpdir()])
-        cmd.extend(['-s', ami.get('size', '10240')])
         if context.base_ami.architecture:
             cmd.extend(['-r', context.base_ami.architecture])
         if context.base_ami.kernel_id:
@@ -109,12 +113,11 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         if context.base_ami.ramdisk_id:
             cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
         cmd.extend(['-B', bdm])
-        cmd.extend(['--no-inherit'])
         return cmd
 
     @command()
     def _upload_bundle(self):
-        ami = self._config.context.ami
+        context = self._config.context
 
         provider = self._cloud._connection.provider
         ak = provider.get_access_key()
@@ -122,18 +125,19 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         tk = provider.get_security_token()
 
         cmd = ['ec2-upload-bundle']
-        cmd.extend(['-b', ami["bucket"]])
+        cmd.extend(['-b', context.ami.bucket])
         cmd.extend(['-a', ak])
         cmd.extend(['-s', sk])
         if tk:
             cmd.extend(['-t', tk])
-        cmd.extend(['-m', "{0}/image.manifest.xml".format(self.tmpdir())])
+        cmd.extend(['-m', "{0}.manifest.xml".format(self.image_location())])
         cmd.extend(['--retry'])
         return cmd
 
     def _register_image(self):
+        context = self._config.context
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{0}/image.manifest.xml".format(self.tmpdir())):
+        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,context.ami.name)):
             return False
         log.info('Registration success')
         return True
@@ -142,9 +146,14 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Finalizing image')
         self._set_metadata()
         
-        ret = self._bundle_volume()
+        ret = self._copy_volume()
         if not ret.success: # pylint: disable=no-member
-            log.debug('Error bundling volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+            return False
+
+        ret = self._bundle_image()
+        if not ret.success: # pylint: disable=no-member
+            log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
             return False
 
         ret = self._upload_bundle()
