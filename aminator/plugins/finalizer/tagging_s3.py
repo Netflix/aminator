@@ -54,8 +54,6 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
                              help='ec2 user id for ec2-bundle-vol')
         tagging.add_argument('--tmpdir', dest='tmpdir', action=conf_action(context.ami),
                              help='temp directory used by ec2-bundle-vol')
-        tagging.add_argument('--size', dest='size', action=conf_action(context.ami),
-                             help="the size, in MB, of the image")
         tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami),
                              help='the S3 bucket to use for ec2-upload-bundle')
 
