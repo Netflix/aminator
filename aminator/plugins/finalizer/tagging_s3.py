@@ -73,7 +73,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def tmpdir(self):
         config = self._config.plugins[self.full_name]
         ami = self._config.context.ami
-        return ami.get("tmpdir", config.get("default_tmpdir", "/tmp"))
+        return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
     def image_location(self):
         context = self._config.context
