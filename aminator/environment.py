@@ -59,7 +59,7 @@ class Environment(object):
                     if not success:
                         log.critical('Finalizing failed!')
                         return False
-        return None
+        return True
 
     def __enter__(self):
         return self
