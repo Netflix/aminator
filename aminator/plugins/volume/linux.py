@@ -60,7 +60,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             mountspec = MountSpec(self._dev, None, self._mountpoint, None)
             result = mount(mountspec)
             if not result.success:
-                msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.std_err)
+                msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)
                 log.critical(msg)
                 raise VolumeException(msg)
         log.debug('Mounted {0.dev} at {0.mountpoint} successfully'.format(mountspec))
@@ -73,7 +73,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             result = unmount(self._mountpoint)
             if not result.success:
                 raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint,
-                                                                                   result.std_err))
+                                                                                   result.result.std_err))
 
     def _delete(self):
         self._cloud.delete_volume()

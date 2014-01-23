@@ -52,13 +52,13 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         dpkg_ret = cls.dpkg_install(package)
         pkgname = re.sub(r'_.*$', "", basename(package))
         if not dpkg_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret))
+            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             aptitude_ret = cls.aptitude("hold", pkgname)
             if not aptitude_ret.success: # pylint: disable=no-member
-                log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret)) # pylint: disable=no-member
+                log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result)) # pylint: disable=no-member
             apt_ret = super(AptitudeProvisionerPlugin,cls).apt_get_install('--fix-missing')
             if not apt_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret))
+                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
             return apt_ret
         return dpkg_ret
 
@@ -74,8 +74,8 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     def apt_get_install(cls,package):
         aptitude_ret = cls.aptitude("install", package)
         if not aptitude_ret.success: # pylint: disable=no-member
-            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret))
+            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
         query_ret = cls.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(query_ret))
+            log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
         return query_ret

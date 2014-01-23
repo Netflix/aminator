@@ -54,8 +54,7 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
     @decorator
     def _run(f, *args, **kwargs):
         _cmd = f(*args, **kwargs)
-        if _cmd is None:
-            return CommandResult(False, None)
+        assert _cmd is not None, "null command passed to @command decorator"
         if isinstance(_cmd, list):
             log.debug('command: {0}'.format(" ".join(_cmd)))
             _cmd = [_cmd]
@@ -133,7 +132,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     continue
                 metadata[key.strip()] = val.strip()
         else:
-            log.debug('failure:{0.command} :{0.std_err}'.format(ret))
+            log.debug('failure:{0.command} :{0.std_err}'.format(ret.result))
         return metadata
     return _parse
 
