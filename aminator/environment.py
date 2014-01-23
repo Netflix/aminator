@@ -55,10 +55,10 @@ class Environment(object):
                         if not success:
                             log.critical('Provisioning failed!')
                             return False
-                        success = finalizer.finalize()
-                        if not success:
-                            log.critical('Finalizing failed!')
-                            return False
+                    success = finalizer.finalize()
+                    if not success:
+                        log.critical('Finalizing failed!')
+                        return False
         return None
 
     def __enter__(self):
