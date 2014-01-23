@@ -45,3 +45,5 @@ nosetests.xml
 
 # Vim 
 *.swp
+
+.*.pylint

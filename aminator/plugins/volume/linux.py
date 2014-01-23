@@ -41,6 +41,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def _attach(self, blockdevice):
         with blockdevice(self._cloud) as dev:
             self._dev = dev
+            self._config.context.volume["dev"] = self._dev
             self._cloud.attach_volume(self._dev)
 
     def _detach(self):
