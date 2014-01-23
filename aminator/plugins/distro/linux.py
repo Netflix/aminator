@@ -86,7 +86,7 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             if not mounted(mountspec.mountpoint):
                 result = mount(mountspec)
                 if not result.success:
-                    log.critical('Unable to configure chroot: {0.std_err}'.format(result))
+                    log.critical('Unable to configure chroot: {0.std_err}'.format(result.result))
                     return False
         log.debug('Mounts configured')
         return True
@@ -135,14 +135,14 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
                 continue
             result = unmount(mountspec.mountpoint)
             if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result))
+                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
                 return False
         log.debug('Checking for stray mounts')
         for mountpoint in lifo_mounts(self._mountpoint):
             log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
             result = unmount(mountpoint)
             if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result))
+                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
                 return False
         log.debug('Teardown of chroot mounts succeeded!')
         return True

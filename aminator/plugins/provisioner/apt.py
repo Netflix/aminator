@@ -46,7 +46,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     def _provision_package(self):
         result = self._refresh_repo_metadata()
         if not result.success: # pylint: disable=no-member
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result)) # pylint: disable=no-member
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=no-member
             return False
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
@@ -88,10 +88,10 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         """
         dpkg_ret = cls.dpkg_install(package)
         if not dpkg_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret))
+            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             apt_ret = cls.apt_get_install('--fix-missing')
             if not apt_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret))
+                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
             return apt_ret
         return dpkg_ret
     

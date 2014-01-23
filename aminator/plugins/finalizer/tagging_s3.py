@@ -149,7 +149,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
         ret = self._copy_volume()
         if not ret.success: # pylint: disable=no-member
-            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret))
+            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         if context.ami.get('break_copy_volume', False):
@@ -157,12 +157,12 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             
         ret = self._bundle_image()
         if not ret.success: # pylint: disable=no-member
-            log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret))
+            log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         ret = self._upload_bundle()
         if not ret.success: # pylint: disable=no-member
-            log.debug('Error uploading bundled volume, failure:{0.command} :{0.std_err}'.format(ret))
+            log.debug('Error uploading bundled volume, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         if not self._register_image():

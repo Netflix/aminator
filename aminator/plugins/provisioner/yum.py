@@ -47,7 +47,7 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
     def _provision_package(self):
         result = self._refresh_repo_metadata()
         if not result.success: # pytlint: disable=maybe-no-member
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result)) # pylint: disable=maybe-no-member
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=maybe-no-member
             return False
         context = self._config.context
         if context.package.get('local_install', False):
@@ -82,7 +82,7 @@ def yum_localinstall(path):
 def yum_clean_metadata(repos=None):
     clean=['yum', 'clean', 'metadata']
     if repos:
-        return clean.append(['--disablerepo', '*', '--enablerepo', ','.join(repos)])
+        clean.extend(['--disablerepo', '*', '--enablerepo', ','.join(repos)])
     return clean
 
 
