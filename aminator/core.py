@@ -64,7 +64,7 @@ class Aminator(object):
 
     def aminate(self):
         with self.environment(self.config, self.plugin_manager) as env:
-            error = env.provision()
-            if not error:
+            ok = env.provision()
+            if ok:
                 log.info('Amination complete!')
-        return error
+        return 0 if ok else 1
