@@ -96,7 +96,7 @@ class BaseProvisionerPlugin(BasePlugin):
                 os.system("bash")
 
             if not result.success:
-                log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result.result))
+                log.critical('Installation of {0} failed: {1.std_err}'.format(context.package.arg, result))
                 return False
             self._store_package_metadata()
             if context.package.local_install and not context.package.get('preserve', False):
