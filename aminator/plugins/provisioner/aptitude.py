@@ -74,7 +74,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     def apt_get_install(cls,package):
         aptitude_ret = cls.aptitude("install", package)
         if not aptitude_ret.success: # pylint: disable=no-member
-            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
+            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result)) # pylint: disable=no-member
         query_ret = cls.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
