@@ -103,7 +103,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd = ['ec2-bundle-image']
         cmd.extend(['-c', context.ami.get("cert", config.default_cert)])
         cmd.extend(['-k', context.ami.get("privatekey", config.default_privatekey)])
-        cmd.extend(['-u', context.ami.get("ec2_user", config.default_ec2_user)])
+        cmd.extend(['-u', context.ami.get("ec2_user", str(config.default_ec2_user))])
         cmd.extend(['-i', self.image_location()])
         cmd.extend(['-d', self.tmpdir()])
         if context.base_ami.architecture:
