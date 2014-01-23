@@ -133,7 +133,7 @@ def keyval_parse(record_sep='\n', field_sep=':'):
                     continue
                 metadata[key.strip()] = val.strip()
         else:
-            log.debug('failure:{0.command} :{0.std_err}'.format(ret.result))
+            log.debug('failure:{0.command} :{0.std_err}'.format(ret))
         return metadata
     return _parse
 
