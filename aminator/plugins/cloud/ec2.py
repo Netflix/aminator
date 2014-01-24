@@ -309,11 +309,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def register_image(self, *args, **kwargs):
         context = self._config.context
+        vm_type = context.ami.get("vm_type", "paravirtual")
         if 'manifest' in kwargs:
             ami_metadata = {
                 'name': context.ami.name,
                 'description': context.ami.description,
-                'image_location': kwargs['manifest']
+                'image_location': kwargs['manifest'],
+                'virtualization_type': vm_type
             }
         else:
             # args will be [block_device_map, root_block_device]
@@ -326,8 +328,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'root_device_name': root_block_device,
                 'kernel_id': context.base_ami.kernel_id,
                 'ramdisk_id': context.base_ami.ramdisk_id,
-                'architecture': context.base_ami.architecture
+                'architecture': context.base_ami.architecture,
+                'virtualization_type': vm_type
             }
+            if vm_type == "hvm":
+                del ami_metadata['kernel_id']
+                del ami_metadata['ramdisk_id']
+
         if not self._register_image(**ami_metadata):
             return False
         return True

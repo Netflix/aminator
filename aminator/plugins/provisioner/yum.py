@@ -46,8 +46,8 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
 
     def _provision_package(self):
         result = self._refresh_repo_metadata()
-        if not result.success: # pytlint: disable=maybe-no-member
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=maybe-no-member
+        if not result.success: # pylint: disable=no-member
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=no-member
             return False
         context = self._config.context
         if context.package.get('local_install', False):

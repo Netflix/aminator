@@ -47,6 +47,8 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         creator_help = 'The user who is aminating. The resultant AMI will receive a creator tag w/ this user'
         tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(context.ami),
                              help=creator_help)
+        tagging.add_argument('--vm-type', dest='vm_type', options=["paravirtual", "hvm"], action=conf_action(context.ami),
+                             help='virtualization type to register image as')
         return tagging
 
     def _set_metadata(self):
