@@ -108,11 +108,14 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         cmd.extend(['-d', self.tmpdir()])
         if context.base_ami.architecture:
             cmd.extend(['-r', context.base_ami.architecture])
-        if context.base_ami.kernel_id:
-            cmd.extend(['--kernel', context.base_ami.kernel_id])
-        if context.base_ami.ramdisk_id:
-            cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
-        cmd.extend(['-B', bdm])
+
+        vm_type = context.ami.get("vm_type", "paravirtual")
+        if vm_type == "paravirtual":
+            if context.base_ami.kernel_id:
+                cmd.extend(['--kernel', context.base_ami.kernel_id])
+            if context.base_ami.ramdisk_id:
+                cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
+            cmd.extend(['-B', bdm])
         return cmd
 
     @command()
