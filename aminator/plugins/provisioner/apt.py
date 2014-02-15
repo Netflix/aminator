@@ -47,7 +47,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         result = self._refresh_repo_metadata()
         if not result.success: # pylint: disable=no-member
             log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=no-member
-            return False
+            return result
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
         if context.package.get('local_install', False):
