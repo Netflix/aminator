@@ -107,7 +107,8 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('scripts_dir = {0}'.format(scripts_dir))
 
             if scripts_dir:
-                self._run_provision_scripts(scripts_dir)
+                if not self._run_provision_scripts(scripts_dir):
+                    return False
 
         log.debug('Exited chroot')
 
@@ -134,7 +135,10 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
             for script in python_script_files:
                 log.debug('executing python {0}'.format(script))
-                run_script('python {0}'.format(script))
+                result = run_script('python {0}'.format(script))
+                if not result.success:
+                    log.critical("python script failed: {0}: {1.std_err}".format(script, result.result))
+                    return False
 
         shell_script_files = sorted(glob(scripts_dir + '/*.sh'))
         if shell_script_files is None:
@@ -143,7 +147,11 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
             for script in shell_script_files:
                 log.debug('executing sh {0}'.format(script))
-                run_script('sh {0}'.format(script))
+                result = run_script('sh {0}'.format(script))
+                if not result.success:
+                    log.critical("sh script failed: {0}: {1.std_err}".format(script, result.result))
+                    return False
+        return True
 
     def _local_install(self):
         """True if context.package.arg ends with a package extension
