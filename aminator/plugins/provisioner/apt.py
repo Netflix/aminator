@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-from aminator.util.linux import command, keyval_parse
+from aminator.util.linux import monitor_command, result_to_dict
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -45,8 +45,8 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
 
     def _provision_package(self):
         result = self._refresh_repo_metadata()
-        if not result.success: # pylint: disable=no-member
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=no-member
+        if not result.success:
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
             return result
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
@@ -78,9 +78,8 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         context.package.attributes = metadata
 
     @staticmethod
-    @command()
     def dpkg_install(package):
-        return 'dpkg -i {0}'.format(package)
+        return monitor_command(['dpkg', '-i', package])
     
     @classmethod
     def apt_get_localinstall(cls, package):
@@ -96,7 +95,6 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         return dpkg_ret
     
     @staticmethod
-    @command()
     def deb_query(package, queryformat, local=False):
         if local:
             cmd = 'dpkg-deb -W'.split()
@@ -105,20 +103,17 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             cmd = 'dpkg-query -W'.split()
             cmd.append('-f={0}'.format(queryformat))
         cmd.append(package)
-        return cmd
+        return monitor_command(cmd)
     
 
     @staticmethod
-    @command()
     def apt_get_update():
-        return 'apt-get update'
+        return monitor_command(['apt-get', 'update'])
     
     @classmethod
-    @command()
     def apt_get_install(cls, package):
-        return 'apt-get -y install {0}'.format(package)
+        return monitor_command(['apt-get', '-y', 'install', package])
     
     @classmethod
-    @keyval_parse()
     def deb_package_metadata(cls, package, queryformat, local=False):
-        return cls.deb_query(package, queryformat, local)
+        return result_to_dict(cls.deb_query(package, queryformat, local))

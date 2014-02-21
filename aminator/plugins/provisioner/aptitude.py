@@ -29,7 +29,7 @@ from os.path import basename
 import re
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
-from aminator.util.linux import command
+from aminator.util.linux import monitor_command
 
 __all__ = ('AptitudeProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -54,8 +54,8 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             aptitude_ret = cls.aptitude("hold", pkgname)
-            if not aptitude_ret.success: # pylint: disable=no-member
-                log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result)) # pylint: disable=no-member
+            if not aptitude_ret.success:
+                log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
             apt_ret = super(AptitudeProvisionerPlugin,cls).apt_get_install('--fix-missing')
             if not apt_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
@@ -63,9 +63,8 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         return dpkg_ret
 
     @staticmethod
-    @command()
     def aptitude(operation, package):
-        return ["aptitude", "--no-gui", "-y", operation, package]
+        return monitor_command(["aptitude", "--no-gui", "-y", operation, package])
 
     # overload this method to call aptitude instead.  But aptitude will not exit with
     # an error code if it failed to install, so we double check that the package installed
@@ -73,8 +72,8 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     @classmethod
     def apt_get_install(cls,package):
         aptitude_ret = cls.aptitude("install", package)
-        if not aptitude_ret.success: # pylint: disable=no-member
-            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result)) # pylint: disable=no-member
+        if not aptitude_ret.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
         query_ret = cls.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))

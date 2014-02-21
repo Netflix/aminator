@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-from aminator.util.linux import command, keyval_parse
+from aminator.util.linux import monitor_command, result_to_dict
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -46,8 +46,8 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
 
     def _provision_package(self):
         result = self._refresh_repo_metadata()
-        if not result.success: # pylint: disable=no-member
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result)) # pylint: disable=no-member
+        if not result.success:
+            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
             return result
         context = self._config.context
         if context.package.get('local_install', False):
@@ -65,37 +65,32 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
         context.package.attributes = metadata
 
 
-@command()
 def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
+    return monitor_command(['yum', '--nogpgcheck', '-y', 'install', package])
 
 
-@command()
 def yum_localinstall(path):
     if not os.path.isfile(path):
         log.critical('Package {0} not found'.format(path))
         return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+    return monitor_command(['yum', '--nogpgcheck', '-y', 'localinstall', path])
 
 
-@command()
 def yum_clean_metadata(repos=None):
     clean=['yum', 'clean', 'metadata']
     if repos:
         clean.extend(['--disablerepo', '*', '--enablerepo', ','.join(repos)])
-    return clean
+    return monitor_command(clean)
 
 
-@command()
 def rpm_query(package, queryformat, local=False):
     cmd = 'rpm -q --qf'.split()
     cmd.append(queryformat)
     if local:
         cmd.append('-p')
     cmd.append(package)
-    return cmd
+    return monitor_command(cmd)
 
 
-@keyval_parse()
 def rpm_package_metadata(package, queryformat, local=False):
-    return rpm_query(package, queryformat, local)
+    return result_to_dict(rpm_query(package, queryformat, local))
