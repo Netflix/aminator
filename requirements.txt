@@ -1,7 +1,6 @@
 boto>=2.7
 bunch
 decorator
-envoy
 logutils
 pyyaml
 requests
