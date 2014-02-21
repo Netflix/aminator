@@ -33,7 +33,7 @@ from glob import glob
 from aminator.config import conf_action
 from aminator.plugins.base import BasePlugin
 from aminator.util import download_file
-from aminator.util.linux import Chroot, command
+from aminator.util.linux import Chroot, monitor_command
 
 
 __all__ = ('BaseProvisionerPlugin',)
@@ -204,6 +204,5 @@ class BaseProvisionerPlugin(BasePlugin):
         self._distro = distro
         return self
 
-@command()
 def run_script(script):
-    return '{0}'.format(script)
+    return monitor_command(script)

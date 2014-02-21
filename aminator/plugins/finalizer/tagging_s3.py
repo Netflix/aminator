@@ -30,7 +30,7 @@ from os import makedirs, system
 
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
-from aminator.util.linux import sanitize_metadata, command
+from aminator.util.linux import sanitize_metadata, monitor_command
 
 __all__ = ('TaggingS3FinalizerPlugin',)
 log = logging.getLogger(__name__)
@@ -79,15 +79,13 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         context = self._config.context
         return "{}/{}".format(self.tmpdir(), context.ami.name)
 
-    @command()
     def _copy_volume(self):
         context = self._config.context
         tmpdir=self.tmpdir()
         if not isdir(tmpdir):
             makedirs(tmpdir)
-        return ["dd", "bs=65536", "if={}".format(context.volume.dev), "of={}".format(self.image_location())]
+        return monitor_command(["dd", "bs=65536", "if={}".format(context.volume.dev), "of={}".format(self.image_location())])
 
-    @command()
     def _bundle_image(self):
         context = self._config.context
 
@@ -116,9 +114,8 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             if context.base_ami.ramdisk_id:
                 cmd.extend(['--ramdisk', context.base_ami.ramdisk_id])
             cmd.extend(['-B', bdm])
-        return cmd
+        return monitor_command(cmd)
 
-    @command()
     def _upload_bundle(self):
         context = self._config.context
 
@@ -135,7 +132,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             cmd.extend(['-t', tk])
         cmd.extend(['-m', "{0}.manifest.xml".format(self.image_location())])
         cmd.extend(['--retry'])
-        return cmd
+        return monitor_command(cmd)
 
     def _register_image(self):
         context = self._config.context
@@ -151,21 +148,21 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         self._set_metadata()
 
         ret = self._copy_volume()
-        if not ret.success: # pylint: disable=no-member
-            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+        if not ret.success:
+            log.debug('Error copying volume, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         if context.ami.get('break_copy_volume', False):
             system("bash")
             
         ret = self._bundle_image()
-        if not ret.success: # pylint: disable=no-member
-            log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+        if not ret.success:
+            log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         ret = self._upload_bundle()
-        if not ret.success: # pylint: disable=no-member
-            log.debug('Error uploading bundled volume, failure:{0.command} :{0.std_err}'.format(ret.result)) # pylint: disable=no-member
+        if not ret.success:
+            log.debug('Error uploading bundled volume, failure:{0.command} :{0.std_err}'.format(ret.result))
             return False
 
         if not self._register_image():

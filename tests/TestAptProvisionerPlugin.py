@@ -20,15 +20,11 @@
 import logging
 import os
 
-from aminator.util.linux import keyval_parse
+from aminator.util.linux import keyval_parse, Response, CommandResult
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.config import Config
 from collections import namedtuple
-
-from envoy.core import Response
-
-CommandResult = namedtuple('CommandResult', 'success result')
 
 log = logging.getLogger(__name__)
 console = logging.StreamHandler()

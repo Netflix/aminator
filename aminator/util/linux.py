@@ -34,13 +34,19 @@ import string
 from collections import namedtuple
 from contextlib import contextmanager
 
-import envoy
+from subprocess import Popen, PIPE
+from signal import signal, alarm, SIGALRM
+from os import O_NONBLOCK
+from fcntl import fcntl, F_GETFL, F_SETFL
+from select import select
+
 from decorator import decorator
 
 
 log = logging.getLogger(__name__)
 MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
 CommandResult = namedtuple('CommandResult', 'success result')
+Response = namedtuple('Response', ['command', 'std_err', 'std_out', 'status_code'])
 # need to scrub anything not in this list from AMI names and other metadata
 SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 
@@ -55,18 +61,60 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
     def _run(f, *args, **kwargs):
         _cmd = f(*args, **kwargs)
         assert _cmd is not None, "null command passed to @command decorator"
-        if isinstance(_cmd, list):
-            log.debug('command: {0}'.format(" ".join(_cmd)))
-            _cmd = [_cmd]
-        else:
-            log.debug('command: {0}'.format(_cmd))
-        res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
-        if any((res.std_out, res.std_err)):
-            log.debug('stdout: {0.std_out}\nstderr: {0.std_err}'.format(res))
-        log.debug('status code: {0}'.format(res.status_code))
-        return CommandResult(res.status_code == 0, res)
+        return monitor_command(_cmd, timeout)
     return _run
 
+
+
+def set_nonblocking(stream):
+    fl = fcntl(stream.fileno(), F_GETFL)
+    fcntl(stream.fileno(), F_SETFL, fl | O_NONBLOCK)
+
+def monitor_command(cmd, timeout=None):
+    cmdStr = cmd
+    if isinstance(cmd, list):
+        cmdStr = " ".join(cmd)
+
+    assert cmdStr, "empty command passed to monitor_command"
+
+    log.debug('command: {0}'.format(cmdStr))
+
+    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True)
+    set_nonblocking(proc.stdout)
+    set_nonblocking(proc.stderr)
+
+    if timeout: 
+        alarm(timeout)
+        def handle_sigalarm(*_):
+            proc.terminate()
+        signal(SIGALRM, handle_sigalarm)
+
+    io = [proc.stdout, proc.stderr]
+    
+    std_out = ""
+    std_err = ""
+    while True:
+        # if we got eof from all pipes then stop polling
+        if not io: break
+        reads, _, _ = select(io, [], [])
+        for fd in reads:
+            buf = fd.read(4096)
+            if len(buf) == 0:
+                # got eof
+                io.remove(fd)
+            else:
+                if fd == proc.stderr:
+                    log.error(buf)
+                    std_err += buf
+                else:
+                    log.debug(buf)
+                    std_out += buf
+
+    proc.wait()
+    alarm(0)
+    status_code = proc.returncode
+    log.debug("status code: {0}".format(status_code))
+    return CommandResult(status_code == 0, Response(cmdStr, std_err, std_out, status_code))
 
 def mounted(path):
     pat = path.strip() + ' '
@@ -74,12 +122,10 @@ def mounted(path):
         return any(pat in mount for mount in mounts)
 
 
-@command()
 def fsck(dev):
-    return 'fsck -y {0}'.format(dev)
+    return monitor_command(['fsck', '-y', dev])
 
 
-@command()
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
         log.error('Must provide dev or mountpoint')
@@ -97,16 +143,14 @@ def mount(mountspec):
     if mountspec.options:
         options_arg = '-o ' + mountspec.options
 
-    return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
+    return monitor_command(['mount', fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint])
 
-@command()
 def unmount(dev):
-    return 'umount {0}'.format(dev)
+    return monitor_command(['umount', dev])
 
 
-@command()
 def busy_mount(mountpoint):
-    return 'lsof -X {0}'.format(mountpoint)
+    return monitor_command(['lsof', '-X', mountpoint])
 
 
 def sanitize_metadata(word):
@@ -122,20 +166,22 @@ def keyval_parse(record_sep='\n', field_sep=':'):
     """
     @decorator
     def _parse(f, *args, **kwargs):
-        metadata = {}
-        ret = f(*args, **kwargs)
-        if ret.success:
-            for record in ret.result.std_out.split(record_sep):
-                try:
-                    key, val = record.split(field_sep, 1)
-                except ValueError:
-                    continue
-                metadata[key.strip()] = val.strip()
-        else:
-            log.debug('failure:{0.command} :{0.std_err}'.format(ret.result))
-        return metadata
+        return result_to_dict(f(*args, **kwargs),record_sep,field_sep)
     return _parse
 
+def result_to_dict(commandResult, record_sep='\n', field_sep=':'):
+    metadata = {}
+    if commandResult.success:
+        for record in commandResult.result.std_out.split(record_sep):
+            try:
+                key, val = record.split(field_sep, 1)
+            except ValueError:
+                continue
+            metadata[key.strip()] = val.strip()
+    else:
+        log.debug('failure:{0.command} :{0.std_err}'.format(commandResult.result))
+    return metadata
+    
 
 class Chroot(object):
     def __init__(self, path):
