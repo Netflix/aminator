@@ -25,8 +25,9 @@ Linux utility functions
 """
 
 import errno
-import fcntl
 import logging
+from fcntl import flock as _flock
+from fcntl import LOCK_EX, LOCK_UN, LOCK_NB
 import os
 import shutil
 import stat
@@ -72,14 +73,16 @@ def set_nonblocking(stream):
 
 def monitor_command(cmd, timeout=None):
     cmdStr = cmd
+    shell=True
     if isinstance(cmd, list):
         cmdStr = " ".join(cmd)
+        shell=False
 
     assert cmdStr, "empty command passed to monitor_command"
 
     log.debug('command: {0}'.format(cmdStr))
 
-    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True)
+    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell)
     set_nonblocking(proc.stdout)
     set_nonblocking(proc.stderr)
 
@@ -143,7 +146,7 @@ def mount(mountspec):
     if mountspec.options:
         options_arg = '-o ' + mountspec.options
 
-    return monitor_command(['mount', fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint])
+    return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
 
 def unmount(dev):
     return monitor_command(['umount', dev])
@@ -256,9 +259,9 @@ def flock(filename=None):
            ...
     """
     with open(filename, 'a') as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
+        _flock(fh, LOCK_EX)
         yield
-        fcntl.flock(fh, fcntl.LOCK_UN)
+        _flock(fh, LOCK_UN)
 
 
 def locked(filename=None):
@@ -268,7 +271,7 @@ def locked(filename=None):
     """
     with open(filename, 'a') as fh:
         try:
-            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _flock(fh, LOCK_EX | LOCK_NB)
             ret = False
         except IOError as e:
             log.debug('{0} is locked: {1}'.format(filename, e))
