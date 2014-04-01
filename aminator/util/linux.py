@@ -32,12 +32,13 @@ import os
 import shutil
 import stat
 import string
+import sys
 from collections import namedtuple
 from contextlib import contextmanager
 
 from subprocess import Popen, PIPE
 from signal import signal, alarm, SIGALRM
-from os import O_NONBLOCK
+from os import O_NONBLOCK, environ
 from fcntl import fcntl, F_GETFL, F_SETFL
 from select import select
 
@@ -81,8 +82,13 @@ def monitor_command(cmd, timeout=None):
     assert cmdStr, "empty command passed to monitor_command"
 
     log.debug('command: {0}'.format(cmdStr))
+    
+    # sanitize PATH if we are running in a virtualenv
+    env = environ
+    if hasattr(sys, "real_prefix"):
+        env["PATH"] = string.replace(env["PATH"], "{}/bin:".format(sys.prefix), "")
 
-    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell)
+    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell,env=env)
     set_nonblocking(proc.stdout)
     set_nonblocking(proc.stderr)
 
