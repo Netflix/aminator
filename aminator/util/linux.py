@@ -86,14 +86,8 @@ def monitor_command(cmd, timeout=None):
     
     # sanitize PATH if we are running in a virtualenv
     env = copy(environ)
-    log.debug("PREFIX: {}".format(sys.prefix))
-    log.debug("HASATTR REAL_PREFIX: {}".format(hasattr(sys, "real_prefix")))
     if hasattr(sys, "real_prefix"):
-        log.debug("REAL PREFIX: {}".format(sys.real_prefix))
         env["PATH"] = string.replace(env["PATH"], "{}/bin:".format(sys.prefix), "")
-
-    for key in env:
-        log.debug("{}={}".format(key,env[key]))
 
     proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell,env=env)
     set_nonblocking(proc.stdout)
@@ -120,7 +114,7 @@ def monitor_command(cmd, timeout=None):
                 io.remove(fd)
             else:
                 if fd == proc.stderr:
-                    log.error(buf)
+                    log.debug("STDERR: {}".format(buf))
                     std_err += buf
                 else:
                     if buf[-1] == "\n":
