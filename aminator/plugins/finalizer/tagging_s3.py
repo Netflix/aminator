@@ -26,7 +26,7 @@ s3 tagging image finalizer
 import logging
 from shutil import rmtree
 from os.path import isdir
-from os import makedirs, system
+from os import makedirs, system, environ
 
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
@@ -69,6 +69,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             ami_name = config.name_format.format(**metadata)
 
         context.ami.name = sanitize_metadata('{0}-s3'.format(ami_name))
+        environ["AMINATOR_AMI_NAME"] = context.ami.name
 
     def tmpdir(self):
         config = self._config.plugins[self.full_name]
@@ -145,7 +146,6 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def finalize(self):
         log.info('Finalizing image')
         context = self._config.context
-        self._set_metadata()
 
         ret = self._copy_volume()
         if not ret.success:

@@ -25,6 +25,7 @@ ebs tagging image finalizer
 """
 import logging
 
+from os import environ
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata
@@ -54,7 +55,8 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
             ami_name = config.name_format.format(**metadata)
 
         context.ami.name = sanitize_metadata('{0}-ebs'.format(ami_name))
-
+        environ["AMINATOR_AMI_NAME"] = context.ami.name
+        
     def _snapshot_volume(self):
         log.info('Taking a snapshot of the target volume')
         if not self._cloud.snapshot_volume():
@@ -76,7 +78,6 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
 
     def finalize(self):
         log.info('Finalizing image')
-        self._set_metadata()
 
         if not self._snapshot_volume():
             log.critical('Error snapshotting volume')

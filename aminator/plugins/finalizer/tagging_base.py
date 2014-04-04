@@ -27,6 +27,7 @@ import logging
 from datetime import datetime
 import abc
 
+from os import environ
 from aminator.config import conf_action
 from aminator.exceptions import FinalizerException
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
@@ -68,11 +69,17 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         metadata['base_ami_id'] = context.base_ami.id
         metadata['base_ami_version'] = context.base_ami.tags.get('base_ami_version', '')
 
+        environ['AMINATOR_ARCH']             = metadata['arch']
+        environ['AMINATOR_BASE_AMI_NAME']    = metadata['base_ami_name']
+        environ['AMINATOR_BASE_AMI_ID']      = metadata['base_ami_id']
+        environ['AMINATOR_BASE_AMI_VERSION'] = metadata['base_ami_version']
+
         suffix = context.ami.get('suffix', None)
         if not suffix:
             suffix = config.suffix_format.format(datetime.utcnow())
 
         metadata['suffix'] = suffix
+        environ['AMINATOR_SUFFIX'] = metadata['suffix']
 
         for tag in config.tag_formats:
             context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
@@ -108,6 +115,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         """ finalize an image """
 
     def __enter__(self):
+        self._set_metadata()
         return self
 
     def __exit__(self, exc_type, exc_value, trace):

@@ -51,6 +51,9 @@ class Aminator(object):
         self.parser.parse_args()
         log.debug('Args parsed')
 
+        os.environ["AMINATOR_PACKAGE"] = self.config.context.package.arg
+        os.environ["AMINATOR_ENVIRONMENT"] = self.config.context.environment
+
         log.debug('Creating initial folder structure if needed')
         mkdir_p(self.config.log_root)
         mkdir_p(os.path.join(self.config.aminator_root, self.config.lock_dir))
