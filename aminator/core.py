@@ -52,7 +52,6 @@ class Aminator(object):
         log.debug('Args parsed')
 
         os.environ["AMINATOR_PACKAGE"] = self.config.context.package.arg
-        os.environ["AMINATOR_ENVIRONMENT"] = self.config.context.environment
 
         log.debug('Creating initial folder structure if needed')
         mkdir_p(self.config.log_root)

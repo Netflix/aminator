@@ -34,6 +34,7 @@ from boto.ec2.volume import Volume
 from boto.exception import EC2ResponseError
 from boto.utils import get_instance_metadata
 from decorator import decorator
+from os import environ
 
 from aminator.config import conf_action
 from aminator.exceptions import FinalizerException, VolumeException
@@ -415,5 +416,15 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._instance = Instance(connection=self._connection)
         self._instance.id = get_instance_metadata()['instance-id']
         self._instance.update()
+
+        
+        context = self._config.context
+        if context.ami.get("base_ami_name",None):
+            environ["AMINATOR_BASE_AMI_NAME"] = context.ami.base_ami_name
+        if context.ami.get("base_ami_id",None):
+            environ["AMINATOR_BASE_AMI_ID"] = context.ami.base_ami_id
+
+        if context.cloud.get("region", None):
+            environ["AMINATOR_REGION"] = context.cloud.region
 
         return self
