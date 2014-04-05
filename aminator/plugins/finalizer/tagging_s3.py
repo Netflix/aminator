@@ -28,6 +28,7 @@ from shutil import rmtree
 from os.path import isdir
 from os import makedirs, system
 
+from os import environ
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata, monitor_command
@@ -176,6 +177,25 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Image registered and tagged')
         self._log_ami_metadata()
         return True
+
+    def __enter__(self):
+        context = self._config.context
+
+        environ["AMINATOR_STORE_TYPE"] = "s3"
+        if context.ami.get("name",None):
+            environ["AMINATOR_AMI_NAME"] = context.ami.name
+        if context.ami.get("cert", None):
+            environ["AMINATOR_CERT"] = context.ami.cert
+        if context.ami.get("privatekey", None):
+            environ["AMINATOR_PRIVATEKEY"] = context.ami.privatekey
+        if context.ami.get("ec2_user", None):
+            environ["AMINATOR_EC2_USER"] = context.ami.ec2_user
+        if context.ami.get("tmpdir", None):
+            environ["AMINATOR_TMPDIR"] = context.ami.tmpdir
+        if context.ami.get("bucket", None):
+            environ["AMINATOR_BUCKET"] = context.ami.bucket
+
+        return super(TaggingS3FinalizerPlugin, self).__enter__()
 
     def __exit__(self, exc_type, exc_value, trace):
         if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
