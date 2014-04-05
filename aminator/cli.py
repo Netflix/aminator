@@ -35,6 +35,7 @@ log = logging.getLogger(__name__)
 
 
 def run():
+    import os
     # we throw this one away, real parsing happens later
     # this is just for getting a debug flag for verbose logging.
     # to be extra sneaky, we add a --debug to the REAL parsers so it shows up in help
@@ -52,6 +53,7 @@ def run():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
+    os.environ["AMINATOR_ENVIRONMENT"] = args.env
     sys.exit(Aminator(debug=args.debug, envname=args.env).aminate())
 
 def plugin_manager():

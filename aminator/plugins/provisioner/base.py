@@ -121,35 +121,29 @@ class BaseProvisionerPlugin(BasePlugin):
     def _run_provision_scripts(self, scripts_dir):
         """
         execute every python or shell script found in scripts_dir
-            1. run python scripts in lexical order
-            2. run shell scripts in lexical order
+            1. run python or shell scripts in lexical order
 
         :param scripts_dir: path in chroot to look for python and shell scripts
         :return: None
         """
 
-        python_script_files = sorted(glob(scripts_dir + '/*.py'))
-        if python_script_files is None:
-            log.debug('no python scripts found in {0}'.format(scripts_dir))
+        script_files = sorted( glob(scripts_dir + '/*.py') + glob(scripts_dir + '/*.sh') )
+        if not script_files:
+            log.debug("no python or shell scripts found in {}".format(scripts_dir))
         else:
-            log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
-            for script in python_script_files:
-                log.debug('executing python {0}'.format(script))
-                result = run_script('python {0}'.format(script))
+            log.debug('found scripts {0} in {1}'.format(script_files, scripts_dir))
+            for script in script_files:
+                log.debug('executing script {0}'.format(script))
+                if os.access(script, os.X_OK):
+                    # script is executable, so just run it
+                    result = run_script(script)
+                else:
+                    if script.endswith('.py'):
+                        result = run_script(['python', script])
+                    else:
+                        result = run_script(['sh', script])
                 if not result.success:
-                    log.critical("python script failed: {0}: {1.std_err}".format(script, result.result))
-                    return False
-
-        shell_script_files = sorted(glob(scripts_dir + '/*.sh'))
-        if shell_script_files is None:
-            log.debug('no shell scripts found in {0}'.format(scripts_dir))
-        else:
-            log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
-            for script in shell_script_files:
-                log.debug('executing sh {0}'.format(script))
-                result = run_script('sh {0}'.format(script))
-                if not result.success:
-                    log.critical("sh script failed: {0}: {1.std_err}".format(script, result.result))
+                    log.critical("script failed: {0}: {1.std_err}".format(script, result.result))
                     return False
         return True
 

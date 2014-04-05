@@ -25,6 +25,7 @@ ebs tagging image finalizer
 """
 import logging
 
+from os import environ
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata
@@ -93,3 +94,12 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Image registered and tagged')
         self._log_ami_metadata()
         return True
+
+    def __enter__(self):
+        context = self._config.context
+        environ["AMINATOR_STORE_TYPE"] = "ebs"
+        if context.ami.get("name",None):
+            environ["AMINATOR_AMI_NAME"] = context.ami.name
+        return super(TaggingEBSFinalizerPlugin, self).__enter__()
+
+
