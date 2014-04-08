@@ -64,7 +64,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
                 raise VolumeException(msg)
         log.debug('Mounted {0.dev} at {0.mountpoint} successfully'.format(mountspec))
 
-    @retry(VolumeException, tries=3, delay=1, backoff=2, logger=log)
+    @retry(VolumeException, tries=6, delay=1, backoff=2, logger=log)
     def _unmount(self):
         if mounted(self._mountpoint):
             if busy_mount(self._mountpoint).success:
