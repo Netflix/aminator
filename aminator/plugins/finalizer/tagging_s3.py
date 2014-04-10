@@ -79,6 +79,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         import random, string
         return ''.join(random.choice(string.lowercase) for _ in xrange(length))
         
+    # pylint: disable=access-member-before-definition
     def image_location(self):
         context = self._config.context
         if hasattr(self, "_image_location"):
