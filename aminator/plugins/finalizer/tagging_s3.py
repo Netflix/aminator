@@ -75,9 +75,16 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         ami = self._config.context.ami
         return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
+    def randword(self,length):
+        import random, string
+        return ''.join(random.choice(string.lowercase) for _ in xrange(length))
+        
     def image_location(self):
         context = self._config.context
-        return "{}/{}".format(self.tmpdir(), context.ami.name)
+        if hasattr(self, "_image_location"):
+            return self._image_location
+        self._image_location = "{}/{}-{}".format(self.tmpdir(), context.ami.name, self.randword(6))
+        return self._image_location
 
     def _copy_volume(self):
         context = self._config.context
