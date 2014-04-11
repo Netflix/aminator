@@ -31,6 +31,7 @@ from os import makedirs, system
 from os import environ
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
+from aminator.util import randword
 from aminator.util.linux import sanitize_metadata, monitor_command
 
 __all__ = ('TaggingS3FinalizerPlugin',)
@@ -76,9 +77,16 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         ami = self._config.context.ami
         return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
-    def image_location(self):
+    # pylint: disable=access-member-before-definition
+    def unique_name(self):
         context = self._config.context
-        return "{}/{}".format(self.tmpdir(), context.ami.name)
+        if hasattr(self, "_unique_name"):
+            return self._unique_name
+        self._unique_name = "{}-{}".format(context.ami.name, randword(6))
+        return self._unique_name
+        
+    def image_location(self):
+        return "{}/{}".format(self.tmpdir(), self.unique_name())
 
     def _copy_volume(self):
         context = self._config.context
@@ -138,7 +146,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def _register_image(self):
         context = self._config.context
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,context.ami.name)):
+        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,self.unique_name())):
             return False
         log.info('Registration success')
         return True

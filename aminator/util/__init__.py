@@ -99,3 +99,9 @@ def download_file(url, dst, timeout=1, verify_https=False):
         dst_fp.write(response.content)
 
     return True
+
+
+def randword(length):
+    import random, string
+    return ''.join(random.choice(string.lowercase) for _ in xrange(length))
+        
