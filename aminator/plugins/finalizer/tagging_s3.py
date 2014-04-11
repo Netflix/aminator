@@ -86,7 +86,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         return self._unique_name
         
     def image_location(self):
-        return "{}/{}-{}".format(self.tmpdir(), self.unique_name())
+        return "{}/{}".format(self.tmpdir(), self.unique_name())
 
     def _copy_volume(self):
         context = self._config.context
