@@ -30,6 +30,7 @@ from os import makedirs, system
 
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
+from aminator.util import randword
 from aminator.util.linux import sanitize_metadata, monitor_command
 
 __all__ = ('TaggingS3FinalizerPlugin',)
@@ -75,16 +76,12 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         ami = self._config.context.ami
         return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
-    def randword(self,length):
-        import random, string
-        return ''.join(random.choice(string.lowercase) for _ in xrange(length))
-        
     # pylint: disable=access-member-before-definition
     def image_location(self):
         context = self._config.context
         if hasattr(self, "_image_location"):
             return self._image_location
-        self._image_location = "{}/{}-{}".format(self.tmpdir(), context.ami.name, self.randword(6))
+        self._image_location = "{}/{}-{}".format(self.tmpdir(), context.ami.name, randword(6))
         return self._image_location
 
     def _copy_volume(self):
