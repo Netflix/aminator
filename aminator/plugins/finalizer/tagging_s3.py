@@ -78,12 +78,15 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
     # pylint: disable=access-member-before-definition
-    def image_location(self):
+    def unique_name(self):
         context = self._config.context
-        if hasattr(self, "_image_location"):
-            return self._image_location
-        self._image_location = "{}/{}-{}".format(self.tmpdir(), context.ami.name, randword(6))
-        return self._image_location
+        if hasattr(self, "_unique_name"):
+            return self._unique_name
+        self._unique_name = "{}-{}".format(context.ami.name, randword(6))
+        return self._unique_name
+        
+    def image_location(self):
+        return "{}/{}-{}".format(self.tmpdir(), self.unique_name())
 
     def _copy_volume(self):
         context = self._config.context
@@ -143,7 +146,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def _register_image(self):
         context = self._config.context
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,context.ami.name)):
+        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,self.unique_name())):
             return False
         log.info('Registration success')
         return True
