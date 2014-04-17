@@ -1,5 +1,7 @@
 enabled: true
 short_circuit: true
+short_circuit_files:
+  - /usr/sbin/service
 
 # fstab-esque list of mounts for a chroot environment. ordered.
 # [device, type, mount point, options]
