@@ -31,7 +31,7 @@ from aminator.exceptions import VolumeException
 from aminator.plugins.distro.base import BaseDistroPlugin
 from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
-
+from aminator.util.linux import short_circuit_files, rewire_files
 
 __all__ = ('BaseLinuxDistroPlugin',)
 log = logging.getLogger(__name__)
@@ -44,13 +44,42 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
     """
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractmethod
     def _activate_provisioning_service_block(self):
-        """ enable service startup after we're done installing packages in chroot"""
+        """
+        Enable service startup so that things work when the AMI starts
+        For RHEL-like systems, we undo the short_circuit
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not rewire_files(self._mountpoint, files):
+                log.critical('Unable to rewire {0} to {1}')
+                return False
+            else:
+                log.debug('Files rewired successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured, no rewiring done')
+        return True
 
-    @abc.abstractmethod
     def _deactivate_provisioning_service_block(self):
-        """ prevent service startup when packages are installed in chroot """
+        """
+        Prevent packages installing the chroot from starting
+        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not short_circuit_files(self._mountpoint, files):
+                log.critical('Unable to short circuit {0} to {1}')
+                return False
+            else:
+                log.debug('Files short-circuited successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured')
+            return True
+
 
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
