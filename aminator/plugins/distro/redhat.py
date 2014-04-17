@@ -37,9 +37,3 @@ class RedHatDistroPlugin(BaseLinuxDistroPlugin):
     See BaseLinuxDistroPlugin for details
     """
     _name = 'redhat'
-
-    def _deactivate_provisioning_service_block(self):
-        return super(RedHatDistroPlugin, self)._deactivate_provisioning_service_block()
-
-    def _activate_provisioning_service_block(self):
-        return super(RedHatDistroPlugin, self)._activate_provisioning_service_block()
