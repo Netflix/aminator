@@ -73,7 +73,8 @@ class DockerCloudPlugin(BaseCloudPlugin):
             if container in mount:
                 mountpoint = mount.split()[1]
                 # keep the root mountpoint
-                if re.match(r"/root$", mountpoint): continue
+                if mountpoint.endswith("/root"): continue
+                if not mountpoint.startswith("/var/lib/docker/containers/"): continue
                 mountpoints.append( mountpoint )
         # unmount all the mountpoints in reverse order (in case we have mountpoints
         # inside of mountpoints
