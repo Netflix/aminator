@@ -26,6 +26,9 @@ docker image finalizer
 import logging
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata
+from aminator.config import conf_action
+from os import environ
+from datetime import datetime
 
 __all__ = ('DockerFinalizerPlugin',)
 log = logging.getLogger(__name__)

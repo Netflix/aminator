@@ -25,7 +25,9 @@ docker cloud provider
 """
 import logging
 from aminator.plugins.cloud.base import BaseCloudPlugin
+from aminator.config import conf_action
 from aminator.util.linux import monitor_command
+from os import environ
 
 __all__ = ('DockerCloudPlugin',)
 log = logging.getLogger(__name__)
@@ -43,7 +45,6 @@ class DockerCloudPlugin(BaseCloudPlugin):
     def connect(self, **kwargs): pass
 
     def registry(self):
-        context = self._config.context
         config = self._config.plugins[self.full_name]
         return config.get("docker_registry", None)
         

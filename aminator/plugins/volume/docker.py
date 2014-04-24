@@ -40,3 +40,7 @@ class DockerVolumePlugin(BaseVolumePlugin):
         mountpoint = "/var/lib/docker/containers/{}/root".format(container)
         self._config.context.volume["mountpoint"] = mountpoint
         return mountpoint
+
+    def __exit__(self, exc_type, exc_value, trace):
+        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        return False
