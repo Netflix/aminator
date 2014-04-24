@@ -39,8 +39,8 @@ from contextlib import contextmanager
 
 from subprocess import Popen, PIPE
 from signal import signal, alarm, SIGALRM
-from os import O_NONBLOCK, environ
-from os.path import is_file, is_dir, dirname, makedirs
+from os import O_NONBLOCK, environ, makedirs
+from os.path import isfile, isdir, dirname
 from fcntl import fcntl, F_GETFL, F_SETFL
 from select import select
 
