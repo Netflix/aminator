@@ -1,0 +1,3 @@
+enabled: true
+name_format: '{name}-{version}-{release}-{arch}-{suffix}'
+suffix_format: '{0:%Y%m%d%H%M}'
