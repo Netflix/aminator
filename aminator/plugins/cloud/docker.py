@@ -24,9 +24,10 @@ aminator.plugins.cloud.docker
 docker cloud provider
 """
 import logging
+import re
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.config import conf_action
-from aminator.util.linux import monitor_command
+from aminator.util.linux import monitor_command, unmount
 from os import environ
 
 __all__ = ('DockerCloudPlugin',)
@@ -52,7 +53,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         context = self._config.context
         result = monitor_command(["docker", "pull", context.ami.base_image])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
         return True
 
@@ -60,16 +61,34 @@ class DockerCloudPlugin(BaseCloudPlugin):
         context = self._config.context
         result = monitor_command(["docker", "run", "-d", context.ami.base_image, "sleep", "infinity"])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
-        context.cloud["container"] = result.result.std_out.rstrip()
+        container = result.result.std_out.rstrip()
+        context.cloud["container"] = container
+        # now we need to umount all the mount points that docker imports for us
+        with open("/proc/mounts") as f:
+            mounts = f.readlines()
+        mountpoints = []
+        for mount in mounts:
+            if container in mount:
+                mountpoint = mount.split()[1]
+                # keep the root mountpoint
+                if re.match(r"/root$", mountpoint): continue
+                mountpoints.append( mountpoint )
+        # unmount all the mountpoints in reverse order (in case we have mountpoints
+        # inside of mountpoints
+        for mountpoint in reversed(sorted(mountpoints)):
+            result = unmount(mountpoint)
+            if not result.success:
+                log.error('failure:{0.command} :{0.std_err}'.format(result.result))
+                return False
         return True
 
     def detach_volume(self, blockdevice):
         # docker kill $container
         result = monitor_command(["docker", "kill", self._config.context.cloud["container"]])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
         return True
 
@@ -77,7 +96,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         # docker rm $container
         result = monitor_command(["docker", "rm", self._config.context.cloud["container"]])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
         return True
 
@@ -87,7 +106,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         name = "{}/{}".format(self.registry(), context.ami.name)
         result = monitor_command(["docker", "commit", self._config.context.cloud["container"], name])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
         return True
 
@@ -105,7 +124,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         name = "{}/{}".format(self.registry(), context.ami.name)
         result = monitor_command(["docker", "push", name])
         if not result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(result.result))
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
         return True
 
