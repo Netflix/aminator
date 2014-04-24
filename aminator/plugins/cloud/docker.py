@@ -65,6 +65,14 @@ class DockerCloudPlugin(BaseCloudPlugin):
             return False
         container = result.result.std_out.rstrip()
         context.cloud["container"] = container
+
+        # next we need to kill the container, this will leave the mountpoints set up, but 
+        # will not be locking any filesystem
+        result = monitor_command(["docker", "kill", self._config.context.cloud["container"]])
+        if not result.success:
+            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
+            return False
+
         # now we need to umount all the mount points that docker imports for us
         with open("/proc/mounts") as f:
             mounts = f.readlines()
@@ -86,11 +94,6 @@ class DockerCloudPlugin(BaseCloudPlugin):
         return True
 
     def detach_volume(self, blockdevice):
-        # docker kill $container
-        result = monitor_command(["docker", "kill", self._config.context.cloud["container"]])
-        if not result.success:
-            log.error('failure:{0.command} :{0.std_err}'.format(result.result))
-            return False
         return True
 
     def delete_volume(self):
