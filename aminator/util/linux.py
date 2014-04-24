@@ -40,6 +40,7 @@ from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from signal import signal, alarm, SIGALRM
 from os import O_NONBLOCK, environ
+from os.path import is_file, is_dir, dirname, makedirs
 from fcntl import fcntl, F_GETFL, F_SETFL
 from select import select
 
@@ -149,6 +150,13 @@ def mount(mountspec):
     if mountspec.fstype:
         if mountspec.fstype == 'bind':
             fstype_flag = '-o'
+            # we may need to create the mountpoint if it does not exist
+            if is_file(mountspec.dev):
+                mountpoint = dirname(mountspec.mountpoint)
+            else:
+                mountpoint = mountspec.mountpoint
+                if not is_dir(mountpoint):
+                    makedirs(mountpoint)
         else:
             fstype_flag = '-t'
         fstype_arg = '{0} {1}'.format(fstype_flag, mountspec.fstype)
