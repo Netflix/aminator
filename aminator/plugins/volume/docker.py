@@ -39,7 +39,7 @@ class DockerVolumePlugin(BaseVolumePlugin):
         self._cloud.attach_volume(self._blockdevice)
         container = self._config.context.cloud["container"]
         # FIXME this path should be configurable
-        mountpoint = "/var/lib/docker/containers/{}/root".format(container)
+        mountpoint = "/var/lib/docker/aufs/mnt/{}".format(container)
         self._config.context.volume["mountpoint"] = mountpoint
         return mountpoint
 

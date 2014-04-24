@@ -24,10 +24,9 @@ aminator.plugins.cloud.docker
 docker cloud provider
 """
 import logging
-import re
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.config import conf_action
-from aminator.util.linux import monitor_command, unmount
+from aminator.util.linux import monitor_command
 from os import environ
 
 __all__ = ('DockerCloudPlugin',)
@@ -66,34 +65,32 @@ class DockerCloudPlugin(BaseCloudPlugin):
         container = result.result.std_out.rstrip()
         context.cloud["container"] = container
 
-        # next we need to kill the container, this will leave the mountpoints set up, but 
-        # will not be locking any filesystem
+        # # now we need to umount all the mount points that docker imports for us
+        # with open("/proc/mounts") as f:
+        #     mounts = f.readlines()
+        # mountpoints = []
+        # for mount in mounts:
+        #     if container in mount:
+        #         mountpoint = mount.split()[1]
+        #         # keep the root mountpoint
+        #         if mountpoint.endswith("/root"): continue
+        #         if not mountpoint.startswith("/var/lib/docker/containers/"): continue
+        #         mountpoints.append( mountpoint )
+        # # unmount all the mountpoints in reverse order (in case we have mountpoints
+        # # inside of mountpoints
+        # for mountpoint in reversed(sorted(mountpoints)):
+        #     result = unmount(mountpoint)
+        #     if not result.success:
+        #         log.error('failure:{0.command} :{0.std_err}'.format(result.result))
+        #         return False
+        return True
+
+    def detach_volume(self, blockdevice):
         result = monitor_command(["docker", "kill", self._config.context.cloud["container"]])
         if not result.success:
             log.error('failure:{0.command} :{0.std_err}'.format(result.result))
             return False
 
-        # now we need to umount all the mount points that docker imports for us
-        with open("/proc/mounts") as f:
-            mounts = f.readlines()
-        mountpoints = []
-        for mount in mounts:
-            if container in mount:
-                mountpoint = mount.split()[1]
-                # keep the root mountpoint
-                if mountpoint.endswith("/root"): continue
-                if not mountpoint.startswith("/var/lib/docker/containers/"): continue
-                mountpoints.append( mountpoint )
-        # unmount all the mountpoints in reverse order (in case we have mountpoints
-        # inside of mountpoints
-        for mountpoint in reversed(sorted(mountpoints)):
-            result = unmount(mountpoint)
-            if not result.success:
-                log.error('failure:{0.command} :{0.std_err}'.format(result.result))
-                return False
-        return True
-
-    def detach_volume(self, blockdevice):
         return True
 
     def delete_volume(self):

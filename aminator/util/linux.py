@@ -358,9 +358,12 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
         try:
             if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
                 backup = '{0}{1}'.format(dst, backup_ext)
-                log.debug('Moving existing {0} out of the way'.format(dst))
+                log.debug('Making backup of {0}'.format(dst))
                 try:
-                    os.rename(dst, backup)
+                    if os.path.isdir(dst):
+                        os.rename(dst, backup)
+                    else:
+                        shutil.copy(dst,backup)
                 except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
@@ -390,20 +393,21 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
     backup = '{0}{1}'.format(dst, backup_ext)
     try:
         if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
-            log.debug('Removing {0}'.format(dst))
             try:
                 if os.path.isdir(dst):
+                    log.debug('Removing {0}'.format(dst))
                     shutil.rmtree(dst)
-                else:
-                    os.remove(dst)
-                log.debug('Provision config {0} removed'.format(dst))
+                    log.debug('Provision config {0} removed'.format(dst))
             except Exception:
                 log.exception('Error encountered while removing {0}'.format(dst))
                 return False
 
         if os.path.isfile(backup) or os.path.islink(backup) or os.path.isdir(backup):
             log.debug('Restoring {0} to {1}'.format(backup, dst))
-            os.rename(backup, dst)
+            if os.path.isdir(backup):
+                os.rename(backup, dst)
+            else:
+                shutil.copy(backup,dst)
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
         else:
             log.warn('No backup file {0} was found'.format(backup))

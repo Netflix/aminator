@@ -46,19 +46,19 @@ docker_yum:
     distro: redhat
     provisioner: yum
     volume: docker
-    blockdevice: null
+    blockdevice: "null"
     finalizer: docker
 docker_apt:
     cloud: docker
     distro: debian
     provisioner: apt
     volume: docker
-    blockdevice: null
+    blockdevice: "null"
     finalizer: docker
 docker_aptitude:
     cloud: docker
     distro: debian
     provisioner: aptitude
     volume: docker
-    blockdevice: null
+    blockdevice: "null"
     finalizer: docker
