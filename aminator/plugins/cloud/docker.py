@@ -42,10 +42,15 @@ class DockerCloudPlugin(BaseCloudPlugin):
         base_ami.add_argument('-b', '--base-image', dest='base_image',
                               action=conf_action(config=context.ami), required=True,
                               help='The name of the base Docker image used in provisioning')
+        base_ami.add_argument('-R', '--docker-registry', dest='docker_registry',
+                              action=conf_action(config=context.cloud),
+                              help='The private registry to push the docker image to')
 
     def connect(self, **kwargs): pass
 
     def registry(self):
+        registry = self._config.context.cloud.get('docker_registry', None)
+        if registry: return registry
         config = self._config.plugins[self.full_name]
         return config.get("docker_registry", None)
         
@@ -140,4 +145,6 @@ class DockerCloudPlugin(BaseCloudPlugin):
         context = self._config.context
         if context.ami.get("base_image",None):
             environ["AMINATOR_DOCKER_BASE_IMAGE"] = context.ami.base_image
+        if context.cloud.get("docker_registry",None):
+            environ["AMINATOR_DOCKER_REGISTRY"] = context.cloud.docker_registry
         return self
