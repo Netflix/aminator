@@ -26,6 +26,7 @@ docker volume allocator
 import logging
 
 from aminator.plugins.volume.base import BaseVolumePlugin
+from aminator.config import conf_action
 
 __all__ = ('DockerVolumePlugin',)
 log = logging.getLogger(__name__)
@@ -34,12 +35,20 @@ log = logging.getLogger(__name__)
 class DockerVolumePlugin(BaseVolumePlugin):
     _name = 'docker'
 
+    def add_plugin_args(self, *args, **kwargs):
+        context = self._config.context
+        docker = self._parser.add_argument_group(title='Docker')
+        docker.add_argument('-b', '--docker-root', dest='docker_root',
+                              action=conf_action(config=context.cloud), default="/var/lib/docker",
+                              help='The base directory for docker containers')
+        return docker
+
     def __enter__(self):
         self._cloud.allocate_base_volume()
         self._cloud.attach_volume(self._blockdevice)
         container = self._config.context.cloud["container"]
         # FIXME this path should be configurable
-        mountpoint = "/var/lib/docker/aufs/mnt/{}".format(container)
+        mountpoint = "{}/aufs/mnt/{}".format(self._config.context.cloud["docker_root"], container)
         self._config.context.volume["mountpoint"] = mountpoint
         return mountpoint
 
