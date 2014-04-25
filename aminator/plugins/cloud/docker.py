@@ -27,6 +27,7 @@ import logging
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.config import conf_action
 from aminator.util.linux import monitor_command
+from aminator.util import retry
 from os import environ
 
 __all__ = ('DockerCloudPlugin',)
@@ -48,6 +49,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         config = self._config.plugins[self.full_name]
         return config.get("docker_registry", None)
         
+    @retry(tries=3,delay=2,backoff=2,logger=log)
     def allocate_base_volume(self, tag=True):
         context = self._config.context
         result = monitor_command(["docker", "pull", context.ami.base_image])
@@ -56,6 +58,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
             return False
         return True
 
+    @retry(tries=3,delay=2,backoff=2,logger=log)
     def attach_volume(self, blockdevice, tag=True):
         context = self._config.context
         result = monitor_command(["docker", "run", "-d", context.ami.base_image, "sleep", "infinity"])
@@ -85,6 +88,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
         #         return False
         return True
 
+    @retry(tries=3,delay=2,backoff=2,logger=log)
     def detach_volume(self, blockdevice):
         result = monitor_command(["docker", "kill", self._config.context.cloud["container"]])
         if not result.success:
@@ -93,6 +97,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
 
         return True
 
+    @retry(tries=3,delay=2,backoff=2,logger=log)
     def delete_volume(self):
         # docker rm $container
         result = monitor_command(["docker", "rm", self._config.context.cloud["container"]])
@@ -119,6 +124,7 @@ class DockerCloudPlugin(BaseCloudPlugin):
 
     def add_tags(self, resource_type): pass
 
+    @retry(tries=3,delay=2,backoff=2,logger=log)
     def register_image(self, *args, **kwargs):
         context = self._config.context
         # docker push dockerregistry.test.netflix.net:7001/$name
