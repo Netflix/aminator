@@ -24,6 +24,7 @@ aminator.plugins.finalizer.docker
 docker image finalizer
 """
 import logging
+import platform
 from aminator.plugins.finalizer.base import BaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata
 from aminator.config import conf_action
@@ -61,6 +62,7 @@ class DockerFinalizerPlugin(BaseFinalizerPlugin):
             suffix = config.suffix_format.format(datetime.utcnow())
 
         metadata['suffix'] = suffix
+        metadata['arch'] = platform.machine()
 
         name = context.ami.get('name', None)
         if not name:
