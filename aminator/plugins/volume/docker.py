@@ -38,7 +38,7 @@ class DockerVolumePlugin(BaseVolumePlugin):
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
         docker = self._parser.add_argument_group(title='Docker')
-        docker.add_argument('-b', '--docker-root', dest='docker_root',
+        docker.add_argument('-D', '--docker-root', dest='docker_root',
                               action=conf_action(config=context.cloud), default="/var/lib/docker",
                               help='The base directory for docker containers')
         return docker
