@@ -360,7 +360,7 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 backup = '{0}{1}'.format(dst, backup_ext)
                 log.debug('Making backup of {0}'.format(dst))
                 try:
-                    if os.path.isdir(dst) os.path.islink(dst):
+                    if os.path.isdir(dst) or os.path.islink(dst):
                         os.rename(dst, backup)
                     elif os.path.isfile(dst):
                         shutil.copy(dst,backup)
