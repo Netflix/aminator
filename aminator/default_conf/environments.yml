@@ -41,5 +41,3 @@ ec2_aptitude_linux_s3:
     volume: linux
     blockdevice: linux
     finalizer: tagging_s3
-
- 
