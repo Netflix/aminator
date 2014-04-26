@@ -41,24 +41,3 @@ ec2_aptitude_linux_s3:
     volume: linux
     blockdevice: linux
     finalizer: tagging_s3
-docker_yum:
-    cloud: docker
-    distro: redhat
-    provisioner: yum
-    volume: docker
-    blockdevice: "null"
-    finalizer: docker
-docker_apt:
-    cloud: docker
-    distro: debian
-    provisioner: apt
-    volume: docker
-    blockdevice: "null"
-    finalizer: docker
-docker_aptitude:
-    cloud: docker
-    distro: debian
-    provisioner: aptitude
-    volume: docker
-    blockdevice: "null"
-    finalizer: docker
