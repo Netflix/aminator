@@ -91,6 +91,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                     getattr(cls,func_name)
                 )
             )
+        )
         setattr(cls, func_name, newfunc)
 
     def __init__(self):
