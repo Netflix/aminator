@@ -29,13 +29,12 @@ from time import time
 def timer(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             start = time()
             try:
                 retval = func(obj, *args, **kwargs)
-                context_obj._config.metrics.timer(metric_name, time() - start)
+                (context_obj or obj)._config.metrics.timer(metric_name, time() - start)
             except:
-                context_obj._config.metrics.timer(metric_name, time() - start)
+                (context_obj or obj)._config.metrics.timer(metric_name, time() - start)
                 raise
             return retval
         return func_2
@@ -44,14 +43,13 @@ def timer(metric_name, context_obj=None):
 def fails(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             try:
                 retval = func(obj, *args, **kwargs)
             except:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
                 raise
             if not retval:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
             return retval
         return func_2
     return func_1
@@ -59,14 +57,13 @@ def fails(metric_name, context_obj=None):
 def cmdfails(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             try:
                 retval = func(obj, *args, **kwargs)
             except:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
                 raise
             if not retval or not retval.success:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
             return retval
         return func_2
     return func_1
@@ -74,10 +71,9 @@ def cmdfails(metric_name, context_obj=None):
 def cmdsucceeds(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             retval = func(obj, *args, **kwargs)
             if retval and retval.success:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
             return retval
         return func_2
     return func_1
@@ -85,10 +81,9 @@ def cmdsucceeds(metric_name, context_obj=None):
 def succeeds(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             retval = func(obj, *args, **kwargs)
             if retval:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
             return retval
         return func_2
     return func_1
@@ -96,11 +91,10 @@ def succeeds(metric_name, context_obj=None):
 def raises(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
-            if not context_obj: context_obj=obj
             try:
                 return func(obj, *args, **kwargs)
             except:
-                context_obj._config.metrics.increment(metric_name)
+                (context_obj or obj)._config.metrics.increment(metric_name)
                 raise
         return func_2
     return func_1
