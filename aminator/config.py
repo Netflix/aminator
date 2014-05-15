@@ -75,11 +75,11 @@ def init_defaults(argv=None, debug=False):
     config.environments = config.dict_merge(config.environments,
                                             EnvironmentConfig.from_files(config.config_files.environments,
                                                                          config.config_root))
-    default_metrics = config.environments.metrics if hasattr(config.envirionments,"metrics") else "logger"
-    for env in config.envirionments:
-        if type(config.envirionments[env]) == dict:
-            if "metrics" not in config.envirionments[env]:
-                config.envirionments[env]["metrics"] = default_metrics
+    default_metrics = getattr(config.environments, "metrics", "logger")
+    for env in config.environments:
+        if type(config.environments[env]) == dict:
+            if "metrics" not in config.environments[env]:
+                config.environments[env]["metrics"] = default_metrics
 
     if config.logging.base.enabled:
         dictConfig(config.logging.base.config.toDict())
