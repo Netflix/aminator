@@ -77,7 +77,7 @@ def init_defaults(argv=None, debug=False):
                                                                          config.config_root))
     default_metrics = getattr(config.environments, "metrics", "logger")
     for env in config.environments:
-        if type(config.environments[env]) == dict:
+        if isinstance(config.environments[env], dict):
             if "metrics" not in config.environments[env]:
                 config.environments[env]["metrics"] = default_metrics
 
