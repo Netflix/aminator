@@ -40,20 +40,20 @@ class LoggerMetricsPlugin(BaseMetricsPlugin):
         self.timers = {}
 
     def increment(self, name, value=1):
-        log.info("Metric {}: increment {}, tags: {}".format(name,value, self.tags))
+        log.debug("Metric {}: increment {}, tags: {}".format(name,value, self.tags))
 
     def gauge(self, name, value):
-        log.info("Metric {}: gauge set {}, tags: {}".format(name, value, self.tags))
+        log.debug("Metric {}: gauge set {}, tags: {}".format(name, value, self.tags))
 
     def timer(self, name, seconds):
-        log.info("Metric {}: timer {}s, tags: {}".format(name, seconds, self.tags)) 
+        log.debug("Metric {}: timer {}s, tags: {}".format(name, seconds, self.tags)) 
 
     def start_timer(self, name):
-        log.info("Metric {}: start timer, tags: {}".format(name, self.tags))
+        log.debug("Metric {}: start timer, tags: {}".format(name, self.tags))
         self.timers[name] = time()
 
     def stop_timer(self, name):
-        log.info("Metric {}: stop timer [{}s], tags: {}".format(name, time() - self.timers[name], self.tags))
+        log.debug("Metric {}: stop timer [{}s], tags: {}".format(name, time() - self.timers[name], self.tags))
         del self.timers[name]
     
     def flush(self):

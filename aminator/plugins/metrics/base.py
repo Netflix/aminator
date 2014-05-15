@@ -65,13 +65,10 @@ class BaseMetricsPlugin(BasePlugin):
         self.tags = {}
 
     def __enter__(self):
+        setattr(self._config, "metrics", self)
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
         self.flush()
         if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
         return False
-
-    def __call__(self):
-        self._config.setattr("metrics", self)
-        return self
