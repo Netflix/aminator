@@ -28,10 +28,10 @@ from time import time
 
 def timer(metric_name):
     def func_1(func):
-        def func_2( *args, **kwargs):
+        def func_2(self, *args, **kwargs):
             start = time()
             try:
-                retval = func(*args,**kwargs)
+                retval = func(self, *args, **kwargs)
                 self._config.metrics.timer(metric_name, time() - start)
             except:
                 self._config.metrics.timer(metric_name, time() - start)
@@ -42,9 +42,9 @@ def timer(metric_name):
 
 def fails(metric_name):
     def func_1(func):
-        def func_2(*args, **kwargs):
+        def func_2(self, *args, **kwargs):
             try:
-                retval = func(*args,**kwargs)
+                retval = func(self, *args, **kwargs)
             except:
                 self._config.metrics.increment(metric_name)
                 raise
@@ -56,9 +56,9 @@ def fails(metric_name):
 
 def cmdfails(metric_name):
     def func_1(func):
-        def func_2(*args, **kwargs):
+        def func_2(self, *args, **kwargs):
             try:
-                retval = func(*args,**kwargs)
+                retval = func(self, *args, **kwargs)
             except:
                 self._config.metrics.increment(metric_name)
                 raise
@@ -70,8 +70,8 @@ def cmdfails(metric_name):
 
 def cmdsucceeds(metric_name):
     def func_1(func):
-        def func_2(*args, **kwargs):
-            retval = func(*args,**kwargs)
+        def func_2(self, *args, **kwargs):
+            retval = func(self, *args, **kwargs)
             if retval and retval.success:
                 self._config.metrics.increment(metric_name)
             return retval
@@ -80,8 +80,8 @@ def cmdsucceeds(metric_name):
 
 def succeeds(metric_name):
     def func_1(func):
-        def func_2(*args, **kwargs):
-            retval = func(*args,**kwargs)
+        def func_2(self, *args, **kwargs):
+            retval = func(self, *args, **kwargs)
             if retval:
                 self._config.metrics.increment(metric_name)
             return retval
@@ -90,9 +90,9 @@ def succeeds(metric_name):
 
 def raises(metric_name):
     def func_1(func):
-        def func_2(*args, **kwargs):
+        def func_2(self, *args, **kwargs):
             try:
-                retval = func(*args,**kwargs)
+                return func(self, *args, **kwargs)
             except:
                 self._config.metrics.increment(metric_name)
                 raise
