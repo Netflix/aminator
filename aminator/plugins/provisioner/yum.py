@@ -28,6 +28,7 @@ import os
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
 from aminator.util.linux import monitor_command, result_to_dict
+from aminator.util.metrics import cmdsucceeds, cmdfails, timer
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -44,6 +45,9 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         return yum_clean_metadata(config.get('clean_repos', []))
 
+    @cmdsucceeds("aminator.provisioner.yum.provision_package.count")
+    @cmdfails("aminator.provisioner.yum.provision_package.error")
+    @timer("aminator.provisioner.yum.provision_package.duration")
     def _provision_package(self):
         result = self._refresh_repo_metadata()
         if not result.success:

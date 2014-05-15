@@ -26,7 +26,7 @@ ec2 cloud provider
 import logging
 from time import sleep
 
-from boto.ec2 import connect_to_region
+from boto.ec2 import connect_to_region, EC2Connection
 from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
 from boto.ec2.image import Image
 from boto.ec2.instance import Instance
@@ -41,6 +41,7 @@ from aminator.exceptions import FinalizerException, VolumeException
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.util import retry
 from aminator.util.linux import device_prefix, native_block_device, os_node_exists
+from aminator.util.metrics import timer, raises, succeeds
 
 
 __all__ = ('EC2CloudPlugin',)
@@ -82,6 +83,27 @@ def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, b
 
 class EC2CloudPlugin(BaseCloudPlugin):
     _name = 'ec2'
+
+    def add_metrics(self, metric_base_name, cls, func_name):
+        vars(cls)[func_name] = succeeds("{}.count".format(metric_base_name))(
+            raises("{}.error".format(metric_base_name))(
+                timer("{}.duration".format(metric_base_name))(
+                    vars(cls)[func_name]
+                )
+            )
+        )
+
+    def __init__(self):
+        super(EC2CloudPlugin,self).__init__()
+        # wrap each of the functions so we can get timer and error metrics
+        for ec2func in ["create_volume", "create_tags", "register_image", "get_all_images"]:
+            self.add_metrics("amintor.cloud.ec2.connection.{}".format(ec2func), EC2Connection, ec2func)
+        for volfunc in ["add_tag", "attach", "create_snapshot", "delete", "detach", "update"]:
+            self.add_metrics("amintor.cloud.ec2.volume.{}".format(volfunc), Volume, volfunc)
+        for imgfunc in ["update"]:
+            self.add_metrics("amintor.cloud.ec2.image.{}".format(imgfunc), Image, imgfunc)
+        for insfunc in ["update"]:
+            self.add_metrics("amintor.cloud.ec2.instance.{}".format(insfunc), Instance, insfunc)
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
@@ -235,13 +257,15 @@ class EC2CloudPlugin(BaseCloudPlugin):
             raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id,
                                                                                      state,
                                                                                      resource.status))
-
+    @timer("aminator.cloud.ec2.ami_available.duration")
     def _ami_available(self):
         return self._wait_for_state(self._ami, 'available')
 
+    @timer("aminator.cloud.ec2.snapshot_completed.duration")
     def _snapshot_complete(self):
         return self._wait_for_state(self._snapshot, 'completed')
 
+    @timer("aminator.cloud.ec2.volume_available.duration")
     def _volume_available(self):
         return self._wait_for_state(self._volume, 'available')
 

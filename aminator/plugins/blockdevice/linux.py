@@ -31,7 +31,7 @@ from collections import namedtuple
 from aminator.exceptions import DeviceException
 from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
 from aminator.util.linux import flock, locked, native_device_prefix
-
+from aminator.util.metrics import raises
 
 __all__ = ('LinuxBlockDevicePlugin',)
 log = logging.getLogger(__name__)
@@ -75,6 +75,7 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         self._dev.handle.close()
         return False
 
+    @raises("aminator.blockdevice.linux.find_available_dev.error")
     def find_available_dev(self):
         log.info('Searching for an available block device')
         for dev in self._allowed_devices:

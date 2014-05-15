@@ -41,24 +41,32 @@ class Environment(object):
             plugin = self._plugin_manager.find_by_kind(kind, name)
             setattr(self, kind, plugin.obj)
             log.debug('Attached: {0}'.format(getattr(self, kind)))
+
+        kind = "metrics"
+        if not getattr(self, kind, None):
+            name = self._config.environments.get(kind, "logger")
+            plugin = self._plugin_manager.find_by_kind(kind, name)
+            setattr(self, kind, plugin.obj)
+
         log.debug("============= BEGIN YAML representation of loaded configs ===============")
         log.debug(yaml.dump(self._config))
         log.debug("============== END YAML representation of loaded configs ================")
 
     def provision(self):
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
-        with self.cloud as cloud:                                          # pylint: disable=no-member
-            with self.finalizer(cloud) as finalizer:                       # pylint: disable=no-member
-                with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
-                    with self.distro(volume) as distro:                    # pylint: disable=no-member
-                        success = self.provisioner(distro).provision()     # pylint: disable=no-member
+        with self.metrics:                                                     # pylint: disable=no-member
+            with self.cloud as cloud:                                          # pylint: disable=no-member
+                with self.finalizer(cloud) as finalizer:                       # pylint: disable=no-member
+                    with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
+                        with self.distro(volume) as distro:                    # pylint: disable=no-member
+                            success = self.provisioner(distro).provision()     # pylint: disable=no-member
+                            if not success:
+                                log.critical('Provisioning failed!')
+                                return False
+                        success = finalizer.finalize()
                         if not success:
-                            log.critical('Provisioning failed!')
+                            log.critical('Finalizing failed!')
                             return False
-                    success = finalizer.finalize()
-                    if not success:
-                        log.critical('Finalizing failed!')
-                        return False
         return True
 
     def __enter__(self):

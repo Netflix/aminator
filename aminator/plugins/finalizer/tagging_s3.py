@@ -33,6 +33,7 @@ from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util import randword
 from aminator.util.linux import sanitize_metadata, monitor_command
+from aminator.util.metrics import cmdsucceeds, cmdfails, timer
 
 __all__ = ('TaggingS3FinalizerPlugin',)
 log = logging.getLogger(__name__)
@@ -88,6 +89,9 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def image_location(self):
         return "{}/{}".format(self.tmpdir(), self.unique_name())
 
+    @cmdsucceeds("aminator.finalizer.tagging_s3.copy_volume.count")
+    @cmdfails("aminator.finalizer.tagging_s3.copy_volume.error")
+    @timer("aminator.finalizer.tagging_s3.copy_volume.duration")
     def _copy_volume(self):
         context = self._config.context
         tmpdir=self.tmpdir()
@@ -95,6 +99,9 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             makedirs(tmpdir)
         return monitor_command(["dd", "bs=65536", "if={}".format(context.volume.dev), "of={}".format(self.image_location())])
 
+    @cmdsucceeds("aminator.finalizer.tagging_s3.bundle_image.count")
+    @cmdfails("aminator.finalizer.tagging_s3.bundle_image.error")
+    @timer("aminator.finalizer.tagging_s3.bundle_image.duration")
     def _bundle_image(self):
         context = self._config.context
 
@@ -125,6 +132,9 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             cmd.extend(['-B', bdm])
         return monitor_command(cmd)
 
+    @cmdsucceeds("aminator.finalizer.tagging_s3.upload_bundle.count")
+    @cmdfails("aminator.finalizer.tagging_s3.upload_bundle.error")
+    @timer("aminator.finalizer.tagging_s3.upload_bundle.duration")
     def _upload_bundle(self):
         context = self._config.context
 
