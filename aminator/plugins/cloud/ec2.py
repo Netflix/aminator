@@ -85,13 +85,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
     _name = 'ec2'
 
     def add_metrics(self, metric_base_name, cls, func_name):
-        vars(cls)[func_name] = succeeds("{}.count".format(metric_base_name))(
+        newfunc = succeeds("{}.count".format(metric_base_name))(
             raises("{}.error".format(metric_base_name))(
                 timer("{}.duration".format(metric_base_name))(
-                    vars(cls)[func_name]
+                    getattr(cls,func_name)
                 )
             )
-        )
+        setattr(cls, func_name, newfunc)
 
     def __init__(self):
         super(EC2CloudPlugin,self).__init__()

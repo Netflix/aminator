@@ -73,8 +73,8 @@ def plugin_manager():
 
     parser.add_argument('--branch', help='Which branch to pull the plugin list from. Valid options: production, testing, alpha. Default value: production',
                         default='production', choices=['production', 'testing', 'alpha'], dest='branch', metavar='branch')
-    parser.add_argument('--type', help='The type of plugin to search for. Valid options: cloud, volume, blockdevice, provision, distro, finalizer',
-                        choices=['cloud', 'volume', 'blockdevice', 'provision', 'distro', 'finalizer'], dest='type', metavar='plugin-type')
+    parser.add_argument('--type', help='The type of plugin to search for. Valid options: cloud, volume, blockdevice, provision, distro, finalizer, metrics',
+                        choices=['cloud', 'volume', 'blockdevice', 'provision', 'distro', 'finalizer', 'metrics'], dest='type', metavar='plugin-type')
     parser.add_argument('command', help='Command to run. Valid commands: search install list', choices=['search', 'install', 'list'], metavar='command')
     parser.add_argument('name', help='Name of the plugin', metavar='name', nargs='?')
     args = parser.parse_args()
