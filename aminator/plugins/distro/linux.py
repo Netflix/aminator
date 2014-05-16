@@ -32,6 +32,7 @@ from aminator.plugins.distro.base import BaseDistroPlugin
 from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
 from aminator.util.linux import short_circuit_files, rewire_files
+from aminator.util.metrics import fails, timer
 
 __all__ = ('BaseLinuxDistroPlugin',)
 log = logging.getLogger(__name__)
@@ -80,7 +81,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             log.debug('No short circuit files configured')
             return True
 
-
+    @fails("aminator.distro.linux.configure_chroot.error")
+    @timer("aminator.distro.linux.configure_chroot.duration")
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Configuring chroot at {0}'.format(self._mountpoint))
@@ -134,6 +136,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             log.debug('No provision config files configured')
             return True
 
+    @fails("aminator.distro.linux.teardown_chroot.error")
+    @timer("aminator.distro.linux.teardown_chroot.duration")
     def _teardown_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Tearing down chroot at {0}'.format(self._mountpoint))

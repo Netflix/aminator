@@ -30,6 +30,7 @@ from aminator.util import retry
 from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount
 from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
+from aminator.util.metrics import raises
 
 __all__ = ('LinuxVolumePlugin',)
 log = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def _detach(self):
         self._cloud.detach_volume(self._dev)
 
+    @raises("aminator.volume.linux.mount.error")
     def _mount(self):
         if self._config.volume_dir.startswith(('~', '/')):
             self._volume_root = os.path.expanduser(self._config.volume_dir)
@@ -65,6 +67,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
                 raise VolumeException(msg)
         log.debug('Mounted {0.dev} at {0.mountpoint} successfully'.format(mountspec))
 
+    @raises("aminator.volume.linux.umount.error")
     @retry(VolumeException, tries=6, delay=1, backoff=2, logger=log)
     def _unmount(self):
         if mounted(self._mountpoint):
