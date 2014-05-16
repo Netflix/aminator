@@ -40,6 +40,20 @@ def timer(metric_name, context_obj=None):
         return func_2
     return func_1
 
+def lapse(metric_name, context_obj=None):
+    def func_1(func):
+        def func_2(obj, *args, **kwargs):
+            (context_obj or obj)._config.metrics.start_timer(metric_name)
+            try:
+                retval = func(obj, *args, **kwargs)
+                (context_obj or obj)._config.metrics.stop_timer(metric_name)
+            except:
+                (context_obj or obj)._config.metrics.stop_timer(metric_name)
+                raise
+            return retval
+        return func_2
+    return func_1
+
 def fails(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
