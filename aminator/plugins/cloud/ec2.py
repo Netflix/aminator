@@ -41,7 +41,7 @@ from aminator.exceptions import FinalizerException, VolumeException
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.util import retry
 from aminator.util.linux import device_prefix, native_block_device, os_node_exists
-from aminator.util.metrics import timer, raises, succeeds
+from aminator.util.metrics import timer, raises, succeeds, lapse
 
 
 __all__ = ('EC2CloudPlugin',)
@@ -258,15 +258,15 @@ class EC2CloudPlugin(BaseCloudPlugin):
             raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id,
                                                                                      state,
                                                                                      resource.status))
-    @timer("aminator.cloud.ec2.ami_available.duration")
+    @lapse("aminator.cloud.ec2.ami_available.duration")
     def _ami_available(self):
         return self._wait_for_state(self._ami, 'available')
 
-    @timer("aminator.cloud.ec2.snapshot_completed.duration")
+    @lapse("aminator.cloud.ec2.snapshot_completed.duration")
     def _snapshot_complete(self):
         return self._wait_for_state(self._snapshot, 'completed')
 
-    @timer("aminator.cloud.ec2.volume_available.duration")
+    @lapse("aminator.cloud.ec2.volume_available.duration")
     def _volume_available(self):
         return self._wait_for_state(self._volume, 'available')
 
