@@ -98,13 +98,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
         super(EC2CloudPlugin,self).__init__()
         # wrap each of the functions so we can get timer and error metrics
         for ec2func in ["create_volume", "create_tags", "register_image", "get_all_images"]:
-            self.add_metrics("amintor.cloud.ec2.connection.{}".format(ec2func), EC2Connection, ec2func)
+            self.add_metrics("aminator.cloud.ec2.connection.{}".format(ec2func), EC2Connection, ec2func)
         for volfunc in ["add_tag", "attach", "create_snapshot", "delete", "detach", "update"]:
-            self.add_metrics("amintor.cloud.ec2.volume.{}".format(volfunc), Volume, volfunc)
+            self.add_metrics("aminator.cloud.ec2.volume.{}".format(volfunc), Volume, volfunc)
         for imgfunc in ["update"]:
-            self.add_metrics("amintor.cloud.ec2.image.{}".format(imgfunc), Image, imgfunc)
+            self.add_metrics("aminator.cloud.ec2.image.{}".format(imgfunc), Image, imgfunc)
         for insfunc in ["update"]:
-            self.add_metrics("amintor.cloud.ec2.instance.{}".format(insfunc), Instance, insfunc)
+            self.add_metrics("aminator.cloud.ec2.instance.{}".format(insfunc), Instance, insfunc)
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
