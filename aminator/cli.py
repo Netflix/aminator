@@ -48,12 +48,12 @@ def run():
     # add -e argument back argv for when we parse the args again
     if args.env:
         sys.argv.extend(["-e",args.env])
+        os.environ["AMINATOR_ENVIRONMENT"] = args.env
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
-    os.environ["AMINATOR_ENVIRONMENT"] = args.env
     sys.exit(Aminator(debug=args.debug, envname=args.env).aminate())
 
 def plugin_manager():
