@@ -129,7 +129,7 @@ class BaseProvisionerPlugin(BasePlugin):
 
         script_files = sorted( glob(scripts_dir + '/*.py') + glob(scripts_dir + '/*.sh') )
         if not script_files:
-            log.debug("no python or shell scripts found in {}".format(scripts_dir))
+            log.debug("no python or shell scripts found in {0}".format(scripts_dir))
         else:
             log.debug('found scripts {0} in {1}'.format(script_files, scripts_dir))
             for script in script_files:

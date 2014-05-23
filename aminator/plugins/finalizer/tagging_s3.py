@@ -76,18 +76,18 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def tmpdir(self):
         config = self._config.plugins[self.full_name]
         ami = self._config.context.ami
-        return "{}/{}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
+        return "{0}/{1}".format(ami.get("tmpdir", config.get("default_tmpdir", "/tmp")), ami.name)
 
     # pylint: disable=access-member-before-definition
     def unique_name(self):
         context = self._config.context
         if hasattr(self, "_unique_name"):
             return self._unique_name
-        self._unique_name = "{}-{}".format(context.ami.name, randword(6))
+        self._unique_name = "{0}-{1}".format(context.ami.name, randword(6))
         return self._unique_name
         
     def image_location(self):
-        return "{}/{}".format(self.tmpdir(), self.unique_name())
+        return "{0}/{1}".format(self.tmpdir(), self.unique_name())
 
     @cmdsucceeds("aminator.finalizer.tagging_s3.copy_volume.count")
     @cmdfails("aminator.finalizer.tagging_s3.copy_volume.error")
@@ -97,7 +97,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         tmpdir=self.tmpdir()
         if not isdir(tmpdir):
             makedirs(tmpdir)
-        return monitor_command(["dd", "bs=65536", "if={}".format(context.volume.dev), "of={}".format(self.image_location())])
+        return monitor_command(["dd", "bs=65536", "if={0}".format(context.volume.dev), "of={1}".format(self.image_location())])
 
     @cmdsucceeds("aminator.finalizer.tagging_s3.bundle_image.count")
     @cmdfails("aminator.finalizer.tagging_s3.bundle_image.error")
@@ -109,10 +109,10 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         block_device_map = config.default_block_device_map
         root_device = config.default_root_device
 
-        bdm = "root={}".format(root_device)
+        bdm = "root={0}".format(root_device)
         for bd in block_device_map:
-            bdm += ",{}={}".format(bd[1],bd[0])
-        bdm += ",ami={}".format(root_device)
+            bdm += ",{0}={1}".format(bd[1],bd[0])
+        bdm += ",ami={0}".format(root_device)
         
         cmd = ['ec2-bundle-image']
         cmd.extend(['-c', context.ami.get("cert", config.default_cert)])
@@ -156,7 +156,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def _register_image(self):
         context = self._config.context
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{}/{}.manifest.xml".format(context.ami.bucket,self.unique_name())):
+        if not self._cloud.register_image(manifest="{0}/{1}.manifest.xml".format(context.ami.bucket,self.unique_name())):
             return False
         log.info('Registration success')
         return True
