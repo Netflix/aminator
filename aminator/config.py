@@ -172,7 +172,7 @@ def configure_datetime_logfile(config, handler):
         return
 
     try:
-        pkg = "{}-{}".format(os.path.basename(config.context.package.arg), randword(6))
+        pkg = "{0}-{1}".format(os.path.basename(config.context.package.arg), randword(6))
         filename = os.path.join(config.log_root, filename_format.format(pkg, datetime.utcnow()))
     except IndexError:
         log.exception("missing replacement fields in {0}'s filename_format")

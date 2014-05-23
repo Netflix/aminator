@@ -88,7 +88,7 @@ def monitor_command(cmd, timeout=None):
     # sanitize PATH if we are running in a virtualenv
     env = copy(environ)
     if hasattr(sys, "real_prefix"):
-        env["PATH"] = string.replace(env["PATH"], "{}/bin:".format(sys.prefix), "")
+        env["PATH"] = string.replace(env["PATH"], "{0}/bin:".format(sys.prefix), "")
 
     proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell,env=env)
     set_nonblocking(proc.stdout)
@@ -115,7 +115,7 @@ def monitor_command(cmd, timeout=None):
                 io.remove(fd)
             else:
                 if fd == proc.stderr:
-                    log.debug("STDERR: {}".format(buf))
+                    log.debug("STDERR: {0}".format(buf))
                     std_err += buf
                 else:
                     if buf[-1] == "\n":
@@ -251,11 +251,11 @@ def copy_image(src=None, dst=None):
         dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
         blks = 0
         blksize = 64 * 1024
-        log.debug("copying {} to {}".format(src,dst))
+        log.debug("copying {0} to {1}".format(src,dst))
         while True:
             buf = os.read(src_fd, blksize)
             if len(buf) <= 0:
-                log.debug("{} {} blocks written.".format(blks,blksize))
+                log.debug("{0} {1} blocks written.".format(blks,blksize))
                 os.close(src_fd)
                 os.close(dst_fd)
                 break
@@ -264,7 +264,7 @@ def copy_image(src=None, dst=None):
                 log.debug('wrote {0} bytes.'.format(out))
             blks += 1
     except OSError as e:
-        log.debug("{}: errno[{}]: {}.".format(e.filename, e.errno, e.strerror))
+        log.debug("{0}: errno[{1}]: {2}.".format(e.filename, e.errno, e.strerror))
         return False
     return True
 
