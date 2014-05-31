@@ -97,7 +97,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         tmpdir=self.tmpdir()
         if not isdir(tmpdir):
             makedirs(tmpdir)
-        return monitor_command(["dd", "bs=65536", "if={0}".format(context.volume.dev), "of={1}".format(self.image_location())])
+        return monitor_command(["dd", "bs=65536", "if={0}".format(context.volume.dev), "of={0}".format(self.image_location())])
 
     @cmdsucceeds("aminator.finalizer.tagging_s3.bundle_image.count")
     @cmdfails("aminator.finalizer.tagging_s3.bundle_image.error")
