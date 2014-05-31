@@ -28,6 +28,7 @@ import os
 import logging
 from collections import namedtuple
 
+from aminator.config import conf_action
 from aminator.exceptions import DeviceException
 from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
 from aminator.util.linux import flock, locked, native_device_prefix
@@ -63,7 +64,18 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                                  for major in majors
                                  for minor in xrange(1, 16)]
 
+    def add_plugin_args(self, *args, **kwargs):
+        context = self._config.context
+        blockdevice = self._parser.add_argument_group(title='Blockdevice', description='Optionally provide pre-attached block device path to use')
+        blockdevice.add_argument("--block-device", dest='block_device',
+                                 action=conf_action(config=context.ami),
+                                 help='Block device path to use')
+
     def __enter__(self):
+        context = self._config.context
+        if "block_device" in context.ami:
+            return context.ami.block_device
+
         with flock(self._lock_file):
             dev = self.find_available_dev()
         self._dev = dev
@@ -71,6 +83,10 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
     def __exit__(self, typ, val, trc):
         if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
+
+        context = self._config.context
+        if "block_device" in context.ami: return False
+
         fcntl.flock(self._dev.handle, fcntl.LOCK_UN)
         self._dev.handle.close()
         return False
