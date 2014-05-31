@@ -123,6 +123,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
                            action=conf_action(config=context.cloud, action='store_true'))
         cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
                            action=conf_action(config=context.cloud, action='store_true'))
+        cloud.add_argument('-V', '--volume-id', dest='volume_id',
+                           action=conf_action(config=context.ami),
+                           help='The volume id already attached to the system')
 
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
@@ -169,7 +172,14 @@ class EC2CloudPlugin(BaseCloudPlugin):
         cloud_config = self._config.plugins[self.full_name]
         context = self._config.context
 
-        self._volume = Volume(connection=self._connection)
+        if "volume_id" in context.ami:
+            volumes = self._connection.get_all_volumes(volume_ids=[context.ami.volume_id])
+            if not volumes:
+                raise VolumeException('Failed to find volume: {0}'.format(context.ami.volume_id))
+            self._volume = volumes[0]
+            return
+        else:
+            self._volume = Volume(connection=self._connection)
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
         self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement,
@@ -192,6 +202,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     @retry(VolumeException, tries=2, delay=1, backoff=2, logger=log)
     def attach_volume(self, blockdevice, tag=True):
+
+        context = self._config.context
+        if "volume_id" in context.ami: return
+
         self.allocate_base_volume(tag=tag)
         # must do this as amazon still wants /dev/sd*
         ec2_device_name = blockdevice.replace('xvd', 'sd')
@@ -209,6 +223,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('Volume {0} attached to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
 
     def is_volume_attached(self, blockdevice):
+        context = self._config.context
+        if "volume_id" in context.ami: return True
+
         try:
             self._volume_attached(blockdevice)
         except VolumeException:
@@ -289,6 +306,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
             return True
 
     def delete_volume(self):
+        context = self._config.context
+        if "volume_id" in context.ami: return True
+
         log.debug('Deleting volume {0}'.format(self._volume.id))
         self._volume.delete()
         return self._volume_deleted()
