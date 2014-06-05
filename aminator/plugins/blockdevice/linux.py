@@ -72,32 +72,35 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                                  help='Block device path to use')
 
     def __enter__(self):
-        context = self._config.context
-        if "block_device" in context.ami:
-            return context.ami.block_device
-
-        with flock(self._lock_file):
-            dev = self.find_available_dev()
-        self._dev = dev
+        self._dev = self.allocate_dev()
         return self._dev.node
 
     def __exit__(self, typ, val, trc):
         if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
-
-        context = self._config.context
-        if "block_device" in context.ami: return False
-
-        fcntl.flock(self._dev.handle, fcntl.LOCK_UN)
-        self._dev.handle.close()
+        self.release_dev(self._dev)
         return False
+
+    def allocate_dev(self):
+        context = self._config.context
+        if "block_device" in context.ami:
+            self._allowed_devices = [context.ami.block_device]
+
+        with flock(self._lock_file):
+            dev = self.find_available_dev()
+        return dev
+
+    def release_dev(self, dev):
+        fcntl.flock(dev.handle, fcntl.LOCK_UN)
+        dev.handle.close()
 
     @raises("aminator.blockdevice.linux.find_available_dev.error")
     def find_available_dev(self):
+        context = self._config.context
         log.info('Searching for an available block device')
         for dev in self._allowed_devices:
             log.debug('checking if device {0} is available'.format(dev))
             device_lock = os.path.join(self._lock_dir, os.path.basename(dev))
-            if os.path.exists(dev):
+            if os.path.exists(dev) and "block_device" not in context.ami:
                 log.debug('{0} exists, skipping'.format(dev))
                 continue
             elif locked(device_lock):
