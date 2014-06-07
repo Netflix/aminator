@@ -197,7 +197,12 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def attach_volume(self, blockdevice, tag=True):
 
         context = self._config.context
-        if "volume_id" in context.ami: return
+        if "volume_id" in context.ami:
+            volumes = self._connection.get_all_volumes(volume_ids=[context.ami.volume_id])
+            if not volumes:
+                raise VolumeException('Failed to find volume: {0}'.format(context.ami.volume_id))
+                self._volume = volumes[0]
+                return
 
         self.allocate_base_volume(tag=tag)
         # must do this as amazon still wants /dev/sd*
