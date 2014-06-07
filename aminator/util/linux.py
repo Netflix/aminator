@@ -292,8 +292,11 @@ def locked(filename=None):
             _flock(fh, LOCK_EX | LOCK_NB)
             ret = False
         except IOError as e:
-            log.debug('{0} is locked: {1}'.format(filename, e))
-            ret = True
+            if e.errno == errno.EAGAIN:
+                log.debug('{0} is locked: {1}'.format(filename, e))
+                ret = True
+            else:
+                ret = False
     return ret
 
 
