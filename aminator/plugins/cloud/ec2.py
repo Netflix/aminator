@@ -172,14 +172,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         cloud_config = self._config.plugins[self.full_name]
         context = self._config.context
 
-        if "volume_id" in context.ami:
-            volumes = self._connection.get_all_volumes(volume_ids=[context.ami.volume_id])
-            if not volumes:
-                raise VolumeException('Failed to find volume: {0}'.format(context.ami.volume_id))
-            self._volume = volumes[0]
-            return
-        else:
-            self._volume = Volume(connection=self._connection)
+        self._volume = Volume(connection=self._connection)
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
         self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement,
@@ -288,6 +281,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return self._wait_for_state(self._volume, 'available')
 
     def detach_volume(self, blockdevice):
+        context = self._config.context
+        if "volume_id" in context.ami: return
+
         log.debug('Detaching volume {0} from {1}'.format(self._volume.id, self._instance.id))
         self._volume.detach()
         if not self._volume_detached(blockdevice):
