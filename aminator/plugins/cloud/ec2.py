@@ -260,11 +260,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
         obj.update()
         classname = obj.__class__.__name__
         if classname in ('Snapshot', 'Volume'):
+            if classname == 'Snapshot':
+                log.debug("Snapshot {0} state: {1}, progress: {2}".format(obj.id, obj.status, obj.progress))
             return obj.status == state
         else:
             return obj.state == state
 
-    @retry(VolumeException, tries=600, delay=0.5, backoff=1.5, logger=log)
+    @retry(VolumeException, tries=600, delay=0.5, backoff=1.5, logger=log, maxdelay=10)
     def _wait_for_state(self, resource, state):
         if self._state_check(resource, state):
             log.debug('{0} reached state {1}'.format(resource.__class__.__name__, state))
