@@ -34,7 +34,7 @@ from decorator import decorator
 log = logging.getLogger(__name__)
 
 
-def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
+def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None, maxdelay=None):
     """
     Retries a function or method until it returns True.
 
@@ -59,6 +59,8 @@ def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
                 sleep(_delay)
                 _tries -= 1
                 _delay *= backoff
+                if maxdelay and _delay > maxdelay:
+                    _delay = maxdelay
         return f(*args, **kwargs)
     return _retry
 
