@@ -164,10 +164,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def finalize(self):
         log.info('Finalizing image')
         context = self._config.context
-        if "name" not in context.ami:
-            log.warn("Skipping finalize for ami without name")
-            return False
-            
+
         self._set_metadata()
 
         ret = self._copy_volume()
