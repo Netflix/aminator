@@ -164,6 +164,10 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def finalize(self):
         log.info('Finalizing image')
         context = self._config.context
+        if "name" not in context.ami:
+            log.warn("Skipping finalize for ami without name")
+            return False
+            
         self._set_metadata()
 
         ret = self._copy_volume()
@@ -218,8 +222,11 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def __exit__(self, exc_type, exc_value, trace):
         if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
         # delete tmpdir used by ec2-bundle-vol
-        td = self.tmpdir()
-        if isdir(td):
-            rmtree(td)
+        try:
+            td = self.tmpdir()
+            if isdir(td):
+                rmtree(td)
+        except Exception:
+            log.exception("Failed to cleanup s3 bundle tmpdir")
         return False
                             
