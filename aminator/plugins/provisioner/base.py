@@ -34,7 +34,7 @@ from aminator.config import conf_action
 from aminator.plugins.base import BasePlugin
 from aminator.util import download_file
 from aminator.util.linux import Chroot, monitor_command
-from aminator.util.metrics import cmdfails, lapse
+from aminator.util.metrics import fails, lapse
 
 __all__ = ('BaseProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ class BaseProvisionerPlugin(BasePlugin):
         log.info('Provisioning succeeded!')
         return True
 
-    @cmdfails("aminator.provisioner.provision_scripts.error")
+    @fails("aminator.provisioner.provision_scripts.error")
     @lapse("aminator.provisioner.provision_scripts.duration")
     def _run_provision_scripts(self, scripts_dir):
         """
