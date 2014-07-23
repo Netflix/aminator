@@ -371,9 +371,12 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                                 # need to copy across devices
                                 if os.path.isdir(dst):
                                     shutil.copytree(dst, backup, symlinks=True)
+                                    shutil.rmtree(dst)
                                 elif os.path.islink(dst):
                                     link = os.readlink(dst)
+                                    os.remove(dst)
                                     os.symlink(link, backup)
+                                    
                     elif os.path.isfile(dst):
                         shutil.copy(dst,backup)
                 except Exception:
