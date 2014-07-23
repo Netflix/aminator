@@ -364,7 +364,16 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                 log.debug('Making backup of {0}'.format(dst))
                 try:
                     if os.path.isdir(dst) or os.path.islink(dst):
-                        os.rename(dst, backup)
+                        try:
+                            os.rename(dst, backup)
+                        except OSError as e:
+                            if e.errno == 18: # EXDEV Invalid cross-device link
+                                # need to copy across devices
+                                if os.path.isdir(dst):
+                                    shutil.copytree(dst, backup, symlinks=True)
+                                elif os.path.islink(dst):
+                                    link = os.readlink(dst)
+                                    os.symlink(link, backup)
                     elif os.path.isfile(dst):
                         shutil.copy(dst,backup)
                 except Exception:
