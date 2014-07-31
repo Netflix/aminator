@@ -92,10 +92,10 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         dpkg_ret = cls.dpkg_install(package)
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            apt_ret = cls.apt_get_install('--fix-missing')
-            if not apt_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
-            return apt_ret
+            apt_fix_broken_ret = cls.apt_get_install('-f')
+            if not apt_fix_broken_ret.success:
+                log.debug('failure:{0.command} :{0.std_err}'.format(apt_fix_broken_ret.result))
+            return apt_fix_broken_ret
         return dpkg_ret
     
     @staticmethod
