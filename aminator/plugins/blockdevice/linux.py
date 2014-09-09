@@ -58,11 +58,23 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
         majors = block_config.device_letters
         self._device_prefix = native_device_prefix(block_config.device_prefixes)
-        device_format = '/dev/{0}{1}{2}'
 
-        self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
-                                 for major in majors
-                                 for minor in xrange(1, 16)]
+        context = self._config.context
+
+        if "partition" in context.ami:
+            device_format = '/dev/{0}{1}'
+
+            self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
+                                     for major in majors]
+            self.partition = context.ami['partition']
+
+        else:
+            device_format = '/dev/{0}{1}{2}'
+
+            self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
+                                     for major in majors
+                                     for minor in xrange(1, 16)]
+
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
@@ -70,6 +82,11 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         blockdevice.add_argument("--block-device", dest='block_device',
                                  action=conf_action(config=context.ami),
                                  help='Block device path to use')
+
+        partition = self._parser.add_argument_group(title='Partition', description='Optionally provide the partition containing the root file system.')
+        partition.add_argument("--partition", dest='partition',
+                                 action=conf_action(config=context.ami),
+                                 help='Parition number to use')
 
     def __enter__(self):
         self._dev = self.allocate_dev()

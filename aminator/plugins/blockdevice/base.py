@@ -39,7 +39,8 @@ class BaseBlockDevicePlugin(BasePlugin):
     """
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.blockdevice'
-
+    partition = None
+    
     @abc.abstractmethod
     def __enter__(self):
         return self
