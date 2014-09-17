@@ -52,15 +52,8 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
 
         tagging.add_argument('--ami-block-device-map',dest='ami_block_device_map',
                             action=conf_action(context.ami),
-                            help='Optionally specify a block device mapping to use for this AMI. Expects json either formats \
-                            ["device_name","ephemeral_name"]\
-                            Example: ["/dev/sdf","ephemeral0"]\
-                            \
-                            Can also accept a dictionary of values, for more details about possible values and combinations \
-                            please see http://boto.readthedocs.org/en/latest/ref/ec2.html#boto.ec2.blockdevicemapping.BlockDeviceType \
-                            \
-                            ["device_name",{"ephemeral_name":..,"no_device":..,"volume_id"..,"snapshot_id":..,"status":..,"attach_time":..,"delete_on_termination":...,"size":..,"volume_type":..,"iops":..}] \
-                            Example: ["/dev/sdf",{"delete_on_termination":false,"size":100,"volume_type":"gp2"}]')
+                            help='Optionally specify a block device mapping to use for this AMI. \
+                            For usage see https://github.com/willtrking/aminator/wiki/Block-device-mapping-examples')
 
     def _set_metadata(self):
         super(TaggingEBSFinalizerPlugin, self)._set_metadata()
