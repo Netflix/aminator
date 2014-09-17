@@ -24,12 +24,13 @@ aminator.plugins.finalizer.tagging_ebs
 ebs tagging image finalizer
 """
 import logging
+import json
 
 from os import environ
 from aminator.config import conf_action
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util.linux import sanitize_metadata
-
+from aminator.exceptions import FinalizerException
 
 __all__ = ('TaggingEBSFinalizerPlugin',)
 log = logging.getLogger(__name__)
@@ -44,6 +45,22 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
         context = self._config.context
         tagging.add_argument('-n', '--name', dest='name', action=conf_action(context.ami),
                              help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs')
+
+        tagging.add_argument('--ami-root-device',dest='ami_root_device_name',
+                            action=conf_action(context.ami),
+                            help='Optionally specify a different root device for this AMI (Ex: /dev/sdb)')
+
+        tagging.add_argument('--ami-block-device-map',dest='ami_block_device_map',
+                            action=conf_action(context.ami),
+                            help='Optionally specify a block device mapping to use for this AMI. Expects json either formats \
+                            ["device_name","ephemeral_name"]\
+                            Example: ["/dev/sdf","ephemeral0"]\
+                            \
+                            Can also accept a dictionary of values, for more details about possible values and combinations \
+                            please see http://boto.readthedocs.org/en/latest/ref/ec2.html#boto.ec2.blockdevicemapping.BlockDeviceType \
+                            \
+                            ["device_name",{"ephemeral_name":..,"no_device":..,"volume_id"..,"snapshot_id":..,"status":..,"attach_time":..,"delete_on_termination":...,"size":..,"volume_type":..,"iops":..}] \
+                            Example: ["/dev/sdf",{"delete_on_termination":false,"size":100,"volume_type":"gp2"}]')
 
     def _set_metadata(self):
         super(TaggingEBSFinalizerPlugin, self)._set_metadata()
@@ -75,15 +92,36 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
         log.info('Registration success')
         return True
 
+    def _get_device_map(self):
+        context = self._config.context
+
+        bdm = context.ami.get('ami_block_device_map',None)
+        parsed = None
+        if bdm:
+            try:
+                parsed = json.loads(bdm)
+            except:
+                log.critical('Failed to parse block device map {0}'.format(bdm))
+                raise FinalizerException('Failed to parse block device map {0}'.format(bdm))
+
+        return parsed
+
+    def _get_root_device(self):
+        context = self._config.context
+        return context.ami.get('ami_root_device_name',None)
+
     def finalize(self):
         log.info('Finalizing image')
         self._set_metadata()
+
+        root_device = self._get_root_device()
+        block_device_map = self._get_device_map()
 
         if not self._snapshot_volume():
             log.critical('Error snapshotting volume')
             return False
 
-        if not self._register_image():
+        if not self._register_image(block_device_map=block_device_map,root_device=root_device):
             log.critical('Error registering image')
             return False
 

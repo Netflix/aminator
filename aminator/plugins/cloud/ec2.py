@@ -393,7 +393,37 @@ class EC2CloudPlugin(BaseCloudPlugin):
         bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id,
                                                  delete_on_termination=True)
         for (os_dev, ec2_dev) in block_device_map:
-            bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
+            """
+                Format could be
+                [
+                    'device_name',
+                    'ephemeral_name'
+                ]
+                OR
+                [
+                    'device_name',
+                    {
+                        ..BlockDeviceType args..
+                    }
+                ]
+            """
+            if isinstance(ec2_dev, dict):
+                #Sane defaults for root block device
+                if os_dev == root_block_device:
+                    if 'snapshot_id' not in ec2_dev:
+                        ec2_dev['snapshot_id']=self._snapshot.id
+
+                    if 'delete_on_termination' not in ec2_dev:
+                        ec2_dev['delete_on_termination'] = True
+
+                bdm[os_dev] = BlockDeviceType(**ec2_dev)
+
+            elif isinstance(ec2_dev, basestring):
+                bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
+            else:
+                log.exception('Error creating block device map, problem with device {0}, map must be string or dictionary'.format(os_dev))
+                raise FinalizerException('Error creating block device map, problem with device {0}, map must be string or dictionary'.format(os_dev))
+
         return bdm
 
     @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
