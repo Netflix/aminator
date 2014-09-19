@@ -41,8 +41,8 @@ class BaseBlockDevicePlugin(BasePlugin):
     _entry_point = 'aminator.plugins.blockdevice'
 
     def __init__(self, *args, **kwargs):
-        self.partition = None
         super(BasePlugin, self).__init__(*args, **kwargs)
+        self.partition = None
     
     @abc.abstractmethod
     def __enter__(self):
