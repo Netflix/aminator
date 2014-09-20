@@ -121,8 +121,8 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         if context.ami.get("enhanced_networking", None):
             environ["AMINATOR_ENHANCED_NETWORKING"] = str(int(context.ami.enhanced_networking))
 
-        if context.ami.enhanced_networking:
-            if context.ami.vm_type != "hvm":
+        if context.ami.get("enhanced_networking", False):
+            if context.ami.get("vm_type", "paravirtual") != "hvm":
                 raise ValueError("--enhanced-networking requires --vm-type hvm")
 
         return self
