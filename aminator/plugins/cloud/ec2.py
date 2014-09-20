@@ -294,7 +294,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('Detaching volume {0} from {1}'.format(self._volume.id, self._instance.id))
         self._volume.detach()
         if not self._volume_detached(blockdevice):
-            raise VolumeException('Time out waiting for {0} to detach from {1]'.format(self._volume.id,
+            raise VolumeException('Time out waiting for {0} to detach from {1}'.format(self._volume.id,
                                                                                        self._instance.id))
         log.debug('Successfully detached volume {0} from {1}'.format(self._volume.id, self._instance.id))
 
@@ -383,6 +383,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
             if vm_type == "hvm":
                 del ami_metadata['kernel_id']
                 del ami_metadata['ramdisk_id']
+
+        if vm_type == 'hvm':
+            if context.ami.get("enhanced_networking", False):
+                ami_metadata['sriov_net_support'] = 'simple'
 
         if not self._register_image(**ami_metadata):
             return False

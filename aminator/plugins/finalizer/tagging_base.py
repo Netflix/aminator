@@ -50,6 +50,8 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
                              help=creator_help)
         tagging.add_argument('--vm-type', dest='vm_type', choices=["paravirtual", "hvm"], action=conf_action(context.ami),
                              help='virtualization type to register image as')
+        tagging.add_argument('--enhanced-networking', dest='enhanced_networking', action=conf_action(context.ami, action='store_true'),
+                             help='enable enhanced networking (SR-IOV)')
         return tagging
 
     def _set_metadata(self):
@@ -116,6 +118,13 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
             environ["AMINATOR_CREATOR"] = context.ami.creator
         if context.ami.get("vm_type", None):
             environ["AMINATOR_VM_TYPE"] = context.ami.vm_type
+        if context.ami.get("enhanced_networking", None):
+            environ["AMINATOR_ENHANCED_NETWORKING"] = str(int(context.ami.enhanced_networking))
+
+        if context.ami.enhanced_networking:
+            if context.ami.vm_type != "hvm":
+                raise ValueError("--enhanced-networking requires --vm-type hvm")
+
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
