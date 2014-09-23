@@ -67,7 +67,12 @@ class Environment(object):
                         if not success:
                             log.critical('Finalizing failed!')
                             return False
+                self._registered_ami_id = cloud.get_registered_ami_id()
+
         return True
+
+    def get_registered_ami_id(self):
+        return self._registered_ami_id
 
     def __enter__(self):
         return self
@@ -82,4 +87,5 @@ class Environment(object):
         self._name = self._config.context.get('environment', self._config.environments.default)
         self._config.context['environment'] = self._name
         self._attach_plugins()
+        self._registered_ami_id = None
         return self
