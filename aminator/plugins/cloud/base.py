@@ -87,11 +87,11 @@ class BaseCloudPlugin(BasePlugin):
         """ consumes tags and applies them to objects """
 
     @abc.abstractmethod
-    def save_registered_ami_id(self, *args, **kwargs):
+    def save_registered_ami_id(self, ami_id):
         """ Saves the registered AMI ID if registration was successful """
 
     @abc.abstractmethod
-    def get_registered_ami_id(self, *args, **kwargs):
+    def get_registered_ami_id(self):
         """ Get the registered AMI ID saved with 'save_registered_ami_id' """
 
     @abc.abstractmethod

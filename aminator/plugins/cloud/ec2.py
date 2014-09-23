@@ -333,7 +333,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('{0} not stale, using'.format(dev))
         return False
 
-    def save_registered_ami_id(self,ami_id):
+    def save_registered_ami_id(self, ami_id):
         environ['AMINATOR_REGISTERED_AMI_ID'] = str(ami_id)
 
     def get_registered_ami_id(self):
