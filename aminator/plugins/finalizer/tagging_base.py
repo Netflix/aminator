@@ -78,8 +78,14 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         metadata['suffix'] = suffix
 
         for tag in config.tag_formats:
-            context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
-            context.snapshot.tags[tag] = config.tag_formats[tag].format(**metadata)
+            try:
+                context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
+                context.snapshot.tags[tag] = config.tag_formats[tag].format(**metadata)
+            except KeyError as e:
+                log.exception("Tag format requires information not available in package metadata: {}".format(e.message))
+                # in case someone uses a tag format based on metadata not available 
+                # in this package
+                continue
 
         default_description = config.description_format.format(**metadata)
         description = context.snapshot.get('description', default_description)

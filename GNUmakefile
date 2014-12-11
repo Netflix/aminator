@@ -1,6 +1,7 @@
 validate:
-	@virtualenv pylint; \
-	pylint/bin/pip install pylint==1.2.1 boto bunch decorator envoy logutils pyyaml requests stevedore simplejson; \
+	@rm -rf pylint; \
+	virtualenv pylint; \
+	pylint/bin/pip install pylint==1.2.1 boto bunch decorator envoy logutils pyyaml requests stevedore simplejson setuptools; \
 	export PATH=$$(pwd)/pylint/bin:$$PATH; \
 	find aminator -name \*.py | while read py; do \
 		lintfile=$$(dirname $$py)/.$$(basename $$py).pylint; \
