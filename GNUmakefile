@@ -1,6 +1,6 @@
 validate:
 	@rm -rf pylint; \
-	virtualenv-2.7 pylint; \
+	virtualenv-2.7 --no-site-packages pylint; \
 	pylint/bin/pip install pylint==1.2.1 boto bunch decorator envoy logutils pyyaml requests stevedore simplejson setuptools==5.3; \
 	export PATH=$$(pwd)/pylint/bin:$$PATH; \
 	which python; \
