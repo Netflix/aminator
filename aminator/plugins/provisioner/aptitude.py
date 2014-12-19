@@ -56,10 +56,12 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
             aptitude_ret = cls.aptitude("hold", pkgname)
             if not aptitude_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
-            apt_ret = super(AptitudeProvisionerPlugin,cls).apt_get_install('--fix-missing')
-            if not apt_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
-            return apt_ret
+            query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(pkgname, "${Status}", local=False)
+            if not query_ret.success:
+                log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
+            if "install ok installed" not in query_ret.result.std_out:
+                raise RuntimeError("package {} failed to be installed.  dpkg status: {}".format(pkgname, query_ret.result.std_out))
+            return query_ret
         return dpkg_ret
 
     @staticmethod
