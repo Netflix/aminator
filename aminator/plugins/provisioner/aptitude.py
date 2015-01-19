@@ -42,9 +42,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     """
     _name = 'aptitude'
 
-    # overload this method to call aptitude instaed. We use aptitude hold to try 
-    # to make the local installed package install without removing it (in case
-    # the package has missing dependencies)
+    # overload this method to call aptitude instead.
     @classmethod
     def apt_get_localinstall(cls, package):
         """install deb file with dpkg then resolve dependencies
@@ -53,7 +51,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         pkgname = re.sub(r'_.*$', "", basename(package))
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            aptitude_ret = cls.aptitude("hold", pkgname)
+            aptitude_ret = cls.aptitude("install", pkgname)
             if not aptitude_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
             query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(pkgname, "${Status}", local=False)
