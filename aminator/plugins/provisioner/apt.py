@@ -121,6 +121,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1,
            backoff=0.5, logger=log)
     def apt_get_update(self):
+        self.apt_get_clean()
         dpkg_update = monitor_command(['apt-get', 'update'])
         if not dpkg_update.success:
             log.debug('failure: {0.command} :{0.std_err}'.format(dpkg_update.result))
@@ -128,6 +129,10 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             # exception will propagate out to the provisioning context handler
             raise AptProvisionerUpdateException('apt-get update failed')
         return dpkg_update
+
+    @staticmethod
+    def apt_get_clean():
+        return monitor_command(['apt-get', 'clean'])
 
     @classmethod
     def apt_get_install(cls, package):
