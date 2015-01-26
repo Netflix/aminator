@@ -51,7 +51,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         pkgname = re.sub(r'_.*$', "", basename(package))
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            aptitude_ret = cls.aptitude("install", pkgname)
+            aptitude_ret = cls.aptitude("hold", pkgname)
             if not aptitude_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
             query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(pkgname, "${Status}", local=False)
