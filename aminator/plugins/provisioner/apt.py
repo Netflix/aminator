@@ -26,12 +26,18 @@ basic apt provisioner
 import logging
 import os
 
+from aminator.exceptions import ProvisionException
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
+from aminator.util import retry
 from aminator.util.linux import monitor_command, result_to_dict
 from aminator.util.metrics import cmdsucceeds, cmdfails, timer, lapse
 
 __all__ = ('AptProvisionerPlugin',)
 log = logging.getLogger(__name__)
+
+
+class AptProvisionerUpdateException(ProvisionException):
+    pass
 
 
 class AptProvisionerPlugin(BaseProvisionerPlugin):
@@ -84,7 +90,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     @staticmethod
     def dpkg_install(package):
         return monitor_command(['dpkg', '-i', package])
-    
+
     @classmethod
     def apt_get_localinstall(cls, package):
         """install deb file with dpkg then resolve dependencies
@@ -97,7 +103,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
                 log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
             return apt_ret
         return dpkg_ret
-    
+
     @staticmethod
     def deb_query(package, queryformat, local=False):
         if local:
@@ -108,18 +114,25 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             cmd.append('-f={0}'.format(queryformat))
         cmd.append(package)
         return monitor_command(cmd)
-    
 
     @cmdsucceeds("aminator.provisioner.apt.apt_get_update.count")
     @cmdfails("aminator.provisioner.apt.apt_get_update.error")
     @timer("aminator.provisioner.apt.apt_get_update.duration")
+    @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1,
+           backoff=0.5, logger=log)
     def apt_get_update(self):
-        return monitor_command(['apt-get', 'update'])
-    
+        dpkg_update = monitor_command(['apt-get', 'update'])
+        if not dpkg_update.success:
+            log.debug('failure: {0.command} :{0.std_err}'.format(dpkg_update.result))
+            # trigger retry. expiring retries should fail the bake as this
+            # exception will propagate out to the provisioning context handler
+            raise AptProvisionerUpdateException('apt-get update failed')
+        return dpkg_update
+
     @classmethod
     def apt_get_install(cls, package):
         return monitor_command(['apt-get', '-y', 'install', package])
-    
+
     @classmethod
     def deb_package_metadata(cls, package, queryformat, local=False):
         return result_to_dict(cls.deb_query(package, queryformat, local))
