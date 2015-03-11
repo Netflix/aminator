@@ -22,6 +22,21 @@
 aminator.plugins.provisioner.aptitude
 ================================
 basic aptitude provisioner
+
+Note:
+
+Aptitude resolvers by default are a bit crazy.  The "best" solution it finds is often to remove what
+you asked it to install.  To make Aptitude resolvers sane create a config file like:
+$ cat /etc/apt/apt.conf.d/00aptitude-sane-resolve.conf
+Aptitude {
+    ProblemResolver {
+        SolutionCost "priority, removals, canceled-actions";
+    };
+};
+
+For futher reading checkout:
+http://www.proulx.com/~bob/debian/hints/jessie-new.html
+https://lists.debian.org/debian-devel/2014/10/msg00424.html
 """
 import logging
 
@@ -48,10 +63,10 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         """install deb file with dpkg then resolve dependencies
         """
         dpkg_ret = cls.dpkg_install(package)
-        pkgname = re.sub(r'_.*$', "", basename(package))
+        pkgname, pkgver, _ = basename(package).split('_')
         if not dpkg_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            aptitude_ret = cls.aptitude("hold", pkgname)
+            aptitude_ret = cls.aptitude("install", "{}={}".format(pkgname, pkgver))
             if not aptitude_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
             query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(pkgname, "${Status}", local=False)
