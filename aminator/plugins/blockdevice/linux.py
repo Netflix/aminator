@@ -47,8 +47,6 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     def configure(self, config, parser):
         super(LinuxBlockDevicePlugin, self).configure(config, parser)
 
-        block_config = self._config.plugins[self.full_name]
-
         if self._config.lock_dir.startswith(('/', '~')):
             self._lock_dir = os.path.expanduser(self._config.lock_dir)
         else:
@@ -56,13 +54,9 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
         self._lock_file = self.__class__.__name__
 
-        majors = block_config.device_letters
-        self._device_prefix = native_device_prefix(block_config.device_prefixes)
-        device_format = '/dev/{0}{1}{2}'
+        self._allowed_devices = None
+        self._device_prefix = None
 
-        self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
-                                 for major in majors
-                                 for minor in xrange(1, 16)]
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
@@ -70,6 +64,11 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         blockdevice.add_argument("--block-device", dest='block_device',
                                  action=conf_action(config=context.ami),
                                  help='Block device path to use')
+
+        partition = self._parser.add_argument_group(title='Partition', description='Optionally provide the partition containing the root file system.')
+        partition.add_argument("--partition", dest='partition',
+                                 action=conf_action(config=context.ami),
+                                 help='Parition number to use')
 
     def __enter__(self):
         self._dev = self.allocate_dev()
@@ -79,6 +78,31 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
         self.release_dev(self._dev)
         return False
+
+    def _setup_allowed_devices(self):
+        if all((self._device_prefix, self._allowed_devices)):
+            return
+
+        block_config = self._config.plugins[self.full_name]
+        majors = block_config.device_letters
+
+        self._device_prefix = native_device_prefix(block_config.device_prefixes)
+
+        context = self._config.context
+
+        if "partition" in context.ami:
+            device_format = '/dev/{0}{1}'
+
+            self._allowed_devices = [device_format.format(self._device_prefix, major)
+                                     for major in majors]
+            self.partition = context.ami['partition']
+
+        else:
+            device_format = '/dev/{0}{1}{2}'
+
+            self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
+                                     for major in majors
+                                     for minor in xrange(1, 16)]
 
     def allocate_dev(self):
         context = self._config.context
@@ -96,6 +120,7 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
     @raises("aminator.blockdevice.linux.find_available_dev.error")
     def find_available_dev(self):
         log.info('Searching for an available block device')
+        self._setup_allowed_devices()
         for dev in self._allowed_devices:
             log.debug('checking if device {0} is available'.format(dev))
             device_lock = os.path.join(self._lock_dir, os.path.basename(dev))
