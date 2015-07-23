@@ -54,8 +54,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
         files = config.get('short_circuit_files', [])
         if files:
             if not rewire_files(self._mountpoint, files):
-                log.critical('Unable to rewire {0} to {1}')
-                return False
+                log.warning("Unable to rewire some files")
+                return True
             else:
                 log.debug('Files rewired successfully')
                 return True
@@ -72,8 +72,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
         files = config.get('short_circuit_files', [])
         if files:
             if not short_circuit_files(self._mountpoint, files):
-                log.critical('Unable to short circuit {0} to {1}')
-                return False
+                log.warning('Unable to short circuit some files')
+                return True
             else:
                 log.debug('Files short-circuited successfully')
                 return True
@@ -164,7 +164,7 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             mountspec = MountSpec(dev, fstype, os.path.join(self._mountpoint, mountpoint.lstrip('/')), options)
             log.debug('Attempting to unmount {0}'.format(mountspec))
             if not mounted(mountspec.mountpoint):
-                log.warn('{0} not mounted'.format(mountspec.mountpoint))
+                log.warning('{0} not mounted'.format(mountspec.mountpoint))
                 continue
             result = unmount(mountspec.mountpoint)
             if not result.success:
