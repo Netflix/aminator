@@ -58,4 +58,4 @@ class LoggerMetricsPlugin(BaseMetricsPlugin):
     
     def flush(self):
         for name in self.timers:
-            log.warn("Metric {0}: timer never stopped, started at {1}, tags: {2}".format(name, self.timers[name], self.tags))
+            log.warning("Metric {0}: timer never stopped, started at {1}, tags: {2}".format(name, self.timers[name], self.tags))
