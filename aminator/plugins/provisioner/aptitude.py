@@ -63,8 +63,15 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         """install deb file with dpkg then resolve dependencies
         """
         dpkg_ret = cls.dpkg_install(package)
-        pkgname, pkgver, _ = basename(package).split('_')
+        pkgname, _, _ = basename(package).split('_')
         if not dpkg_ret.success:
+            # figure out the version via dpkg rather than parsing it out of the file name
+            # in case there is an epoch in the version
+            query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(package, "${Version}", local=True)
+            if not query_ret.success:
+                log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
+            pkgver = query_ret.result.std_out:
+
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             aptitude_ret = cls.aptitude("install", "{}={}".format(pkgname, pkgver))
             if not aptitude_ret.success:
