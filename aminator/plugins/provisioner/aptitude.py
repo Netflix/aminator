@@ -70,7 +70,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
             query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(package, "${Version}", local=True)
             if not query_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
-            pkgver = query_ret.result.std_out:
+            pkgver = query_ret.result.std_out
 
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
             aptitude_ret = cls.aptitude("install", "{}={}".format(pkgname, pkgver))
