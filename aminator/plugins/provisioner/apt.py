@@ -128,12 +128,12 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('failure:{0.command} :{0.std_err}'.format(deb_query_result.result))
         return deb_query_result
 
+    @classmethod
     @cmdsucceeds("aminator.provisioner.apt.apt_get_update.count")
     @cmdfails("aminator.provisioner.apt.apt_get_update.error")
     @timer("aminator.provisioner.apt.apt_get_update.duration")
     @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1,
            backoff=0.5, logger=log)
-    @classmethod
     def apt_get_update(cls):
         cls.apt_get_clean()
         dpkg_update = monitor_command(['apt-get', 'update'])
