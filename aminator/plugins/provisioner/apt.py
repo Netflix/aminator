@@ -83,7 +83,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     def dpkg_install(package):
         dpkg_result = monitor_command(['dpkg', '-i', package])
         if not dpkg_result.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
+            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_result.result))
         return dpkg_result
 
     @classmethod
@@ -101,7 +101,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         dpkg_ret = cls.dpkg_install(package)
         if not dpkg_ret.success:
             # expected when package has dependencies that are not installed
-            update_metadata_result = self.apt_get_update()
+            update_metadata_result = cls.apt_get_update()
             if not update_metadata_result.success:
                 errmsg = 'Repo metadata refresh failed: {0.std_err}'
                 errmsg = errmsg.format(update_metadata_result.result)
@@ -164,7 +164,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         if local_install:
             install_result = cls._localinstall(package)
         else:
-            update_metadata_result = cls._refresh_repo_metadata()
+            update_metadata_result = cls.apt_get_update()
             if not update_metadata_result.success:
                 errmsg = 'Repo metadata refresh failed: {0.std_err}'
                 errmsg = errmsg.format(update_metadata_result.result)
