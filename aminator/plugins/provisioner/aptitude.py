@@ -41,7 +41,6 @@ https://lists.debian.org/debian-devel/2014/10/msg00424.html
 import logging
 
 from os.path import basename
-import re
 
 from aminator.exceptions import ProvisionException
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
@@ -113,7 +112,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     # with the dpkg-query command
     @classmethod
     def _install(cls, package):
-        aptitude_ret = cls.aptitude("install", package)
+        cls.aptitude("install", package)
         query_ret = cls.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
             errmsg = "Error installing package {0}: {1.std_err}"
