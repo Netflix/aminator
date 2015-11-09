@@ -62,26 +62,25 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     _name = 'aptitude'
 
     # overload this method to call aptitude instead.
-    @classmethod
-    def _fix_localinstall_deps(cls, package):
+    def _fix_localinstall_deps(self, package):
         # use aptitude and its solver to resolve dependencies after a dpkg -i
         pkgname, _, _ = basename(package).split('_')
 
         # figure out the version via dpkg rather than parsing it out of the file name
         # in case there is an epoch in the version
-        version_query_ret = cls.deb_query(package, "${Version}", local=True)
+        version_query_ret = self.deb_query(package, "${Version}", local=True)
         if not version_query_ret.success:
             log.critical("Unable to query version for package {0}".format(package))
             return version_query_ret
         pkgver = version_query_ret.result.std_out
 
-        aptitude_ret = cls.aptitude("install", "{0}={1}".format(pkgname, pkgver))
+        aptitude_ret = self.aptitude("install", "{0}={1}".format(pkgname, pkgver))
         if not aptitude_ret.success:
             log.critical("Error encountered resolving dependencies for package {0}: "
                          "{1.std_err}".format(package, aptitude_ret.result))
             return aptitude_ret
 
-        install_query_ret = cls.deb_query(pkgname, "${Status} ${Version}", local=False)
+        install_query_ret = self.deb_query(pkgname, "${Status} ${Version}", local=False)
         if not install_query_ret.success:
             log.critical("Error querying installation status for package {0}: "
                          "{1.std_err}".format(package, install_query_ret.result))
@@ -110,10 +109,9 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     # overload this method to call aptitude instead.  But aptitude will not exit with
     # an error code if it failed to install, so we double check that the package installed
     # with the dpkg-query command
-    @classmethod
-    def _install(cls, package):
-        cls.aptitude("install", package)
-        query_ret = cls.deb_query(package, '${Package}-${Version}')
+    def _install(self, package):
+        self.aptitude("install", package)
+        query_ret = self.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
             errmsg = "Error installing package {0}: {1.std_err}"
             errmsg = errmsg.format(package, query_ret.result)

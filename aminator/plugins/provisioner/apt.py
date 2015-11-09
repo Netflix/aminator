@@ -56,7 +56,6 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
         return self.install(context.package.arg,
                             local_install=context.package.get('local_install', False))
 
-
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
@@ -86,28 +85,26 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_result.result))
         return dpkg_result
 
-    @classmethod
-    def _fix_localinstall_deps(cls, package):
+    def _fix_localinstall_deps(self, package):
         # use apt-get to resolve dependencies after a dpkg -i
-        fix_deps_result = cls.apt_get_install('--fix-missing')
+        fix_deps_result = self.apt_get_install('--fix-missing')
         if not fix_deps_result.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(fix_deps_result.result))
         return fix_deps_result
 
-    @classmethod
-    def _localinstall(cls, package):
+    def _localinstall(self, package):
         """install deb file with dpkg then resolve dependencies
         """
-        dpkg_ret = cls.dpkg_install(package)
+        dpkg_ret = self.dpkg_install(package)
         if not dpkg_ret.success:
             # expected when package has dependencies that are not installed
-            update_metadata_result = cls.apt_get_update()
+            update_metadata_result = self.apt_get_update()
             if not update_metadata_result.success:
                 errmsg = 'Repo metadata refresh failed: {0.std_err}'
                 errmsg = errmsg.format(update_metadata_result.result)
                 return update_metadata_result
             log.info("Installing dependencies for package {0}".format(package))
-            fix_deps_result = cls._fix_localinstall_deps(package)
+            fix_deps_result = self._fix_localinstall_deps(package)
             if not fix_deps_result.success:
                 log.critical("Error encountered installing dependencies: "
                              "{0.std_err}".format(fix_deps_result.result))
@@ -128,14 +125,13 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('failure:{0.command} :{0.std_err}'.format(deb_query_result.result))
         return deb_query_result
 
-    @classmethod
     @cmdsucceeds("aminator.provisioner.apt.apt_get_update.count")
     @cmdfails("aminator.provisioner.apt.apt_get_update.error")
     @timer("aminator.provisioner.apt.apt_get_update.duration")
     @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1,
            backoff=0.5, logger=log)
-    def apt_get_update(cls):
-        cls.apt_get_clean()
+    def apt_get_update(self):
+        self.apt_get_clean()
         dpkg_update = monitor_command(['apt-get', 'update'])
         if not dpkg_update.success:
             log.debug('failure: {0.command} :{0.std_err}'.format(dpkg_update.result))
@@ -155,21 +151,19 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             log.debug('failure:{0.command} :{0.std_err}'.format(install_result.result))
         return install_result
 
-    @classmethod
-    def _install(cls, package):
-        return cls.apt_get_install(package)
+    def _install(self, package):
+        return self.apt_get_install(package)
 
-    @classmethod
-    def install(cls, package, local_install=False):
+    def install(self, package, local_install=False):
         if local_install:
-            install_result = cls._localinstall(package)
+            install_result = self._localinstall(package)
         else:
-            update_metadata_result = cls.apt_get_update()
+            update_metadata_result = self.apt_get_update()
             if not update_metadata_result.success:
                 errmsg = 'Repo metadata refresh failed: {0.std_err}'
                 errmsg = errmsg.format(update_metadata_result.result)
                 return update_metadata_result
-            install_result = cls._install(package)
+            install_result = self._install(package)
         if not install_result.success:
             errmsg = 'Error installing package {0}: {1.std_err}'
             errmsg = errmsg.format(package, install_result.result)
