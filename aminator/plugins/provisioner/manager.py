@@ -40,5 +40,5 @@ class ProvisionerPluginManager(BasePluginManager):
         return self._entry_point
 
     @staticmethod
-    def check_func(plugin): # pylint: disable=method-hidden
+    def check_func(plugin):  # pylint: disable=method-hidden
         return True

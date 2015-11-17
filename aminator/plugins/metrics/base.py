@@ -40,24 +40,30 @@ class BaseMetricsPlugin(BasePlugin):
     _entry_point = 'aminator.plugins.metrics'
 
     @abc.abstractmethod
-    def increment(self, name, value=1): pass        
+    def increment(self, name, value=1):
+        pass
 
     @abc.abstractmethod
-    def gauge(self, name, value): pass
+    def gauge(self, name, value):
+        pass
 
     @abc.abstractmethod
-    def timer(self, name, seconds): pass
+    def timer(self, name, seconds):
+        pass
 
     @abc.abstractmethod
-    def start_timer(self, name): pass
+    def start_timer(self, name):
+        pass
 
     @abc.abstractmethod
-    def stop_timer(self, name): pass
+    def stop_timer(self, name):
+        pass
 
     @abc.abstractmethod
-    def flush(self): pass
+    def flush(self):
+        pass
 
-    def add_tag(self, name, value): 
+    def add_tag(self, name, value):
         self.tags[name] = value
 
     def __init__(self):
@@ -70,5 +76,6 @@ class BaseMetricsPlugin(BasePlugin):
 
     def __exit__(self, exc_type, exc_value, trace):
         self.flush()
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         return False

@@ -43,14 +43,15 @@ class BaseBlockDevicePlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
         super(BasePlugin, self).__init__(*args, **kwargs)
         self.partition = None
-    
+
     @abc.abstractmethod
     def __enter__(self):
         return self
 
     @abc.abstractmethod
     def __exit__(self, typ, val, trc):
-        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
+        if typ:
+            log.exception("Exception: {0}: {1}".format(typ.__name__, val))
         return False
 
     def __call__(self, cloud):

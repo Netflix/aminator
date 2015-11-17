@@ -85,17 +85,11 @@ class EC2CloudPlugin(BaseCloudPlugin):
     _name = 'ec2'
 
     def add_metrics(self, metric_base_name, cls, func_name):
-        newfunc = succeeds("{0}.count".format(metric_base_name), self)(
-            raises("{0}.error".format(metric_base_name), self)(
-                timer("{0}.duration".format(metric_base_name), self)(
-                    getattr(cls,func_name)
-                )
-            )
-        )
+        newfunc = succeeds("{0}.count".format(metric_base_name), self)(raises("{0}.error".format(metric_base_name), self)(timer("{0}.duration".format(metric_base_name), self)(getattr(cls, func_name))))
         setattr(cls, func_name, newfunc)
 
     def __init__(self):
-        super(EC2CloudPlugin,self).__init__()
+        super(EC2CloudPlugin, self).__init__()
         # wrap each of the functions so we can get timer and error metrics
         for ec2func in ["create_volume", "create_tags", "register_image", "get_all_images"]:
             self.add_metrics("aminator.cloud.ec2.connection.{0}".format(ec2func), EC2Connection, ec2func)
@@ -110,22 +104,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
         context = self._config.context
         base_ami = self._parser.add_argument_group(title='Base AMI', description='EITHER AMI id OR name, not both!')
         base_ami_mutex = base_ami.add_mutually_exclusive_group(required=True)
-        base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name',
-                                    action=conf_action(config=context.ami),
-                                    help='The name of the base AMI used in provisioning')
-        base_ami_mutex.add_argument('-B', '--base-ami-id', dest='base_ami_id',
-                                    action=conf_action(config=context.ami),
-                                    help='The id of the base AMI used in provisioning')
+        base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name', action=conf_action(config=context.ami), help='The name of the base AMI used in provisioning')
+        base_ami_mutex.add_argument('-B', '--base-ami-id', dest='base_ami_id', action=conf_action(config=context.ami), help='The id of the base AMI used in provisioning')
         cloud = self._parser.add_argument_group(title='EC2 Options', description='EC2 Connection Information')
-        cloud.add_argument('-r', '--region', dest='region', help='EC2 region (default: us-east-1)',
-                           action=conf_action(config=context.cloud))
-        cloud.add_argument('--boto-secure', dest='is_secure',  help='Connect via https',
-                           action=conf_action(config=context.cloud, action='store_true'))
-        cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output',
-                           action=conf_action(config=context.cloud, action='store_true'))
-        cloud.add_argument('-V', '--volume-id', dest='volume_id',
-                           action=conf_action(config=context.ami),
-                           help='The volume id already attached to the system')
+        cloud.add_argument('-r', '--region', dest='region', help='EC2 region (default: us-east-1)', action=conf_action(config=context.cloud))
+        cloud.add_argument('--boto-secure', dest='is_secure', help='Connect via https', action=conf_action(config=context.cloud, action='store_true'))
+        cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output', action=conf_action(config=context.cloud, action='store_true'))
+        cloud.add_argument('-V', '--volume-id', dest='volume_id', action=conf_action(config=context.ami), help='The volume id already attached to the system')
 
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
@@ -147,10 +132,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         context = self._config.context
         self._instance_metadata = get_instance_metadata()
         instance_region = self._instance_metadata['placement']['availability-zone'][:-1]
-        region = kwargs.pop('region',
-                            context.get('region',
-                                        cloud_config.get('region',
-                                                         instance_region)))
+        region = kwargs.pop('region', context.get('region', cloud_config.get('region', instance_region)))
         log.debug('Establishing connection to region: {0}'.format(region))
 
         context.cloud.setdefault('boto_debug', False)
@@ -162,9 +144,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         else:
             logging.getLogger('boto').setLevel(logging.INFO)
         if 'is_secure' not in kwargs:
-            kwargs['is_secure'] = context.get('is_secure',
-                                              cloud_config.get('is_secure',
-                                                               True))
+            kwargs['is_secure'] = context.get('is_secure', cloud_config.get('is_secure', True))
         self._connection = connect_to_region(region, **kwargs)
         log.info('Aminating in region {0}'.format(region))
 
@@ -175,8 +155,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._volume = Volume(connection=self._connection)
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
-        self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement,
-                                                         snapshot=rootdev.snapshot_id).id
+        self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement, snapshot=rootdev.snapshot_id).id
         if not self._volume_available():
             log.critical('{0}: unavailable.')
             return False
@@ -207,28 +186,24 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self.allocate_base_volume(tag=tag)
         # must do this as amazon still wants /dev/sd*
         ec2_device_name = blockdevice.replace('xvd', 'sd')
-        log.debug('Attaching volume {0} to {1}:{2}({3})'.format(self._volume.id, self._instance.id, ec2_device_name,
-                                                                blockdevice))
+        log.debug('Attaching volume {0} to {1}:{2}({3})'.format(self._volume.id, self._instance.id, ec2_device_name, blockdevice))
         self._volume.attach(self._instance.id, ec2_device_name)
         if not self.is_volume_attached(blockdevice):
-            log.debug('{0} attachment to {1}:{2}({3}) timed out'.format(self._volume.id, self._instance.id,
-                                                                        ec2_device_name, blockdevice))
+            log.debug('{0} attachment to {1}:{2}({3}) timed out'.format(self._volume.id, self._instance.id, ec2_device_name, blockdevice))
             self._volume.add_tag('status', 'used')
             # trigger a retry
-            raise VolumeException('Timed out waiting for {0} to attach to {1}:{2}'.format(self._volume.id,
-                                                                                          self._instance.id,
-                                                                                          blockdevice))
+            raise VolumeException('Timed out waiting for {0} to attach to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
         log.debug('Volume {0} attached to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
 
     def is_volume_attached(self, blockdevice):
         context = self._config.context
-        if "volume_id" in context.ami: return True
+        if "volume_id" in context.ami:
+            return True
 
         try:
             self._volume_attached(blockdevice)
         except VolumeException:
-            log.debug('Timed out waiting for volume {0} to attach to {1}:{2}'.format(self._volume.id,
-                                                                                     self._instance.id, blockdevice))
+            log.debug('Timed out waiting for volume {0} to attach to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
             return False
         return True
 
@@ -236,8 +211,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def _volume_attached(self, blockdevice):
         status = self._volume.update()
         if status != 'in-use':
-            raise VolumeException('Volume {0} not yet attached to {1}:{2}'.format(self._volume.id,
-                                                                                  self._instance.id, blockdevice))
+            raise VolumeException('Volume {0} not yet attached to {1}:{2}'.format(self._volume.id, self._instance.id, blockdevice))
         elif not os_node_exists(blockdevice):
             raise VolumeException('{0} does not exist yet.'.format(blockdevice))
         else:
@@ -272,9 +246,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
             log.debug('{0} reached state {1}'.format(resource.__class__.__name__, state))
             return True
         else:
-            raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id,
-                                                                                     state,
-                                                                                     resource.status))
+            raise VolumeException('Timed out waiting for {0} to get to {1}({2})'.format(resource.id, state, resource.status))
+
     @lapse("aminator.cloud.ec2.ami_available.duration")
     def _ami_available(self):
         return self._wait_for_state(self._ami, 'available')
@@ -289,13 +262,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def detach_volume(self, blockdevice):
         context = self._config.context
-        if "volume_id" in context.ami: return
+        if "volume_id" in context.ami:
+            return
 
         log.debug('Detaching volume {0} from {1}'.format(self._volume.id, self._instance.id))
         self._volume.detach()
         if not self._volume_detached(blockdevice):
-            raise VolumeException('Time out waiting for {0} to detach from {1}'.format(self._volume.id,
-                                                                                       self._instance.id))
+            raise VolumeException('Time out waiting for {0} to detach from {1}'.format(self._volume.id, self._instance.id))
         log.debug('Successfully detached volume {0} from {1}'.format(self._volume.id, self._instance.id))
 
     @retry(VolumeException, tries=7, delay=1, backoff=2, logger=log)
@@ -310,7 +283,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def delete_volume(self):
         context = self._config.context
-        if "volume_id" in context.ami: return True
+        if "volume_id" in context.ami:
+            return True
 
         log.debug('Deleting volume {0}'.format(self._volume.id))
         self._volume.delete()
@@ -394,8 +368,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def _make_block_device_map(self, block_device_map, root_block_device):
         bdm = BlockDeviceMapping(connection=self._connection)
-        bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id,
-                                                 delete_on_termination=True)
+        bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id, delete_on_termination=True)
         for (os_dev, ec2_dev) in block_device_map:
             bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
         return bdm
@@ -423,8 +396,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 self._connection.create_tags([instance.id], tags)
             except EC2ResponseError:
                 log.exception('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
-                raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type,
-                                                                                                    instance.id))
+                raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
             else:
                 log.debug('Successfully tagged {0}({1})'.format(resource_type, instance.id))
                 instance.update()
@@ -436,8 +408,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('Checking for currently attached block devices. prefix: {0}'.format(prefix))
         self._instance.update()
         if device_prefix(self._instance.block_device_mapping.keys()[0]) != prefix:
-            return dict((native_block_device(dev, prefix), mapping)
-                        for (dev, mapping) in self._instance.block_device_mapping.iteritems())
+            return dict((native_block_device(dev, prefix), mapping) for (dev, mapping) in self._instance.block_device_mapping.iteritems())
         return self._instance.block_device_mapping
 
     def _resolve_baseami(self):
@@ -469,11 +440,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._instance.id = get_instance_metadata()['instance-id']
         self._instance.update()
 
-        
         context = self._config.context
-        if context.ami.get("base_ami_name",None):
+        if context.ami.get("base_ami_name", None):
             environ["AMINATOR_BASE_AMI_NAME"] = context.ami.base_ami_name
-        if context.ami.get("base_ami_id",None):
+        if context.ami.get("base_ami_id", None):
             environ["AMINATOR_BASE_AMI_ID"] = context.ami.base_ami_id
 
         if context.cloud.get("region", None):

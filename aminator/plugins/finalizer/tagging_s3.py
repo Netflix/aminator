@@ -43,24 +43,17 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     _name = 'tagging_s3'
 
     def add_plugin_args(self):
-        tagging = super(TaggingS3FinalizerPlugin,self).add_plugin_args()
-        
-        context = self._config.context
-        tagging.add_argument('-n', '--name', dest='name', action=conf_action(context.ami),
-                             help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-s3')
+        tagging = super(TaggingS3FinalizerPlugin, self).add_plugin_args()
 
-        tagging.add_argument('--cert', dest='cert', action=conf_action(context.ami),
-                             help='The path to the PEM encoded RSA public key certificate file for ec2-bundle-volume')
-        tagging.add_argument('--privatekey', dest='privatekey', action=conf_action(context.ami),
-                             help='The path to the PEM encoded RSA private key file for ec2-bundle-vol')
-        tagging.add_argument('--ec2-user', dest='ec2_user', action=conf_action(context.ami),
-                             help='ec2 user id for ec2-bundle-vol')
-        tagging.add_argument('--tmpdir', dest='tmpdir', action=conf_action(context.ami),
-                             help='temp directory used by ec2-bundle-vol')
-        tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami),
-                             help='the S3 bucket to use for ec2-upload-bundle')
-        tagging.add_argument('--break-copy-volume', dest='break_copy_volume', action=conf_action(context.ami, action='store_true'),
-                             help='break into shell after copying the volume, for debugging')
+        context = self._config.context
+        tagging.add_argument('-n', '--name', dest='name', action=conf_action(context.ami), help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-s3')
+
+        tagging.add_argument('--cert', dest='cert', action=conf_action(context.ami), help='The path to the PEM encoded RSA public key certificate file for ec2-bundle-volume')
+        tagging.add_argument('--privatekey', dest='privatekey', action=conf_action(context.ami), help='The path to the PEM encoded RSA private key file for ec2-bundle-vol')
+        tagging.add_argument('--ec2-user', dest='ec2_user', action=conf_action(context.ami), help='ec2 user id for ec2-bundle-vol')
+        tagging.add_argument('--tmpdir', dest='tmpdir', action=conf_action(context.ami), help='temp directory used by ec2-bundle-vol')
+        tagging.add_argument('--bucket', dest='bucket', action=conf_action(context.ami), help='the S3 bucket to use for ec2-upload-bundle')
+        tagging.add_argument('--break-copy-volume', dest='break_copy_volume', action=conf_action(context.ami, action='store_true'), help='break into shell after copying the volume, for debugging')
 
     def _set_metadata(self):
         super(TaggingS3FinalizerPlugin, self)._set_metadata()
@@ -85,7 +78,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
             return self._unique_name
         self._unique_name = "{0}-{1}".format(context.ami.name, randword(6))
         return self._unique_name
-        
+
     def image_location(self):
         return "{0}/{1}".format(self.tmpdir(), self.unique_name())
 
@@ -94,7 +87,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     @timer("aminator.finalizer.tagging_s3.copy_volume.duration")
     def _copy_volume(self):
         context = self._config.context
-        tmpdir=self.tmpdir()
+        tmpdir = self.tmpdir()
         if not isdir(tmpdir):
             makedirs(tmpdir)
         return monitor_command(["dd", "bs=65536", "if={0}".format(context.volume.dev), "of={0}".format(self.image_location())])
@@ -111,9 +104,9 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
         bdm = "root={0}".format(root_device)
         for bd in block_device_map:
-            bdm += ",{0}={1}".format(bd[1],bd[0])
+            bdm += ",{0}={1}".format(bd[1], bd[0])
         bdm += ",ami={0}".format(root_device)
-        
+
         cmd = ['ec2-bundle-image']
         cmd.extend(['-c', context.ami.get("cert", config.default_cert)])
         cmd.extend(['-k', context.ami.get("privatekey", config.default_privatekey)])
@@ -156,7 +149,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
     def _register_image(self):
         context = self._config.context
         log.info('Registering image')
-        if not self._cloud.register_image(manifest="{0}/{1}.manifest.xml".format(context.ami.bucket,self.unique_name())):
+        if not self._cloud.register_image(manifest="{0}/{1}.manifest.xml".format(context.ami.bucket, self.unique_name())):
             return False
         log.info('Registration success')
         return True
@@ -174,7 +167,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
         if context.ami.get('break_copy_volume', False):
             system("bash")
-            
+
         ret = self._bundle_image()
         if not ret.success:
             log.debug('Error bundling image, failure:{0.command} :{0.std_err}'.format(ret.result))
@@ -201,7 +194,7 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         context = self._config.context
 
         environ["AMINATOR_STORE_TYPE"] = "s3"
-        if context.ami.get("name",None):
+        if context.ami.get("name", None):
             environ["AMINATOR_AMI_NAME"] = context.ami.name
         if context.ami.get("cert", None):
             environ["AMINATOR_CERT"] = context.ami.cert
@@ -217,7 +210,8 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         return super(TaggingS3FinalizerPlugin, self).__enter__()
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         # delete tmpdir used by ec2-bundle-vol
         try:
             td = self.tmpdir()
@@ -226,4 +220,3 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         except Exception:
             log.exception("Failed to cleanup s3 bundle tmpdir")
         return False
-                            

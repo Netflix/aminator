@@ -26,6 +26,7 @@ Metrics utility functions
 
 from time import time
 
+
 def timer(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
@@ -39,6 +40,7 @@ def timer(metric_name, context_obj=None):
             return retval
         return func_2
     return func_1
+
 
 def lapse(metric_name, context_obj=None):
     def func_1(func):
@@ -54,6 +56,7 @@ def lapse(metric_name, context_obj=None):
         return func_2
     return func_1
 
+
 def fails(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
@@ -67,6 +70,7 @@ def fails(metric_name, context_obj=None):
             return retval
         return func_2
     return func_1
+
 
 def cmdfails(metric_name, context_obj=None):
     def func_1(func):
@@ -82,6 +86,7 @@ def cmdfails(metric_name, context_obj=None):
         return func_2
     return func_1
 
+
 def cmdsucceeds(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
@@ -91,6 +96,7 @@ def cmdsucceeds(metric_name, context_obj=None):
             return retval
         return func_2
     return func_1
+
 
 def succeeds(metric_name, context_obj=None):
     def func_1(func):
@@ -102,6 +108,7 @@ def succeeds(metric_name, context_obj=None):
         return func_2
     return func_1
 
+
 def raises(metric_name, context_obj=None):
     def func_1(func):
         def func_2(obj, *args, **kwargs):
@@ -112,4 +119,3 @@ def raises(metric_name, context_obj=None):
                 raise
         return func_2
     return func_1
-    

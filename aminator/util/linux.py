@@ -40,7 +40,7 @@ from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from signal import signal, alarm, SIGALRM
 from os import O_NONBLOCK, environ, makedirs
-from os.path import isfile, isdir, dirname
+from os.path import isdir, dirname
 from fcntl import fcntl, F_GETFL, F_SETFL
 from select import select
 
@@ -69,44 +69,46 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
     return _run
 
 
-
 def set_nonblocking(stream):
     fl = fcntl(stream.fileno(), F_GETFL)
     fcntl(stream.fileno(), F_SETFL, fl | O_NONBLOCK)
 
+
 def monitor_command(cmd, timeout=None):
     cmdStr = cmd
-    shell=True
+    shell = True
     if isinstance(cmd, list):
         cmdStr = " ".join(cmd)
-        shell=False
+        shell = False
 
     assert cmdStr, "empty command passed to monitor_command"
 
     log.debug('command: {0}'.format(cmdStr))
-    
+
     # sanitize PATH if we are running in a virtualenv
     env = copy(environ)
     if hasattr(sys, "real_prefix"):
         env["PATH"] = string.replace(env["PATH"], "{0}/bin:".format(sys.prefix), "")
 
-    proc = Popen(cmd,stdout=PIPE,stderr=PIPE,close_fds=True,shell=shell,env=env)
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE, close_fds=True, shell=shell, env=env)
     set_nonblocking(proc.stdout)
     set_nonblocking(proc.stderr)
 
-    if timeout: 
+    if timeout:
         alarm(timeout)
+
         def handle_sigalarm(*_):
             proc.terminate()
         signal(SIGALRM, handle_sigalarm)
 
     io = [proc.stdout, proc.stderr]
-    
+
     std_out = ""
     std_err = ""
     while True:
         # if we got eof from all pipes then stop polling
-        if not io: break
+        if not io:
+            break
         reads, _, _ = select(io, [], [])
         for fd in reads:
             buf = fd.read(4096)
@@ -129,6 +131,7 @@ def monitor_command(cmd, timeout=None):
     status_code = proc.returncode
     log.debug("status code: {0}".format(status_code))
     return CommandResult(status_code == 0, Response(cmdStr, std_err, std_out, status_code))
+
 
 def mounted(path):
     pat = path.strip() + ' '
@@ -166,6 +169,7 @@ def mount(mountspec):
 
     return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
 
+
 def unmount(dev):
     return monitor_command(['umount', dev])
 
@@ -187,8 +191,9 @@ def keyval_parse(record_sep='\n', field_sep=':'):
     """
     @decorator
     def _parse(f, *args, **kwargs):
-        return result_to_dict(f(*args, **kwargs),record_sep,field_sep)
+        return result_to_dict(f(*args, **kwargs), record_sep, field_sep)
     return _parse
+
 
 def result_to_dict(commandResult, record_sep='\n', field_sep=':'):
     metadata = {}
@@ -202,7 +207,7 @@ def result_to_dict(commandResult, record_sep='\n', field_sep=':'):
     else:
         log.debug('failure:{0.command} :{0.std_err}'.format(commandResult.result))
     return metadata
-    
+
 
 class Chroot(object):
     def __init__(self, path):
@@ -219,7 +224,8 @@ class Chroot(object):
         return self
 
     def __exit__(self, typ, exc, trc):
-        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,exc))
+        if typ:
+            log.exception("Exception: {0}: {1}".format(typ.__name__, exc))
         log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')
@@ -237,8 +243,7 @@ def lifo_mounts(root=None):
     if not mount_entries:
         # return an empty list if we didn't match
         return mount_entries
-    return [entry for entry in reversed(mount_entries)
-            if entry == root or entry.startswith(root + '/')]
+    return [entry for entry in reversed(mount_entries) if entry == root or entry.startswith(root + '/')]
 
 
 def copy_image(src=None, dst=None):
@@ -251,11 +256,11 @@ def copy_image(src=None, dst=None):
         dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
         blks = 0
         blksize = 64 * 1024
-        log.debug("copying {0} to {1}".format(src,dst))
+        log.debug("copying {0} to {1}".format(src, dst))
         while True:
             buf = os.read(src_fd, blksize)
             if len(buf) <= 0:
-                log.debug("{0} {1} blocks written.".format(blks,blksize))
+                log.debug("{0} {1} blocks written.".format(blks, blksize))
                 os.close(src_fd)
                 os.close(dst_fd)
                 break
@@ -367,7 +372,7 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                         try:
                             os.rename(dst, backup)
                         except OSError as e:
-                            if e.errno == 18: # EXDEV Invalid cross-device link
+                            if e.errno == 18:  # EXDEV Invalid cross-device link
                                 # need to copy across devices
                                 if os.path.isdir(dst):
                                     shutil.copytree(dst, backup, symlinks=True)
@@ -376,16 +381,16 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                                     link = os.readlink(dst)
                                     os.remove(dst)
                                     os.symlink(link, backup)
-                                    
+
                     elif os.path.isfile(dst):
-                        shutil.copy(dst,backup)
+                        shutil.copy(dst, backup)
                 except Exception:
                     log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
                     return False
             if os.path.isdir(src):
-                shutil.copytree(src,dst,symlinks=True)
+                shutil.copytree(src, dst, symlinks=True)
             else:
-                shutil.copy(src,dst)
+                shutil.copy(src, dst)
         except Exception:
             log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
             return False
@@ -422,7 +427,7 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
             if os.path.isdir(backup) or os.path.islink(backup):
                 os.rename(backup, dst)
             elif os.path.isfile(backup):
-                shutil.copy(backup,dst)
+                shutil.copy(backup, dst)
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
         else:
             log.warn('No backup file {0} was found'.format(backup))

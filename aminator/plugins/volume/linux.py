@@ -59,11 +59,11 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             os.makedirs(self._mountpoint)
 
         if not mounted(self._mountpoint):
-            #Handle optional partition
+            # Handle optional partition
             dev = self._dev
             if self._blockdevice.partition is not None:
-                dev = '{0}{1}'.format(dev,self._blockdevice.partition)
-            
+                dev = '{0}{1}'.format(dev, self._blockdevice.partition)
+
             mountspec = MountSpec(dev, None, self._mountpoint, None)
 
             result = mount(mountspec)
@@ -81,8 +81,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
                 raise VolumeException('Unable to unmount {0} from {1}'.format(self._dev, self._mountpoint))
             result = unmount(self._mountpoint)
             if not result.success:
-                raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint,
-                                                                                   result.result.std_err))
+                raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint, result.result.std_err))
 
     def _delete(self):
         self._cloud.delete_volume()
@@ -94,7 +93,8 @@ class LinuxVolumePlugin(BaseVolumePlugin):
         return self._mountpoint
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         if exc_type and self._config.context.get("preserve_on_error", False):
             return False
         self._unmount()

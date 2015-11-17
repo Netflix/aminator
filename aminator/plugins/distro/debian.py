@@ -47,7 +47,7 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
         """
         if not super(DebianDistroPlugin, self)._deactivate_provisioning_service_block():
             return False
-        
+
         config = self._config.plugins[self.full_name]
         path = self._mountpoint + config.get('policy_file_path', '')
         filename = path + "/" + config.get('policy_file')
@@ -82,7 +82,6 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
             log.debug("removing %s", policy_file)
             os.remove(policy_file)
         else:
-            log.debug("The %s was missing, this is unexpected as the "
-                      "DebianDistroPlugin should manage this file", policy_file)
+            log.debug("The %s was missing, this is unexpected as the DebianDistroPlugin should manage this file", policy_file)
 
         return True

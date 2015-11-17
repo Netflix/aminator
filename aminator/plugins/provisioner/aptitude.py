@@ -41,7 +41,6 @@ https://lists.debian.org/debian-devel/2014/10/msg00424.html
 import logging
 
 from os.path import basename
-import re
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.util.linux import monitor_command
@@ -67,7 +66,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
         if not dpkg_ret.success:
             # figure out the version via dpkg rather than parsing it out of the file name
             # in case there is an epoch in the version
-            query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(package, "${Version}", local=True)
+            query_ret = super(AptitudeProvisionerPlugin, cls).deb_query(package, "${Version}", local=True)
             if not query_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
             pkgver = query_ret.result.std_out
@@ -76,7 +75,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
             aptitude_ret = cls.aptitude("install", "{}={}".format(pkgname, pkgver))
             if not aptitude_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
-            query_ret = super(AptitudeProvisionerPlugin,cls).deb_query(pkgname, "${Status} ${Version}", local=False)
+            query_ret = super(AptitudeProvisionerPlugin, cls).deb_query(pkgname, "${Status} ${Version}", local=False)
             if not query_ret.success:
                 log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
             if "install ok installed" not in query_ret.result.std_out:
@@ -95,7 +94,7 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     # an error code if it failed to install, so we double check that the package installed
     # with the dpkg-query command
     @classmethod
-    def apt_get_install(cls,package):
+    def apt_get_install(cls, package):
         aptitude_ret = cls.aptitude("install", package)
         if not aptitude_ret.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))

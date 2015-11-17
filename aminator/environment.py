@@ -1,4 +1,4 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 #
 #
@@ -54,12 +54,12 @@ class Environment(object):
 
     def provision(self):
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
-        with self.metrics:                                                     # pylint: disable=no-member
-            with self.cloud as cloud:                                          # pylint: disable=no-member
-                with self.finalizer(cloud) as finalizer:                       # pylint: disable=no-member
+        with self.metrics:  # pylint: disable=no-member
+            with self.cloud as cloud:  # pylint: disable=no-member
+                with self.finalizer(cloud) as finalizer:  # pylint: disable=no-member
                     with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
-                        with self.distro(volume) as distro:                    # pylint: disable=no-member
-                            success = self.provisioner(distro).provision()     # pylint: disable=no-member
+                        with self.distro(volume) as distro:  # pylint: disable=no-member
+                            success = self.provisioner(distro).provision()  # pylint: disable=no-member
                             if not success:
                                 log.critical('Provisioning failed!')
                                 return False
@@ -73,7 +73,8 @@ class Environment(object):
         return self
 
     def __exit__(self, exc_type, exc_value, trc):
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         return False
 
     def __call__(self, config, plugin_manager):
