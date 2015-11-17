@@ -54,9 +54,7 @@ class BasePluginManager(NameDispatchExtensionManager):
         if check_func is None:
             check_func = lambda x: True
 
-        super(BasePluginManager, self).__init__(namespace=self.entry_point, check_func=check_func,
-                                                invoke_on_load=invoke_on_load, invoke_args=invoke_args,
-                                                invoke_kwds=invoke_kwds)
+        super(BasePluginManager, self).__init__(namespace=self.entry_point, check_func=check_func, invoke_on_load=invoke_on_load, invoke_args=invoke_args, invoke_kwds=invoke_kwds)
 
     @property
     def entry_point(self):

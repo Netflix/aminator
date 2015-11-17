@@ -31,7 +31,7 @@ from aminator.environment import Environment
 from aminator.plugins import PluginManager
 from aminator.util.linux import mkdir_p
 
-__all__ = ('Aminator', )
+__all__ = ('Aminator',)
 log = logging.getLogger(__name__)
 
 

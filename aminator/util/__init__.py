@@ -104,6 +104,6 @@ def download_file(url, dst, timeout=1, verify_https=False):
 
 
 def randword(length):
-    import random, string
+    import random
+    import string
     return ''.join(random.choice(string.lowercase) for _ in xrange(length))
-        

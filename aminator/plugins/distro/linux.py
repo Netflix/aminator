@@ -97,7 +97,7 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
 
         log.debug("starting short_circuit ")
 
-        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
+        # TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
             if not self._deactivate_provisioning_service_block():
                 log.critical('Failure short-circuiting files')
@@ -141,7 +141,7 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
     def _teardown_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Tearing down chroot at {0}'.format(self._mountpoint))
-        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
+        # TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', True):
             if not self._activate_provisioning_service_block():
                 log.critical('Failure during re-enabling service startup')
@@ -200,7 +200,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         if exc_type and self._config.context.get("preserve_on_error", False):
             return False
         if not self._teardown_chroot():

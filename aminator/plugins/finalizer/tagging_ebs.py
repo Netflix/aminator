@@ -39,11 +39,10 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
     _name = 'tagging_ebs'
 
     def add_plugin_args(self):
-        tagging = super(TaggingEBSFinalizerPlugin,self).add_plugin_args()
-        
+        tagging = super(TaggingEBSFinalizerPlugin, self).add_plugin_args()
+
         context = self._config.context
-        tagging.add_argument('-n', '--name', dest='name', action=conf_action(context.ami),
-                             help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs')
+        tagging.add_argument('-n', '--name', dest='name', action=conf_action(context.ami), help='name of resultant AMI (default package_name-version-release-arch-yyyymmddHHMM-ebs')
 
     def _set_metadata(self):
         super(TaggingEBSFinalizerPlugin, self)._set_metadata()
@@ -98,8 +97,6 @@ class TaggingEBSFinalizerPlugin(TaggingBaseFinalizerPlugin):
     def __enter__(self):
         context = self._config.context
         environ["AMINATOR_STORE_TYPE"] = "ebs"
-        if context.ami.get("name",None):
+        if context.ami.get("name", None):
             environ["AMINATOR_AMI_NAME"] = context.ami.name
         return super(TaggingEBSFinalizerPlugin, self).__enter__()
-
-

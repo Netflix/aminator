@@ -62,8 +62,7 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''),
-                                        context.package.get('local_install', False))
+        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
@@ -81,7 +80,7 @@ def yum_localinstall(path):
 
 
 def yum_clean_metadata(repos=None):
-    clean=['yum', 'clean', 'metadata']
+    clean = ['yum', 'clean', 'metadata']
     if repos:
         clean.extend(['--disablerepo', '*', '--enablerepo', ','.join(repos)])
     return monitor_command(clean)

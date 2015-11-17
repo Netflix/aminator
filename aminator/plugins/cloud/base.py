@@ -95,5 +95,6 @@ class BaseCloudPlugin(BasePlugin):
         return self
 
     def __exit__(self, typ, val, trc):
-        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
+        if typ:
+            log.exception("Exception: {0}: {1}".format(typ.__name__, val))
         return False

@@ -65,7 +65,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
                 if ':' in metadata[x]:
                     # strip epoch element from version
                     vers = metadata[x]
-                    metadata[x] = vers[vers.index(':')+1:]
+                    metadata[x] = vers[vers.index(':') + 1:]
                 if '-' in metadata[x]:
                     # debs include release in version so split
                     # version into version-release to compat w/rpm
@@ -128,8 +128,7 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     @cmdsucceeds("aminator.provisioner.apt.apt_get_update.count")
     @cmdfails("aminator.provisioner.apt.apt_get_update.error")
     @timer("aminator.provisioner.apt.apt_get_update.duration")
-    @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1,
-           backoff=0.5, logger=log)
+    @retry(ExceptionToCheck=AptProvisionerUpdateException, tries=5, delay=1, backoff=0.5, logger=log)
     def apt_get_update(self):
         self.apt_get_clean()
         dpkg_update = monitor_command(['apt-get', 'update'])

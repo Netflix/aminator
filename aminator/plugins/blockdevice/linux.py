@@ -57,25 +57,21 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         self._allowed_devices = None
         self._device_prefix = None
 
-
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
         blockdevice = self._parser.add_argument_group(title='Blockdevice', description='Optionally provide pre-attached block device path to use')
-        blockdevice.add_argument("--block-device", dest='block_device',
-                                 action=conf_action(config=context.ami),
-                                 help='Block device path to use')
+        blockdevice.add_argument("--block-device", dest='block_device', action=conf_action(config=context.ami), help='Block device path to use')
 
         partition = self._parser.add_argument_group(title='Partition', description='Optionally provide the partition containing the root file system.')
-        partition.add_argument("--partition", dest='partition',
-                                 action=conf_action(config=context.ami),
-                                 help='Parition number to use')
+        partition.add_argument("--partition", dest='partition', action=conf_action(config=context.ami), help='Parition number to use')
 
     def __enter__(self):
         self._dev = self.allocate_dev()
         return self._dev.node
 
     def __exit__(self, typ, val, trc):
-        if typ: log.exception("Exception: {0}: {1}".format(typ.__name__,val))
+        if typ:
+            log.exception("Exception: {0}: {1}".format(typ.__name__, val))
         self.release_dev(self._dev)
         return False
 
@@ -93,16 +89,13 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         if "partition" in context.ami:
             device_format = '/dev/{0}{1}'
 
-            self._allowed_devices = [device_format.format(self._device_prefix, major)
-                                     for major in majors]
+            self._allowed_devices = [device_format.format(self._device_prefix, major) for major in majors]
             self.partition = context.ami['partition']
 
         else:
             device_format = '/dev/{0}{1}{2}'
 
-            self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
-                                     for major in majors
-                                     for minor in xrange(1, 16)]
+            self._allowed_devices = [device_format.format(self._device_prefix, major, minor) for major in majors for minor in xrange(1, 16)]
 
     def allocate_dev(self):
         context = self._config.context

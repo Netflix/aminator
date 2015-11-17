@@ -91,7 +91,7 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('Inside chroot')
 
             result = self._provision_package()
-            
+
             if context.package.get('interactive', False):
                 os.system("bash")
 
@@ -129,7 +129,7 @@ class BaseProvisionerPlugin(BasePlugin):
         :return: None
         """
 
-        script_files = sorted( glob(scripts_dir + '/*.py') + glob(scripts_dir + '/*.sh') )
+        script_files = sorted(glob(scripts_dir + '/*.py') + glob(scripts_dir + '/*.sh'))
         if not script_files:
             log.debug("no python or shell scripts found in {0}".format(scripts_dir))
         else:
@@ -167,9 +167,7 @@ class BaseProvisionerPlugin(BasePlugin):
         """
         context = self._config.context
         context.package.file = os.path.basename(context.package.arg)
-        context.package.full_path = os.path.join(self._distro._mountpoint,
-                                                 context.package.dir.lstrip('/'),
-                                                 context.package.file)
+        context.package.full_path = os.path.join(self._distro._mountpoint, context.package.dir.lstrip('/'), context.package.file)
         try:
             if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)
@@ -188,8 +186,7 @@ class BaseProvisionerPlugin(BasePlugin):
         pkg_url = context.package.arg
         dst_file_path = context.package.full_path
         log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
-        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1),
-                      verify_https=context.get('verify_https', False))
+        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1), verify_https=context.get('verify_https', False))
 
     def _move_pkg(self, context):
         src_file = context.package.arg.replace('file://', '')
@@ -199,6 +196,7 @@ class BaseProvisionerPlugin(BasePlugin):
     def __call__(self, distro):
         self._distro = distro
         return self
+
 
 def run_script(script):
     return monitor_command(script)

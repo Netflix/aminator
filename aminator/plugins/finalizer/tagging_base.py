@@ -41,17 +41,12 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
 
     def add_plugin_args(self):
         context = self._config.context
-        tagging = self._parser.add_argument_group(title='AMI Tagging and Naming',
-                                                  description='Tagging and naming options for the resultant AMI')
-        tagging.add_argument('-s', '--suffix', dest='suffix', action=conf_action(context.ami),
-                             help='suffix of ami name, (default yyyymmddHHMM)')
+        tagging = self._parser.add_argument_group(title='AMI Tagging and Naming', description='Tagging and naming options for the resultant AMI')
+        tagging.add_argument('-s', '--suffix', dest='suffix', action=conf_action(context.ami), help='suffix of ami name, (default yyyymmddHHMM)')
         creator_help = 'The user who is aminating. The resultant AMI will receive a creator tag w/ this user'
-        tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(context.ami),
-                             help=creator_help)
-        tagging.add_argument('--vm-type', dest='vm_type', choices=["paravirtual", "hvm"], action=conf_action(context.ami),
-                             help='virtualization type to register image as')
-        tagging.add_argument('--enhanced-networking', dest='enhanced_networking', action=conf_action(context.ami, action='store_true'),
-                             help='enable enhanced networking (SR-IOV)')
+        tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(context.ami), help=creator_help)
+        tagging.add_argument('--vm-type', dest='vm_type', choices=["paravirtual", "hvm"], action=conf_action(context.ami), help='virtualization type to register image as')
+        tagging.add_argument('--enhanced-networking', dest='enhanced_networking', action=conf_action(context.ami, action='store_true'), help='enable enhanced networking (SR-IOV)')
         return tagging
 
     def _set_metadata(self):
@@ -59,9 +54,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         config = self._config.plugins[self.full_name]
 
         log.debug('Populating snapshot and ami metadata for tagging and naming')
-        creator = context.ami.get('creator',
-                                  config.get('creator',
-                                             'aminator'))
+        creator = context.ami.get('creator', config.get('creator', 'aminator'))
         context.ami.tags.creator = creator
         context.snapshot.tags.creator = creator
 
@@ -83,7 +76,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
                 context.snapshot.tags[tag] = config.tag_formats[tag].format(**metadata)
             except KeyError as e:
                 log.exception("Tag format requires information not available in package metadata: {}".format(e.message))
-                # in case someone uses a tag format based on metadata not available 
+                # in case someone uses a tag format based on metadata not available
                 # in this package
                 continue
 
@@ -118,7 +111,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
 
     def __enter__(self):
         context = self._config.context
-        if context.ami.get("suffix",None):
+        if context.ami.get("suffix", None):
             environ["AMINATOR_AMI_SUFFIX"] = context.ami.suffix
         if context.ami.get("creator", None):
             environ["AMINATOR_CREATOR"] = context.ami.creator
@@ -134,7 +127,8 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        if exc_type: log.exception("Exception: {0}: {1}".format(exc_type.__name__,exc_value))
+        if exc_type:
+            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
         return False
 
     def __call__(self, cloud):
