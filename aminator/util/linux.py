@@ -151,7 +151,7 @@ def mount(mountspec):
         if mountspec.fstype == 'bind':
             fstype_flag = '-o'
             # we may need to create the mountpoint if it does not exist
-            if isfile(mountspec.dev):
+            if not isdir(mountspec.dev):
                 mountpoint = dirname(mountspec.mountpoint)
             else:
                 mountpoint = mountspec.mountpoint
