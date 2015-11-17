@@ -47,23 +47,14 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     """
     _name = 'apt'
 
-    def _refresh_repo_metadata(self):
-        return self.apt_get_update()
-
     @cmdsucceeds("aminator.provisioner.apt.provision_package.count")
     @cmdfails("aminator.provisioner.apt.provision_package.error")
     @lapse("aminator.provisioner.apt.provision_package.duration")
     def _provision_package(self):
-        result = self._refresh_repo_metadata()
-        if not result.success:
-            log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
-            return result
         context = self._config.context
         os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
-        if context.package.get('local_install', False):
-            return self.apt_get_localinstall(context.package.arg)
-        else:
-            return self.apt_get_install(context.package.arg)
+        return self.install(context.package.arg,
+                            local_install=context.package.get('local_install', False))
 
     def _store_package_metadata(self):
         context = self._config.context
@@ -89,19 +80,35 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
 
     @staticmethod
     def dpkg_install(package):
-        return monitor_command(['dpkg', '-i', package])
+        dpkg_result = monitor_command(['dpkg', '-i', package])
+        if not dpkg_result.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_result.result))
+        return dpkg_result
 
-    @classmethod
-    def apt_get_localinstall(cls, package):
+    def _fix_localinstall_deps(self, package):
+        # use apt-get to resolve dependencies after a dpkg -i
+        fix_deps_result = self.apt_get_install('--fix-missing')
+        if not fix_deps_result.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(fix_deps_result.result))
+        return fix_deps_result
+
+    def _localinstall(self, package):
         """install deb file with dpkg then resolve dependencies
         """
-        dpkg_ret = cls.dpkg_install(package)
+        dpkg_ret = self.dpkg_install(package)
         if not dpkg_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            apt_ret = cls.apt_get_install('--fix-missing')
-            if not apt_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(apt_ret.result))
-            return apt_ret
+            # expected when package has dependencies that are not installed
+            update_metadata_result = self.apt_get_update()
+            if not update_metadata_result.success:
+                errmsg = 'Repo metadata refresh failed: {0.std_err}'
+                errmsg = errmsg.format(update_metadata_result.result)
+                return update_metadata_result
+            log.info("Installing dependencies for package {0}".format(package))
+            fix_deps_result = self._fix_localinstall_deps(package)
+            if not fix_deps_result.success:
+                log.critical("Error encountered installing dependencies: "
+                             "{0.std_err}".format(fix_deps_result.result))
+            return fix_deps_result
         return dpkg_ret
 
     @staticmethod
@@ -113,7 +120,10 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
             cmd = 'dpkg-query -W'.split()
             cmd.append('-f={0}'.format(queryformat))
         cmd.append(package)
-        return monitor_command(cmd)
+        deb_query_result = monitor_command(cmd)
+        if not deb_query_result.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(deb_query_result.result))
+        return deb_query_result
 
     @cmdsucceeds("aminator.provisioner.apt.apt_get_update.count")
     @cmdfails("aminator.provisioner.apt.apt_get_update.error")
@@ -133,9 +143,31 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
     def apt_get_clean():
         return monitor_command(['apt-get', 'clean'])
 
-    @classmethod
-    def apt_get_install(cls, package):
-        return monitor_command(['apt-get', '-y', 'install', package])
+    @staticmethod
+    def apt_get_install(*options):
+        install_result = monitor_command(['apt-get', '-y', 'install'] + options)
+        if not install_result.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(install_result.result))
+        return install_result
+
+    def _install(self, package):
+        return self.apt_get_install(package)
+
+    def install(self, package, local_install=False):
+        if local_install:
+            install_result = self._localinstall(package)
+        else:
+            update_metadata_result = self.apt_get_update()
+            if not update_metadata_result.success:
+                errmsg = 'Repo metadata refresh failed: {0.std_err}'
+                errmsg = errmsg.format(update_metadata_result.result)
+                return update_metadata_result
+            install_result = self._install(package)
+        if not install_result.success:
+            errmsg = 'Error installing package {0}: {1.std_err}'
+            errmsg = errmsg.format(package, install_result.result)
+            log.critical(errmsg)
+        return install_result
 
     @classmethod
     def deb_package_metadata(cls, package, queryformat, local=False):

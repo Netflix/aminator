@@ -42,11 +42,16 @@ import logging
 
 from os.path import basename
 
+from aminator.exceptions import ProvisionException
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.util.linux import monitor_command
 
 __all__ = ('AptitudeProvisionerPlugin',)
 log = logging.getLogger(__name__)
+
+
+class AptitudeInstallException(ProvisionException):
+    pass
 
 
 class AptitudeProvisionerPlugin(AptProvisionerPlugin):
@@ -57,48 +62,58 @@ class AptitudeProvisionerPlugin(AptProvisionerPlugin):
     _name = 'aptitude'
 
     # overload this method to call aptitude instead.
-    @classmethod
-    def apt_get_localinstall(cls, package):
-        """install deb file with dpkg then resolve dependencies
-        """
-        dpkg_ret = cls.dpkg_install(package)
+    def _fix_localinstall_deps(self, package):
+        # use aptitude and its solver to resolve dependencies after a dpkg -i
         pkgname, _, _ = basename(package).split('_')
-        if not dpkg_ret.success:
-            # figure out the version via dpkg rather than parsing it out of the file name
-            # in case there is an epoch in the version
-            query_ret = super(AptitudeProvisionerPlugin, cls).deb_query(package, "${Version}", local=True)
-            if not query_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
-            pkgver = query_ret.result.std_out
 
-            log.debug('failure:{0.command} :{0.std_err}'.format(dpkg_ret.result))
-            aptitude_ret = cls.aptitude("install", "{}={}".format(pkgname, pkgver))
-            if not aptitude_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
-            query_ret = super(AptitudeProvisionerPlugin, cls).deb_query(pkgname, "${Status} ${Version}", local=False)
-            if not query_ret.success:
-                log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
-            if "install ok installed" not in query_ret.result.std_out:
-                raise RuntimeError("package {} failed to be installed.  dpkg status: {}".format(pkgname, query_ret.result.std_out))
-            installed_version = query_ret.result.std_out.split()[-1].strip()
-            if installed_version != pkgver:
-                raise RuntimeError("package {} failed to be installed. requested version {}, aptitude installed {}".format(pkgname, pkgver, installed_version))
-            return query_ret
-        return dpkg_ret
+        # figure out the version via dpkg rather than parsing it out of the file name
+        # in case there is an epoch in the version
+        version_query_ret = self.deb_query(package, "${Version}", local=True)
+        if not version_query_ret.success:
+            log.critical("Unable to query version for package {0}".format(package))
+            return version_query_ret
+        pkgver = version_query_ret.result.std_out
+
+        aptitude_ret = self.aptitude("install", "{0}={1}".format(pkgname, pkgver))
+        if not aptitude_ret.success:
+            log.critical("Error encountered resolving dependencies for package {0}: "
+                         "{1.std_err}".format(package, aptitude_ret.result))
+            return aptitude_ret
+
+        install_query_ret = self.deb_query(pkgname, "${Status} ${Version}", local=False)
+        if not install_query_ret.success:
+            log.critical("Error querying installation status for package {0}: "
+                         "{1.std_err}".format(package, install_query_ret.result))
+            return install_query_ret
+
+        if "install ok installed" not in install_query_ret.result.std_out:
+            errmsg = "package {0} failed to be installed. dpkg status: {1.std_out}"
+            errmsg = errmsg.format(package, install_query_ret.result)
+            raise AptitudeInstallException(errmsg)
+
+        installed_version = install_query_ret.result.std_out.split()[-1].strip()
+        if installed_version != pkgver:
+            errmsg = "package {0} failed to be installed. requested {1}, installed {2}"
+            errmsg = errmsg.format(pkgname, pkgver, installed_version)
+            raise AptitudeInstallException(errmsg)
+
+        return install_query_ret
 
     @staticmethod
     def aptitude(operation, package):
-        return monitor_command(["aptitude", "--no-gui", "-y", operation, package])
+        aptitude_result = monitor_command(["aptitude", "--no-gui", "-y", operation, package])
+        if not aptitude_result.success:
+            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_result.result))
+        return aptitude_result
 
     # overload this method to call aptitude instead.  But aptitude will not exit with
     # an error code if it failed to install, so we double check that the package installed
     # with the dpkg-query command
-    @classmethod
-    def apt_get_install(cls, package):
-        aptitude_ret = cls.aptitude("install", package)
-        if not aptitude_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(aptitude_ret.result))
-        query_ret = cls.deb_query(package, '${Package}-${Version}')
+    def _install(self, package):
+        self.aptitude("install", package)
+        query_ret = self.deb_query(package, '${Package}-${Version}')
         if not query_ret.success:
-            log.debug('failure:{0.command} :{0.std_err}'.format(query_ret.result))
+            errmsg = "Error installing package {0}: {1.std_err}"
+            errmsg = errmsg.format(package, query_ret.result)
+            log.critical(errmsg)
         return query_ret

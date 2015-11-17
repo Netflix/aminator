@@ -47,3 +47,4 @@ nosetests.xml
 *.swp
 
 .*.pylint
+pylint/
