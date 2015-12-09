@@ -169,7 +169,9 @@ def configure_datetime_logfile(config, handler):
         pkg = "{0}-{1}".format(os.path.basename(config.context.package.arg), randword(6))
         filename = os.path.join(config.log_root, filename_format.format(pkg, datetime.utcnow()))
     except IndexError:
-        log.exception("missing replacement fields in {0}'s filename_format")
+        errstr = 'Missing replacement fields in filename_format for handler {0}'.format(handler)
+        log.error(errstr)
+        log.debug(errstr, exc_info=True)
 
     # find handler amongst all the loggers and reassign the filename/stream
     for h in [x for l in logging.root.manager.loggerDict for x in logging.getLogger(l).handlers] + logging.root.handlers:

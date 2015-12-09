@@ -75,7 +75,9 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
                 context.ami.tags[tag] = config.tag_formats[tag].format(**metadata)
                 context.snapshot.tags[tag] = config.tag_formats[tag].format(**metadata)
             except KeyError as e:
-                log.exception("Tag format requires information not available in package metadata: {}".format(e.message))
+                errstr = 'Tag format requires information not available in package metadata: {0}'.format(e.message)
+                log.warn(errstr)
+                log.debug(errstr, exc_info=True)
                 # in case someone uses a tag format based on metadata not available
                 # in this package
                 continue
@@ -92,7 +94,9 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
             try:
                 self._cloud.add_tags(resource)
             except FinalizerException:
-                log.exception('Error adding tags to {0}'.format(resource))
+                errstr = 'Error adding tags to {0}'.format(resource)
+                log.error(errstr)
+                log.debug(errstr, exc_info=True)
                 return False
             log.info('Successfully tagged {0}'.format(resource))
         log.info('Successfully tagged objects')
@@ -128,7 +132,8 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
 
     def __exit__(self, exc_type, exc_value, trace):
         if exc_type:
-            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
+            log.debug('Exception encountered in tagging base finalizer context manager',
+                      exc_info=True)
         return False
 
     def __call__(self, cloud):
