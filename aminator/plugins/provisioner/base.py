@@ -174,7 +174,9 @@ class BaseProvisionerPlugin(BasePlugin):
             else:
                 self._move_pkg(context)
         except Exception:
-            log.exception('Error encountered while staging package')
+            errstr = 'Exception encountered while staging package'
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
             # reset to chrooted file path
         context.package.arg = os.path.join(context.package.dir, context.package.file)

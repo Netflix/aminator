@@ -77,5 +77,6 @@ class BaseMetricsPlugin(BasePlugin):
     def __exit__(self, exc_type, exc_value, trace):
         self.flush()
         if exc_type:
-            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
+            log.debug('Exception encountered in metrics plugin context manager',
+                      exc_info=(exc_type, exc_value, trace))
         return False

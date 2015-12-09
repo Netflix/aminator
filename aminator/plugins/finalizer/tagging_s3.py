@@ -211,12 +211,14 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
     def __exit__(self, exc_type, exc_value, trace):
         if exc_type:
-            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
+            log.debug('Exception encountered in tagging s3 finalizer context manager',
+                      exc_info=(exc_type, exc_value, trace))
         # delete tmpdir used by ec2-bundle-vol
         try:
             td = self.tmpdir()
             if isdir(td):
                 rmtree(td)
         except Exception:
-            log.exception("Failed to cleanup s3 bundle tmpdir")
+            log.debug('Exception encountered attempting to clean s3 bundle tmpdir',
+                      exc_info=True)
         return False

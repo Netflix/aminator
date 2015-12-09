@@ -388,15 +388,18 @@ class EC2CloudPlugin(BaseCloudPlugin):
         try:
             instance = getattr(self, instance_var)
         except Exception:
-            log.exception('Unable to find local instance var {0}'.format(instance_var))
-            log.critical('Tagging failed')
+            errstr = 'Tagging failed: Unable to find local instance var {0}'.format(instance_var)
+            log.debug(errstr, exc_info=True)
+            log.critical(errstr)
             return False
         else:
             try:
                 self._connection.create_tags([instance.id], tags)
             except EC2ResponseError:
-                log.exception('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
-                raise FinalizerException('Error creating tags for resource type {0}, id {1}'.format(resource_type, instance.id))
+                errstr = 'Error creating tags for resource type {0}, id {1}'
+                errstr = errstr.format(resource_type, instance.id)
+                log.critical(errstr)
+                raise FinalizerException(errstr)
             else:
                 log.debug('Successfully tagged {0}({1})'.format(resource_type, instance.id))
                 instance.update()

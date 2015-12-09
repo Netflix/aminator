@@ -225,7 +225,7 @@ class Chroot(object):
 
     def __exit__(self, typ, exc, trc):
         if typ:
-            log.exception("Exception: {0}: {1}".format(typ.__name__, exc))
+            log.debug('Exception encountered in Chroot', exc_info=(typ, exc, trc))
         log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')
@@ -385,14 +385,18 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
                     elif os.path.isfile(dst):
                         shutil.copy(dst, backup)
                 except Exception:
-                    log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
+                    errstr = 'Error encountered while copying {0} to {1}'.format(dst, backup)
+                    log.critical(errstr)
+                    log.debug(errstr, exc_info=True)
                     return False
             if os.path.isdir(src):
                 shutil.copytree(src, dst, symlinks=True)
             else:
                 shutil.copy(src, dst)
         except Exception:
-            log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
+            errstr = 'Error encountered while copying {0} to {1}'.format(src, dst)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
         return True
@@ -419,7 +423,9 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                     shutil.rmtree(dst)
                     log.debug('Provision config {0} removed'.format(dst))
             except Exception:
-                log.exception('Error encountered while removing {0}'.format(dst))
+                errstr='Error encountered while removing {0}'.format(dst)
+                log.critical(errstr)
+                log.debug(errstr, exc_info=True)
                 return False
 
         if os.path.isfile(backup) or os.path.islink(backup) or os.path.isdir(backup):
@@ -432,7 +438,9 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
         else:
             log.warn('No backup file {0} was found'.format(backup))
     except Exception:
-        log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
+        errstr = 'Error encountered while restoring {0} to {1}'.format(backup, dst)
+        log.critical(errstr)
+        log.debug(errstr, exc_info=True)
         return False
     return True
 
@@ -454,7 +462,9 @@ def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
             os.symlink(dst, fullpath)
             log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuiting {0} to {1}'.format(fullpath, dst))
+            errstr = 'Error encountered while short circuiting {0} to {1}'.format(fullpath, dst)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(fullpath, dst))
@@ -480,7 +490,9 @@ def rewire(root, cmd, ext='short_circuit'):
             os.rename('{0}.{1}'.format(fullpath, ext), fullpath)
             log.debug('{0} rewired'.format(fullpath))
         except Exception:
-            log.exception('Error encountered while rewiring {0}'.format(fullpath))
+            errstr = 'Error encountered while rewiring {0}'.format(fullpath)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         else:
             log.debug('rewired {0}'.format(fullpath))

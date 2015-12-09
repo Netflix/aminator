@@ -74,7 +74,7 @@ class Environment(object):
 
     def __exit__(self, exc_type, exc_value, trc):
         if exc_type:
-            log.exception("Exception: {0}: {1}".format(exc_type.__name__, exc_value))
+            log.debug('Exception encountered in environment context manager', exc_info=(exc_type, exc_value, trc))
         return False
 
     def __call__(self, config, plugin_manager):

@@ -51,7 +51,7 @@ class BaseBlockDevicePlugin(BasePlugin):
     @abc.abstractmethod
     def __exit__(self, typ, val, trc):
         if typ:
-            log.exception("Exception: {0}: {1}".format(typ.__name__, val))
+            log.debug('Exception encountered in block device plugin', exc_info=(typ, val, trc))
         return False
 
     def __call__(self, cloud):
