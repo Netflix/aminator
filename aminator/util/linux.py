@@ -423,7 +423,7 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
                     shutil.rmtree(dst)
                     log.debug('Provision config {0} removed'.format(dst))
             except Exception:
-                errstr='Error encountered while removing {0}'.format(dst)
+                errstr = 'Error encountered while removing {0}'.format(dst)
                 log.critical(errstr)
                 log.debug(errstr, exc_info=True)
                 return False
