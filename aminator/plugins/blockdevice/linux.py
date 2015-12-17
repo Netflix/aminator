@@ -69,7 +69,6 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
                                  action=conf_action(config=context.ami),
                                  help='Parition number containing the root file system.')
 
-
     def __enter__(self):
         self._dev = self.allocate_dev()
         return self._dev.node
@@ -99,12 +98,12 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
         if block_config.use_minor_device_numbers:
             device_format = '/dev/{0}{1}{2}'
             self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
-                                        for major in majors
-                                        for minor in xrange(1, 16)]
+                                     for major in majors
+                                     for minor in xrange(1, 16)]
         else:
             device_format = '/dev/{0}{1}'
             self._allowed_devices = [device_format.format(self._device_prefix, major)
-                                        for major in majors]
+                                     for major in majors]
 
     def allocate_dev(self):
         context = self._config.context
