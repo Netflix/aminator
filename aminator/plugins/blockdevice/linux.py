@@ -59,11 +59,16 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
-        blockdevice = self._parser.add_argument_group(title='Blockdevice', description='Optionally provide pre-attached block device path to use')
-        blockdevice.add_argument("--block-device", dest='block_device', action=conf_action(config=context.ami), help='Block device path to use')
+        bd_group_desc = 'Block device allocator configuration'
+        blockdevice = self._parser.add_argument_group(title='Blockdevice',
+                                                      description=bd_group_desc)
+        blockdevice.add_argument("--block-device", dest='block_device',
+                                 action=conf_action(config=context.ami),
+                                 help='Block device path to use')
+        blockdevice.add_argument("--partition", dest='partition',
+                                 action=conf_action(config=context.ami),
+                                 help='Parition number containing the root file system.')
 
-        partition = self._parser.add_argument_group(title='Partition', description='Optionally provide the partition containing the root file system.')
-        partition.add_argument("--partition", dest='partition', action=conf_action(config=context.ami), help='Parition number to use')
 
     def __enter__(self):
         self._dev = self.allocate_dev()
@@ -87,16 +92,19 @@ class LinuxBlockDevicePlugin(BaseBlockDevicePlugin):
 
         context = self._config.context
 
-        if "partition" in context.ami:
-            device_format = '/dev/{0}{1}'
+        if 'partition' in context.ami:
+            block_config.use_minor_device_numbers = False
+            self.partition = context.ami.partition
 
-            self._allowed_devices = [device_format.format(self._device_prefix, major) for major in majors]
-            self.partition = context.ami['partition']
-
-        else:
+        if block_config.use_minor_device_numbers:
             device_format = '/dev/{0}{1}{2}'
-
-            self._allowed_devices = [device_format.format(self._device_prefix, major, minor) for major in majors for minor in xrange(1, 16)]
+            self._allowed_devices = [device_format.format(self._device_prefix, major, minor)
+                                        for major in majors
+                                        for minor in xrange(1, 16)]
+        else:
+            device_format = '/dev/{0}{1}'
+            self._allowed_devices = [device_format.format(self._device_prefix, major)
+                                        for major in majors]
 
     def allocate_dev(self):
         context = self._config.context
