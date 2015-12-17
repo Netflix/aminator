@@ -65,14 +65,20 @@ class BasePlugin(object):
     def full_name(self):
         return '{0}.{1}'.format(self.entry_point, self.name)
 
-    def configure(self, config, parser):
-        """ Configure the plugin and contribute to command line args """
+    def configure(self):
+        """ Configure the plugin""" 
         log.debug("Configuring plugin {0} for entry point {1}".format(self.name, self.entry_point))
+
+    def initialize(self, config, parser):
         self._config = config
         self._parser = parser
         self.load_plugin_config()
         if self.enabled:
             self.add_plugin_args()
+
+    def override_config(self, overrides):
+        key = self.full_name
+        self._config.plugins[key] = PluginConfig.dict_merge(self._config.plugins[key], overrides)
 
     def add_plugin_args(self):
         pass
@@ -101,3 +107,4 @@ class BasePlugin(object):
                                                             PluginConfig.from_files(plugin_conf_files))
         # allow plugins to be disabled by configuration. Especially important in cases where command line args conflict
         self.enabled = self._config.plugins[key].get('enabled', True)
+
