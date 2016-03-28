@@ -89,7 +89,6 @@ The rough amination workflow:
 Support
 -------
 * `Aminator Google Group <http://groups.google.com/group/Aminator>`_
-* #netflixoss on chat.freenode.net
 
 Documentation
 -------------
