@@ -25,24 +25,24 @@ Linux utility functions
 """
 
 import errno
+import io
 import logging
-from fcntl import flock as _flock
-from fcntl import LOCK_EX, LOCK_UN, LOCK_NB
 import os
 import shutil
 import stat
 import string
 import sys
-from copy import copy
+
 from collections import namedtuple
 from contextlib import contextmanager
-
-from subprocess import Popen, PIPE
-from signal import signal, alarm, SIGALRM
+from copy import copy
+from fcntl import fcntl, F_GETFL, F_SETFL, LOCK_EX, LOCK_UN, LOCK_NB
+from fcntl import flock as _flock
 from os import O_NONBLOCK, environ, makedirs
 from os.path import isdir, dirname
-from fcntl import fcntl, F_GETFL, F_SETFL
 from select import select
+from signal import signal, alarm, SIGALRM
+from subprocess import Popen, PIPE
 
 from decorator import decorator
 
@@ -94,6 +94,9 @@ def monitor_command(cmd, timeout=None):
     set_nonblocking(proc.stdout)
     set_nonblocking(proc.stderr)
 
+    stdout = io.open(proc.stdout.fileno(), errors='replace', closefd=False)
+    stderr = io.open(proc.stderr.fileno(), errors='replace', closefd=False)
+
     if timeout:
         alarm(timeout)
 
@@ -101,30 +104,29 @@ def monitor_command(cmd, timeout=None):
             proc.terminate()
         signal(SIGALRM, handle_sigalarm)
 
-    io = [proc.stdout, proc.stderr]
+    io_streams = [stdout, stderr]
 
     std_out = ""
     std_err = ""
-    while True:
-        # if we got eof from all pipes then stop polling
-        if not io:
-            break
-        reads, _, _ = select(io, [], [])
-        for fd in reads:
-            buf = fd.read(4096)
-            if len(buf) == 0:
-                # got eof
-                io.remove(fd)
-            else:
-                if fd == proc.stderr:
-                    log.debug("STDERR: {0}".format(buf))
-                    std_err += buf
+    with stdout, stderr:
+        while io_streams:
+            reads, _, _ = select(io_streams, [], [])
+            for fd in reads:
+                buf = fd.read(4096)
+                if buf is None or len(buf) == 0:
+                    # got eof
+                    io_streams.remove(fd)
                 else:
-                    if buf[-1] == "\n":
-                        log.debug(buf[:-1])
+                    buf = buf.encode('utf-8')
+                    if fd == stderr:
+                        log.debug("STDERR: {0}".format(buf))
+                        std_err += buf
                     else:
-                        log.debug(buf)
-                    std_out += buf
+                        if buf[-1] == "\n":
+                            log.debug(buf[:-1])
+                        else:
+                            log.debug(buf)
+                        std_out += buf
 
     proc.wait()
     alarm(0)
