@@ -106,8 +106,8 @@ def monitor_command(cmd, timeout=None):
 
     io_streams = [stdout, stderr]
 
-    std_out = ""
-    std_err = ""
+    std_out = u''
+    std_err = u''
     with stdout, stderr:
         while io_streams:
             reads, _, _ = select(io_streams, [], [])
@@ -119,10 +119,10 @@ def monitor_command(cmd, timeout=None):
                 else:
                     buf = buf.encode('utf-8')
                     if fd == stderr:
-                        log.debug("STDERR: {0}".format(buf))
+                        log.debug(u'STDERR: {0}'.format(buf))
                         std_err += buf
                     else:
-                        if buf[-1] == "\n":
+                        if buf[-1] == u'\n':
                             log.debug(buf[:-1])
                         else:
                             log.debug(buf)
