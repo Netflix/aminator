@@ -94,8 +94,10 @@ def monitor_command(cmd, timeout=None):
     set_nonblocking(proc.stdout)
     set_nonblocking(proc.stderr)
 
-    stdout = io.open(proc.stdout.fileno(), errors='replace', closefd=False)
-    stderr = io.open(proc.stderr.fileno(), errors='replace', closefd=False)
+    stdout = io.open(
+        proc.stdout.fileno(), encoding='utf-8', errors='replace', closefd=False)
+    stderr = io.open(
+        proc.stderr.fileno(), encoding='utf-8', errors='replace', closefd=False)
 
     if timeout:
         alarm(timeout)
@@ -117,18 +119,19 @@ def monitor_command(cmd, timeout=None):
                     # got eof
                     io_streams.remove(fd)
                 else:
-                    buf = buf.encode('utf-8')
                     if fd == stderr:
                         log.debug(u'STDERR: {0}'.format(buf))
-                        std_err += buf
+                        std_err = u''.join([std_err, buf])
                     else:
                         if buf[-1] == u'\n':
                             log.debug(buf[:-1])
                         else:
                             log.debug(buf)
-                        std_out += buf
+                        std_out = u''.join([std_out, buf])
 
     proc.wait()
+    std_out = std_out.encode('utf-8')
+    std_err = std_err.encode('utf-8')
     alarm(0)
     status_code = proc.returncode
     log.debug("status code: {0}".format(status_code))
