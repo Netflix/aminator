@@ -45,6 +45,8 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
         Prevent packages installing in the chroot from starting
         For debian based distros, we add /usr/sbin/policy-rc.d
         """
+        if not super(DebianDistroPlugin, self)._deactivate_provisioning_service_block():
+            return False
 
         config = self._config.plugins[self.full_name]
         path = self._mountpoint + config.get('policy_file_path', '')
@@ -68,6 +70,9 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
         """
         Remove policy-rc.d file so that things start when the AMI launches
         """
+        if not super(DebianDistroPlugin, self)._activate_provisioning_service_block():
+            return False
+
         config = self._config.plugins[self.full_name]
 
         policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
@@ -77,7 +82,6 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
             log.debug("removing %s", policy_file)
             os.remove(policy_file)
         else:
-            log.debug("The %s was missing, this is unexpected as the "
-                      "DebianDistroPlugin should manage this file", policy_file)
+            log.debug("The %s was missing, this is unexpected as the DebianDistroPlugin should manage this file", policy_file)
 
         return True

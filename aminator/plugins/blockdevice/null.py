@@ -2,7 +2,7 @@
 
 #
 #
-#  Copyright 2013 Netflix, Inc.
+#  Copyright 2014 Netflix, Inc.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
 #     you may not use this file except in compliance with the License.
@@ -19,26 +19,26 @@
 #
 
 """
-aminator.plugins.provisioner.manager
-====================================
-Provisioner plugin manager(s) and utils
+aminator.plugins.blockdevice.null
+==================================
+null block device manager
 """
 import logging
 
-from aminator.plugins.manager import BasePluginManager
+from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
 
-
+__all__ = ('NullBlockDevicePlugin',)
 log = logging.getLogger(__name__)
 
 
-class ProvisionerPluginManager(BasePluginManager):
-    """ Provisioner Plugin Manager """
-    _entry_point = 'aminator.plugins.provisioner'
+class NullBlockDevicePlugin(BaseBlockDevicePlugin):
+    _name = 'null'
 
-    @property
-    def entry_point(self):
-        return self._entry_point
+    def __enter__(self):
+        return '/dev/null'
 
-    @staticmethod
-    def check_func(plugin):  # pylint: disable=method-hidden
-        return True
+    def __exit__(self, typ, val, trc):
+        if typ:
+            log.debug('Exception encountered in Null block device plugin',
+                      exc_info=(typ, val, trc))
+        return False

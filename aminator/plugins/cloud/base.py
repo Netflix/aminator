@@ -48,15 +48,15 @@ class BaseCloudPlugin(BasePlugin):
         """ Store the resultant connection in the _connection class attribute """
 
     @abc.abstractmethod
-    def allocate_base_volume(self):
+    def allocate_base_volume(self, tag=True):
         """ create a volume object from the base/foundation volume """
 
     @abc.abstractmethod
-    def attach_volume(self):
+    def attach_volume(self, blockdevice, tag=True):
         """ Instructs the cloud provider to attach some sort of volume to the instance """
 
     @abc.abstractmethod
-    def detach_volume(self):
+    def detach_volume(self, blockdevice):
         """ Instructs the cloud provider to detach a given volume from the instance """
 
     @abc.abstractmethod
@@ -64,30 +64,30 @@ class BaseCloudPlugin(BasePlugin):
         """ destroys a volume """
 
     @abc.abstractmethod
-    def snapshot_volume(self):
+    def snapshot_volume(self, description=None):
         """ creates a snapshot from the attached volume """
 
     @abc.abstractmethod
-    def is_volume_attached(self):
+    def is_volume_attached(self, blockdevice):
         """ volume attachment status """
 
     @abc.abstractmethod
-    def is_stale_attachment(self):
+    def is_stale_attachment(self, dev, prefix):
         """ checks to see if a given device is a stale attachment """
 
     @abc.abstractmethod
-    def attached_block_devices(self):
+    def attached_block_devices(self, prefix):
         """
         list any block devices attached to the aminator instance.
         helps blockdevice plugins allocate an os device node
         """
 
     @abc.abstractmethod
-    def add_tags(self):
+    def add_tags(self, resource_type):
         """ consumes tags and applies them to objects """
 
     @abc.abstractmethod
-    def register_image(self):
+    def register_image(self, *args, **kwargs):
         """ Instructs the cloud provider to register a finalized image for launching """
 
     def __enter__(self):
@@ -95,4 +95,7 @@ class BaseCloudPlugin(BasePlugin):
         return self
 
     def __exit__(self, typ, val, trc):
+        if typ:
+            log.debug('Exception encountered in Cloud plugin context manager',
+                      exc_info=(typ, val, trc))
         return False

@@ -3,7 +3,7 @@ aminator - Easily create application-specific custom AMIs
 
 Aminator creates a custom AMI from just:
 
-* A base ami ID 
+* A base ami ID
 * A link to a deb or rpm package that installs your application.
 
 This is useful for many AWS workflows, particularly ones that take advantage of auto-scaling groups.
@@ -11,7 +11,7 @@ This is useful for many AWS workflows, particularly ones that take advantage of 
 Requirements
 ------------
 
-* Python 2.6+ (Python 3.x support not yet available)
+* Python 2.7 (Python 3.x support not yet available)
 * Linux or UNIX cloud instance (EC2 currently supported)
 
 Installation
@@ -89,7 +89,6 @@ The rough amination workflow:
 Support
 -------
 * `Aminator Google Group <http://groups.google.com/group/Aminator>`_
-* #netflixoss on chat.freenode.net
 
 Documentation
 -------------

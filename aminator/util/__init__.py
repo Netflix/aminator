@@ -34,7 +34,7 @@ from decorator import decorator
 log = logging.getLogger(__name__)
 
 
-def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
+def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None, maxdelay=None):
     """
     Retries a function or method until it returns True.
 
@@ -59,6 +59,8 @@ def retry(ExceptionToCheck=None, tries=3, delay=0.5, backoff=1, logger=None):
                 sleep(_delay)
                 _tries -= 1
                 _delay *= backoff
+                if maxdelay and _delay > maxdelay:
+                    _delay = maxdelay
         return f(*args, **kwargs)
     return _retry
 
@@ -87,12 +89,10 @@ def download_file(url, dst, timeout=1, verify_https=False):
             raise requests.HTTPError('Timeout exceeded.')
         else:
             raise e
-            return False
 
     if response.status_code >= 500:
         # retry service errors
         raise requests.HTTPError('{0.status_code} {0.reason}'.format(response))
-        return False
 
     if response.status_code != 200:
         return False
@@ -101,3 +101,9 @@ def download_file(url, dst, timeout=1, verify_https=False):
         dst_fp.write(response.content)
 
     return True
+
+
+def randword(length):
+    import random
+    import string
+    return ''.join(random.choice(string.lowercase) for _ in xrange(length))
