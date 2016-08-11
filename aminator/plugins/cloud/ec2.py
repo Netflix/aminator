@@ -287,17 +287,12 @@ class EC2CloudPlugin(BaseCloudPlugin):
             return True
 
         log.debug('Deleting volume {0}'.format(self._volume.id))
-        self._volume.delete()
-        return self._volume_deleted()
-
-    def _volume_deleted(self):
-        try:
-            self._volume.update()
-        except EC2ResponseError, e:
-            if e.code == 'InvalidVolume.NotFound':
-                log.debug('Volume {0} successfully deleted'.format(self._volume.id))
-                return True
-            return False
+        result = self._volume.delete()
+        if not result:
+            log.debug('Volume {0} delete returned False, may require manual cleanup'.format(self._volume.id))
+        else:
+            log.debug('Volume {0} successfully deleted'.format(self._volume.id))
+        return result
 
     def is_stale_attachment(self, dev, prefix):
         log.debug('Checking for stale attachment. dev: {0}, prefix: {1}'.format(dev, prefix))
