@@ -40,12 +40,18 @@ class BaseBlockDevicePlugin(BasePlugin):
     __metaclass__ = abc.ABCMeta
     _entry_point = 'aminator.plugins.blockdevice'
 
+    def __init__(self, *args, **kwargs):
+        super(BaseBlockDevicePlugin, self).__init__(*args, **kwargs)
+        self.partition = None
+
     @abc.abstractmethod
     def __enter__(self):
         return self
 
     @abc.abstractmethod
     def __exit__(self, typ, val, trc):
+        if typ:
+            log.debug('Exception encountered in block device plugin', exc_info=(typ, val, trc))
         return False
 
     def __call__(self, cloud):

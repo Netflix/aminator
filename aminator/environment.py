@@ -1,4 +1,4 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 #
 #
@@ -41,30 +41,40 @@ class Environment(object):
             plugin = self._plugin_manager.find_by_kind(kind, name)
             setattr(self, kind, plugin.obj)
             log.debug('Attached: {0}'.format(getattr(self, kind)))
+
+        kind = "metrics"
+        if not getattr(self, kind, None):
+            name = self._config.environments.get(kind, "logger")
+            plugin = self._plugin_manager.find_by_kind(kind, name)
+            setattr(self, kind, plugin.obj)
+
         log.debug("============= BEGIN YAML representation of loaded configs ===============")
         log.debug(yaml.dump(self._config))
         log.debug("============== END YAML representation of loaded configs ================")
 
     def provision(self):
         log.info('Beginning amination! Package: {0}'.format(self._config.context.package.arg))
-        with self.cloud as cloud:
-            with self.finalizer(cloud) as finalizer:
-                with self.volume(self.cloud, self.blockdevice) as volume:
-                    with self.distro(volume) as distro:
-                        success = self.provisioner(distro).provision()
+        with self.metrics:  # pylint: disable=no-member
+            with self.cloud as cloud:  # pylint: disable=no-member
+                with self.finalizer(cloud) as finalizer:  # pylint: disable=no-member
+                    with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
+                        with self.distro(volume) as distro:  # pylint: disable=no-member
+                            success = self.provisioner(distro).provision()  # pylint: disable=no-member
+                            if not success:
+                                log.critical('Provisioning failed!')
+                                return False
+                        success = finalizer.finalize()
                         if not success:
-                            log.critical('Provisioning failed!')
+                            log.critical('Finalizing failed!')
                             return False
-                    success = finalizer.finalize()
-                    if not success:
-                        log.critical('Finalizing failed!')
-                        return False
-        return None
+        return True
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, trc):
+        if exc_type:
+            log.debug('Exception encountered in environment context manager', exc_info=(exc_type, exc_value, trc))
         return False
 
     def __call__(self, config, plugin_manager):

@@ -35,6 +35,7 @@ log = logging.getLogger(__name__)
 
 
 def run():
+    import os
     # we throw this one away, real parsing happens later
     # this is just for getting a debug flag for verbose logging.
     # to be extra sneaky, we add a --debug to the REAL parsers so it shows up in help
@@ -46,13 +47,15 @@ def run():
     sys.argv = [sys.argv[0]] + argv
     # add -e argument back argv for when we parse the args again
     if args.env:
-        sys.argv.extend(["-e",args.env])
+        sys.argv.extend(["-e", args.env])
+        os.environ["AMINATOR_ENVIRONMENT"] = args.env
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
     sys.exit(Aminator(debug=args.debug, envname=args.env).aminate())
+
 
 def plugin_manager():
     import subprocess
@@ -69,10 +72,8 @@ def plugin_manager():
 
     parser = argparse.ArgumentParser(description='Aminator plugin install utility')
 
-    parser.add_argument('--branch', help='Which branch to pull the plugin list from. Valid options: production, testing, alpha. Default value: production',
-                        default='production', choices=['production', 'testing', 'alpha'], dest='branch', metavar='branch')
-    parser.add_argument('--type', help='The type of plugin to search for. Valid options: cloud, volume, blockdevice, provision, distro, finalizer',
-                        choices=['cloud', 'volume', 'blockdevice', 'provision', 'distro', 'finalizer'], dest='type', metavar='plugin-type')
+    parser.add_argument('--branch', help='Which branch to pull the plugin list from. Valid options: production, testing, alpha. Default value: production', default='production', choices=['production', 'testing', 'alpha'], dest='branch', metavar='branch')
+    parser.add_argument('--type', help='The type of plugin to search for. Valid options: cloud, volume, blockdevice, provision, distro, finalizer, metrics', choices=['cloud', 'volume', 'blockdevice', 'provision', 'distro', 'finalizer', 'metrics'], dest='type', metavar='plugin-type')
     parser.add_argument('command', help='Command to run. Valid commands: search install list', choices=['search', 'install', 'list'], metavar='command')
     parser.add_argument('name', help='Name of the plugin', metavar='name', nargs='?')
     args = parser.parse_args()
@@ -94,7 +95,7 @@ def plugin_manager():
                     m = rgx.search(alias)
                     if m:
                         break
-            
+
             if m:
                 if args.type and args.type != data['type']:
                     continue
@@ -139,12 +140,12 @@ def plugin_manager():
                         break
             else:
                 plugin = data
-        
+
         if not plugin:
             print "Unable to find a plugin named %s. You should use the search to find the correct name or alias for the plugin you want to install" % args.name
             sys.exit()
         else:
-            url = 'https://github.com/aminator-plugins/%s/archive/%s.tar.gz' % (plugin['repo_name'], plugin['branch']) 
+            url = 'https://github.com/aminator-plugins/%s/archive/%s.tar.gz' % (plugin['repo_name'], plugin['branch'])
             print "Downloading latest version of %s from %s" % (args.name, url)
             req = requests.get(url, stream=True)
 

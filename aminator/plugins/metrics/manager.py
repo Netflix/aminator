@@ -2,7 +2,7 @@
 
 #
 #
-#  Copyright 2013 Netflix, Inc.
+#  Copyright 2014 Netflix, Inc.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
 #     you may not use this file except in compliance with the License.
@@ -19,22 +19,26 @@
 #
 
 """
-aminator.plugins.volume.linux
-=============================
-basic virtio volume allocator
+aminator.plugins.metrics.manager
+===============================
+Metrics plugin manager(s) and utils
 """
 import logging
-from aminator.plugins.volume.linux import LinuxVolumePlugin
 
-__all__ = ('VirtioVolumePlugin',)
+from aminator.plugins.manager import BasePluginManager
+
+
 log = logging.getLogger(__name__)
 
 
-class VirtioVolumePlugin(LinuxVolumePlugin):
-    _name = 'virtio'
+class MetricsPluginManager(BasePluginManager):
+    """ Metrics Plugin Manager """
+    _entry_point = 'aminator.plugins.metrics'
 
-    def _attach(self, blockdevice):
-        with blockdevice(self._cloud) as dev:
-            ### The device sent to attach has just the base device name
-            ### The mount must be done using the partition number
-            self._dev = self._cloud.attach_volume(dev) + "1"
+    @property
+    def entry_point(self):
+        return self._entry_point
+
+    @staticmethod
+    def check_func(plugin):  # pylint: disable=method-hidden
+        return True

@@ -27,7 +27,8 @@ import logging
 import os
 
 from aminator.plugins.provisioner.base import BaseProvisionerPlugin
-from aminator.util.linux import command, keyval_parse
+from aminator.util.linux import monitor_command, result_to_dict
+from aminator.util.metrics import cmdsucceeds, cmdfails, lapse
 
 __all__ = ('YumProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -44,11 +45,14 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
         config = self._config.plugins[self.full_name]
         return yum_clean_metadata(config.get('clean_repos', []))
 
+    @cmdsucceeds("aminator.provisioner.yum.provision_package.count")
+    @cmdfails("aminator.provisioner.yum.provision_package.error")
+    @lapse("aminator.provisioner.yum.provision_package.duration")
     def _provision_package(self):
         result = self._refresh_repo_metadata()
         if not result.success:
             log.critical('Repo metadata refresh failed: {0.std_err}'.format(result.result))
-            return False
+            return result
         context = self._config.context
         if context.package.get('local_install', False):
             return yum_localinstall(context.package.arg)
@@ -58,44 +62,38 @@ class YumProvisionerPlugin(BaseProvisionerPlugin):
     def _store_package_metadata(self):
         context = self._config.context
         config = self._config.plugins[self.full_name]
-        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''),
-                                        context.package.get('local_install', False))
+        metadata = rpm_package_metadata(context.package.arg, config.get('pkg_query_format', ''), context.package.get('local_install', False))
         for x in config.pkg_attributes:
             metadata.setdefault(x, None)
         context.package.attributes = metadata
 
 
-@command()
 def yum_install(package):
-    return 'yum --nogpgcheck -y install {0}'.format(package)
+    return monitor_command(['yum', '--nogpgcheck', '-y', 'install', package])
 
 
-@command()
 def yum_localinstall(path):
     if not os.path.isfile(path):
         log.critical('Package {0} not found'.format(path))
         return None
-    return 'yum --nogpgcheck -y localinstall {0}'.format(path)
+    return monitor_command(['yum', '--nogpgcheck', '-y', 'localinstall', path])
 
 
-@command()
 def yum_clean_metadata(repos=None):
-    clean='yum clean metadata'
+    clean = ['yum', 'clean', 'metadata']
     if repos:
-        return '{0} --disablerepo=\* --enablerepo={1}'.format(clean, ','.join(repos))
-    return clean
+        clean.extend(['--disablerepo', '*', '--enablerepo', ','.join(repos)])
+    return monitor_command(clean)
 
 
-@command()
 def rpm_query(package, queryformat, local=False):
     cmd = 'rpm -q --qf'.split()
     cmd.append(queryformat)
     if local:
         cmd.append('-p')
     cmd.append(package)
-    return cmd
+    return monitor_command(cmd)
 
 
-@keyval_parse()
 def rpm_package_metadata(package, queryformat, local=False):
-    return rpm_query(package, queryformat, local)
+    return result_to_dict(rpm_query(package, queryformat, local))

@@ -31,7 +31,8 @@ from aminator.exceptions import VolumeException
 from aminator.plugins.distro.base import BaseDistroPlugin
 from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
-
+from aminator.util.linux import short_circuit_files, rewire_files
+from aminator.util.metrics import fails, timer
 
 __all__ = ('BaseLinuxDistroPlugin',)
 log = logging.getLogger(__name__)
@@ -44,14 +45,44 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
     """
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractmethod
     def _activate_provisioning_service_block(self):
-        """ enable service startup after we're done installing packages in chroot"""
+        """
+        Enable service startup so that things work when the AMI starts
+        For RHEL-like systems, we undo the short_circuit
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not rewire_files(self._mountpoint, files):
+                log.warning("Unable to rewire some files")
+                return True
+            else:
+                log.debug('Files rewired successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured, no rewiring done')
+        return True
 
-    @abc.abstractmethod
     def _deactivate_provisioning_service_block(self):
-        """ prevent service startup when packages are installed in chroot """
+        """
+        Prevent packages installing the chroot from starting
+        For RHEL-like systems, we can use short_circuit which replaces the service call with /bin/true
+        """
+        config = self._config.plugins[self.full_name]
+        files = config.get('short_circuit_files', [])
+        if files:
+            if not short_circuit_files(self._mountpoint, files):
+                log.warning('Unable to short circuit some files')
+                return True
+            else:
+                log.debug('Files short-circuited successfully')
+                return True
+        else:
+            log.debug('No short circuit files configured')
+            return True
 
+    @fails("aminator.distro.linux.configure_chroot.error")
+    @timer("aminator.distro.linux.configure_chroot.duration")
     def _configure_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Configuring chroot at {0}'.format(self._mountpoint))
@@ -66,7 +97,7 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
 
         log.debug("starting short_circuit ")
 
-        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
+        # TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', False):
             if not self._deactivate_provisioning_service_block():
                 log.critical('Failure short-circuiting files')
@@ -86,11 +117,10 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             if not mounted(mountspec.mountpoint):
                 result = mount(mountspec)
                 if not result.success:
-                    log.critical('Unable to configure chroot: {0.std_err}'.format(result))
+                    log.critical('Unable to configure chroot: {0.std_err}'.format(result.result))
                     return False
-        else:
-            log.debug('Mounts configured')
-            return True
+        log.debug('Mounts configured')
+        return True
 
     def _install_provision_configs(self):
         config = self._config.plugins[self.full_name]
@@ -106,10 +136,12 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             log.debug('No provision config files configured')
             return True
 
+    @fails("aminator.distro.linux.teardown_chroot.error")
+    @timer("aminator.distro.linux.teardown_chroot.duration")
     def _teardown_chroot(self):
         config = self._config.plugins[self.full_name]
         log.debug('Tearing down chroot at {0}'.format(self._mountpoint))
-        #TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
+        # TODO: kvick we should rename 'short_circuit' to something like 'disable_service_start'
         if config.get('short_circuit', True):
             if not self._activate_provisioning_service_block():
                 log.critical('Failure during re-enabling service startup')
@@ -132,18 +164,18 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             mountspec = MountSpec(dev, fstype, os.path.join(self._mountpoint, mountpoint.lstrip('/')), options)
             log.debug('Attempting to unmount {0}'.format(mountspec))
             if not mounted(mountspec.mountpoint):
-                log.warn('{0} not mounted'.format(mountspec.mountpoint))
+                log.warning('{0} not mounted'.format(mountspec.mountpoint))
                 continue
             result = unmount(mountspec.mountpoint)
             if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
+                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
                 return False
         log.debug('Checking for stray mounts')
         for mountpoint in lifo_mounts(self._mountpoint):
             log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
             result = unmount(mountpoint)
             if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.stderr}'.format(mountspec, result))
+                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
                 return False
         log.debug('Teardown of chroot mounts succeeded!')
         return True
@@ -168,6 +200,9 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
+        if exc_type:
+            log.debug('Exception encountered in Linux distro plugin context manager',
+                      exc_info=(exc_type, exc_value, trace))
         if exc_type and self._config.context.get("preserve_on_error", False):
             return False
         if not self._teardown_chroot():
