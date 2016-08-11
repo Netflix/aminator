@@ -145,7 +145,9 @@ class AptProvisionerPlugin(BaseProvisionerPlugin):
 
     @staticmethod
     def apt_get_install(*options):
-        install_result = monitor_command(['apt-get', '-y', 'install'] + list(options))
+		cmd = ['apt-get', '-y', 'install']
+		cmd.extend(options)
+		install_result = monitor_command(cmd)
         if not install_result.success:
             log.debug('failure:{0.command} :{0.std_err}'.format(install_result.result))
         return install_result
