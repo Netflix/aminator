@@ -50,6 +50,9 @@ class BaseFinalizerPlugin(BasePlugin):
         return self
 
     def __exit__(self, typ, val, trc):
+        if typ:
+            log.debug('Exception encountered in Finalizer plugin context manager',
+                      exc_info=(typ, val, trc))
         return False
 
     def __call__(self, cloud):

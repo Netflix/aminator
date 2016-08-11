@@ -52,8 +52,7 @@ class PluginManager(object):
             entry_point = plugin_info.entry_point
             classname = plugin_info['class']
 
-            manager_module = __import__(entry_point + '.manager', globals=globals(), locals=locals(),
-                                        fromlist=(classname,))
+            manager_module = __import__(entry_point + '.manager', globals=globals(), locals=locals(), fromlist=(classname,))
             manager = getattr(manager_module, classname)
 
             self._registry[entry_point] = manager()

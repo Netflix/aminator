@@ -40,5 +40,5 @@ class DistroPluginManager(BasePluginManager):
         return self._entry_point
 
     @staticmethod
-    def check_func(plugin):
+    def check_func(plugin):  # pylint: disable=method-hidden
         return True

@@ -3,3 +3,6 @@ enabled: true
 device_prefixes: [xvd, sd]
 # think device_prefix + device letter (sda, sdb, xvda, etc)
 device_letters: 'fghijklmnop'
+# if aminating on a HVM instance, one cannot use minor device numbers for EBS
+# volumes. Set this to False to avoid using minor device numbers
+use_minor_device_numbers: true

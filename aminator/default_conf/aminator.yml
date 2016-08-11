@@ -32,6 +32,9 @@ plugins:
       finalizer:
         entry_point: aminator.plugins.finalizer
         class: FinalizerPluginManager
+      metrics:
+        entry_point: aminator.plugins.metrics
+        class: MetricsPluginManager
       provisioner:
         entry_point: aminator.plugins.provisioner
         class: ProvisionerPluginManager
@@ -53,3 +56,4 @@ context:
     tags: {}
   web_log: {}
   cloud: {}
+  volume: {}

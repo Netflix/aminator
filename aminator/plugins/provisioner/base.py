@@ -33,8 +33,8 @@ from glob import glob
 from aminator.config import conf_action
 from aminator.plugins.base import BasePlugin
 from aminator.util import download_file
-from aminator.util.linux import Chroot, command
-
+from aminator.util.linux import Chroot, monitor_command
+from aminator.util.metrics import fails, lapse
 
 __all__ = ('BaseProvisionerPlugin',)
 log = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('Inside chroot')
 
             result = self._provision_package()
-            
+
             if context.package.get('interactive', False):
                 os.system("bash")
 
@@ -107,7 +107,8 @@ class BaseProvisionerPlugin(BasePlugin):
             log.debug('scripts_dir = {0}'.format(scripts_dir))
 
             if scripts_dir:
-                self._run_provision_scripts(scripts_dir)
+                if not self._run_provision_scripts(scripts_dir):
+                    return False
 
         log.debug('Exited chroot')
 
@@ -117,33 +118,36 @@ class BaseProvisionerPlugin(BasePlugin):
         log.info('Provisioning succeeded!')
         return True
 
+    @fails("aminator.provisioner.provision_scripts.error")
+    @lapse("aminator.provisioner.provision_scripts.duration")
     def _run_provision_scripts(self, scripts_dir):
         """
         execute every python or shell script found in scripts_dir
-            1. run python scripts in lexical order
-            2. run shell scripts in lexical order
+            1. run python or shell scripts in lexical order
 
         :param scripts_dir: path in chroot to look for python and shell scripts
         :return: None
         """
 
-        python_script_files = sorted(glob(scripts_dir + '/*.py'))
-        if python_script_files is None:
-            log.debug('no python scripts found in {0}'.format(scripts_dir))
+        script_files = sorted(glob(scripts_dir + '/*.py') + glob(scripts_dir + '/*.sh'))
+        if not script_files:
+            log.debug("no python or shell scripts found in {0}".format(scripts_dir))
         else:
-            log.debug('found python script {0} in {1}'.format(python_script_files, scripts_dir))
-            for script in python_script_files:
-                log.debug('executing python {0}'.format(script))
-                run_script('python {0}'.format(script))
-
-        shell_script_files = sorted(glob(scripts_dir + '/*.sh'))
-        if shell_script_files is None:
-            log.debug('no shell scripts found in {0}'.format(scripts_dir))
-        else:
-            log.debug('found shell script {0} in {1}'.format(shell_script_files, scripts_dir))
-            for script in shell_script_files:
-                log.debug('executing sh {0}'.format(script))
-                run_script('sh {0}'.format(script))
+            log.debug('found scripts {0} in {1}'.format(script_files, scripts_dir))
+            for script in script_files:
+                log.debug('executing script {0}'.format(script))
+                if os.access(script, os.X_OK):
+                    # script is executable, so just run it
+                    result = run_script(script)
+                else:
+                    if script.endswith('.py'):
+                        result = run_script(['python', script])
+                    else:
+                        result = run_script(['sh', script])
+                if not result.success:
+                    log.critical("script failed: {0}: {1.std_err}".format(script, result.result))
+                    return False
+        return True
 
     def _local_install(self):
         """True if context.package.arg ends with a package extension
@@ -163,16 +167,16 @@ class BaseProvisionerPlugin(BasePlugin):
         """
         context = self._config.context
         context.package.file = os.path.basename(context.package.arg)
-        context.package.full_path = os.path.join(self._distro._mountpoint,
-                                                 context.package.dir.lstrip('/'),
-                                                 context.package.file)
+        context.package.full_path = os.path.join(self._distro._mountpoint, context.package.dir.lstrip('/'), context.package.file)
         try:
             if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)
             else:
                 self._move_pkg(context)
         except Exception:
-            log.exception('Error encountered while staging package')
+            errstr = 'Exception encountered while staging package'
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
             # reset to chrooted file path
         context.package.arg = os.path.join(context.package.dir, context.package.file)
@@ -184,8 +188,7 @@ class BaseProvisionerPlugin(BasePlugin):
         pkg_url = context.package.arg
         dst_file_path = context.package.full_path
         log.debug('downloading {0} to {1}'.format(pkg_url, dst_file_path))
-        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1),
-                      verify_https=context.get('verify_https', False))
+        download_file(pkg_url, dst_file_path, context.package.get('timeout', 1), verify_https=context.get('verify_https', False))
 
     def _move_pkg(self, context):
         src_file = context.package.arg.replace('file://', '')
@@ -196,6 +199,6 @@ class BaseProvisionerPlugin(BasePlugin):
         self._distro = distro
         return self
 
-@command()
+
 def run_script(script):
-    return '{0}'.format(script)
+    return monitor_command(script)

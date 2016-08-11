@@ -30,6 +30,7 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 
+from aminator.util import randword
 try:
     from logging.config import dictConfig
 except ImportError:
@@ -40,7 +41,7 @@ import bunch
 from pkg_resources import resource_string, resource_exists
 
 try:
-    from yaml import CLoader as Loader
+    from yaml import CLoader as Loader  # pylint: disable=redefined-outer-name
 except ImportError:
     from yaml import Loader
 
@@ -63,27 +64,27 @@ RSRC_DEFAULT_CONFS = {
 def init_defaults(argv=None, debug=False):
     argv = argv or sys.argv[1:]
     config = Config.from_defaults()
-    config = config.dict_merge(config, Config.from_files(config.config_files.main,
-                                                         config.config_root))
-    main_parser = Argparser(argv=argv, description='Aminator: bringing AMIs to life', add_help=False,
-                            argument_default=argparse.SUPPRESS)
+    config = config.dict_merge(config, Config.from_files(config.config_files.main, config.config_root))
+    main_parser = Argparser(argv=argv, description='Aminator: bringing AMIs to life', add_help=False, argument_default=argparse.SUPPRESS)
     config.logging = LoggingConfig.from_defaults()
-    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging,
-                                                                                config.config_root))
+    config.logging = config.dict_merge(config.logging, LoggingConfig.from_files(config.config_files.logging, config.config_root))
     config.environments = EnvironmentConfig.from_defaults()
-    config.environments = config.dict_merge(config.environments,
-                                            EnvironmentConfig.from_files(config.config_files.environments,
-                                                                         config.config_root))
+    config.environments = config.dict_merge(config.environments, EnvironmentConfig.from_files(config.config_files.environments, config.config_root))
+    default_metrics = getattr(config.environments, "metrics", "logger")
+    for env in config.environments:
+        if isinstance(config.environments[env], dict):
+            if "metrics" not in config.environments[env]:
+                config.environments[env]["metrics"] = default_metrics
 
     if config.logging.base.enabled:
         dictConfig(config.logging.base.config.toDict())
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
-        for handler in logging.getLogger().handlers: handler.setLevel(logging.DEBUG)
+        for handler in logging.getLogger().handlers:
+            handler.setLevel(logging.DEBUG)
 
     add_base_arguments(parser=main_parser, config=config)
-    plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS,
-                              parents=[main_parser])
+    plugin_parser = Argparser(argv=argv, add_help=True, argument_default=argparse.SUPPRESS, parents=[main_parser])
     log.info('Aminator {0} default configuration loaded'.format(aminator.__version__))
     return config, plugin_parser
 
@@ -94,7 +95,7 @@ class Config(bunch.Bunch):
     resource_default = RSRC_DEFAULT_CONFS['main']
 
     @classmethod
-    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs):
+    def from_yaml(cls, yaml_data, Loader=Loader, *args, **kwargs):  # pylint: disable=redefined-outer-name
         return cls(cls.fromYAML(yaml_data, Loader=Loader, *args, **kwargs))
 
     @classmethod
@@ -130,8 +131,7 @@ class Config(bunch.Bunch):
         if namespace and name and resource_exists(namespace, name):
             _namespace = namespace
             _name = name
-        elif (cls.resource_package and cls.resource_default
-              and resource_exists(cls.resource_package, cls.resource_default)):
+        elif (cls.resource_package and cls.resource_default and resource_exists(cls.resource_package, cls.resource_default)):
             _namespace = cls.resource_package
             _name = cls.resource_default
         else:
@@ -166,9 +166,12 @@ def configure_datetime_logfile(config, handler):
         return
 
     try:
-        filename = os.path.join(config.log_root, filename_format.format(os.path.basename(config.context.package.arg), datetime.utcnow()))
+        pkg = "{0}-{1}".format(os.path.basename(config.context.package.arg), randword(6))
+        filename = os.path.join(config.log_root, filename_format.format(pkg, datetime.utcnow()))
     except IndexError:
-        log.exception("missing replacement fields in {0}'s filename_format")
+        errstr = 'Missing replacement fields in filename_format for handler {0}'.format(handler)
+        log.error(errstr)
+        log.debug(errstr, exc_info=True)
 
     # find handler amongst all the loggers and reassign the filename/stream
     for h in [x for l in logging.root.manager.loggerDict for x in logging.getLogger(l).handlers] + logging.root.handlers:
@@ -210,6 +213,7 @@ class PluginConfig(Config):
 
 class Argparser(object):
     """ Argument parser class. Holds the keys to argparse """
+
     def __init__(self, argv=None, *args, **kwargs):
         self._argv = argv or sys.argv[1:]
         self._parser = argparse.ArgumentParser(*args, **kwargs)
@@ -226,15 +230,10 @@ class Argparser(object):
 
 
 def add_base_arguments(parser, config):
-    parser.add_config_arg('arg', metavar='package_spec', config=config.context.package,
-                          help='package to aminate. A string resolvable by the native package manager or'
-                          ' a file system path or http url to the package file.')
-    parser.add_config_arg('-e', '--environment', config=config.context,
-                          help='The environment configuration for amination')
-    parser.add_config_arg('--preserve-on-error', action='store_true', config=config.context,
-                          help='For Debugging. Preserve build chroot on error')
-    parser.add_config_arg('--verify-https', action='store_true', config=config.context,
-                          help='Specify if one wishes for plugins to verify SSL certs when hitting https URLs')
+    parser.add_config_arg('arg', metavar='package_spec', config=config.context.package, help='package to aminate. A string resolvable by the native package manager or a file system path or http url to the package file.')
+    parser.add_config_arg('-e', '--environment', config=config.context, help='The environment configuration for amination')
+    parser.add_config_arg('--preserve-on-error', action='store_true', config=config.context, help='For Debugging. Preserve build chroot on error')
+    parser.add_config_arg('--verify-https', action='store_true', config=config.context, help='Specify if one wishes for plugins to verify SSL certs when hitting https URLs')
     parser.add_argument('--version', action='version', version='%(prog)s {0}'.format(aminator.__version__))
     parser.add_argument('--debug', action='store_true', help='Verbose debugging output')
 
@@ -250,5 +249,5 @@ def conf_action(config, action=None):
     def _action_call(self, parser, namespace, values, option_string=None):
         return super(self.__class__, self).__call__(parser, config, values, option_string)
 
-    action_class = type(action_class_name, (action_subclass, ), {'__call__': _action_call})
+    action_class = type(action_class_name, (action_subclass,), {'__call__': _action_call})
     return action_class

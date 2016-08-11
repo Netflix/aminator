@@ -31,7 +31,7 @@ from aminator.environment import Environment
 from aminator.plugins import PluginManager
 from aminator.util.linux import mkdir_p
 
-__all__ = ('Aminator', )
+__all__ = ('Aminator',)
 log = logging.getLogger(__name__)
 
 
@@ -51,6 +51,8 @@ class Aminator(object):
         self.parser.parse_args()
         log.debug('Args parsed')
 
+        os.environ["AMINATOR_PACKAGE"] = self.config.context.package.arg
+
         log.debug('Creating initial folder structure if needed')
         mkdir_p(self.config.log_root)
         mkdir_p(os.path.join(self.config.aminator_root, self.config.lock_dir))
@@ -64,7 +66,7 @@ class Aminator(object):
 
     def aminate(self):
         with self.environment(self.config, self.plugin_manager) as env:
-            error = env.provision()
-            if not error:
+            ok = env.provision()
+            if ok:
                 log.info('Amination complete!')
-        return error
+        return 0 if ok else 1

@@ -25,22 +25,32 @@ Linux utility functions
 """
 
 import errno
-import fcntl
+import io
 import logging
 import os
 import shutil
 import stat
 import string
+import sys
+
 from collections import namedtuple
 from contextlib import contextmanager
+from copy import copy
+from fcntl import fcntl, F_GETFL, F_SETFL, LOCK_EX, LOCK_UN, LOCK_NB
+from fcntl import flock as _flock
+from os import O_NONBLOCK, environ, makedirs
+from os.path import isdir, dirname
+from select import select
+from signal import signal, alarm, SIGALRM
+from subprocess import Popen, PIPE
 
-import envoy
 from decorator import decorator
 
 
 log = logging.getLogger(__name__)
 MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
 CommandResult = namedtuple('CommandResult', 'success result')
+Response = namedtuple('Response', ['command', 'std_err', 'std_out', 'status_code'])
 # need to scrub anything not in this list from AMI names and other metadata
 SAFE_AMI_CHARACTERS = string.ascii_letters + string.digits + '().-/_'
 
@@ -54,19 +64,78 @@ def command(timeout=None, data=None, *cargs, **ckwargs):
     @decorator
     def _run(f, *args, **kwargs):
         _cmd = f(*args, **kwargs)
-        if _cmd is None:
-            return CommandResult(False, None)
-        if isinstance(_cmd, list):
-            log.debug('command: {0}'.format(" ".join(_cmd)))
-            _cmd = [_cmd]
-        else:
-            log.debug('command: {0}'.format(_cmd))
-        res = envoy.run(_cmd, timeout, data, *cargs, **ckwargs)
-        if any((res.std_out, res.std_err)):
-            log.debug('stdout: {0.std_out}\nstderr: {0.std_err}'.format(res))
-        log.debug('status code: {0}'.format(res.status_code))
-        return CommandResult(res.status_code == 0, res)
+        assert _cmd is not None, "null command passed to @command decorator"
+        return monitor_command(_cmd, timeout)
     return _run
+
+
+def set_nonblocking(stream):
+    fl = fcntl(stream.fileno(), F_GETFL)
+    fcntl(stream.fileno(), F_SETFL, fl | O_NONBLOCK)
+
+
+def monitor_command(cmd, timeout=None):
+    cmdStr = cmd
+    shell = True
+    if isinstance(cmd, list):
+        cmdStr = " ".join(cmd)
+        shell = False
+
+    assert cmdStr, "empty command passed to monitor_command"
+
+    log.debug('command: {0}'.format(cmdStr))
+
+    # sanitize PATH if we are running in a virtualenv
+    env = copy(environ)
+    if hasattr(sys, "real_prefix"):
+        env["PATH"] = string.replace(env["PATH"], "{0}/bin:".format(sys.prefix), "")
+
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE, close_fds=True, shell=shell, env=env)
+    set_nonblocking(proc.stdout)
+    set_nonblocking(proc.stderr)
+
+    stdout = io.open(
+        proc.stdout.fileno(), encoding='utf-8', errors='replace', closefd=False)
+    stderr = io.open(
+        proc.stderr.fileno(), encoding='utf-8', errors='replace', closefd=False)
+
+    if timeout:
+        alarm(timeout)
+
+        def handle_sigalarm(*_):
+            proc.terminate()
+        signal(SIGALRM, handle_sigalarm)
+
+    io_streams = [stdout, stderr]
+
+    std_out = u''
+    std_err = u''
+    with stdout, stderr:
+        while io_streams:
+            reads, _, _ = select(io_streams, [], [])
+            for fd in reads:
+                buf = fd.read(4096)
+                if buf is None or len(buf) == 0:
+                    # got eof
+                    io_streams.remove(fd)
+                else:
+                    if fd == stderr:
+                        log.debug(u'STDERR: {0}'.format(buf))
+                        std_err = u''.join([std_err, buf])
+                    else:
+                        if buf[-1] == u'\n':
+                            log.debug(buf[:-1])
+                        else:
+                            log.debug(buf)
+                        std_out = u''.join([std_out, buf])
+
+    proc.wait()
+    std_out = std_out.encode('utf-8')
+    std_err = std_err.encode('utf-8')
+    alarm(0)
+    status_code = proc.returncode
+    log.debug("status code: {0}".format(status_code))
+    return CommandResult(status_code == 0, Response(cmdStr, std_err, std_out, status_code))
 
 
 def mounted(path):
@@ -75,12 +144,10 @@ def mounted(path):
         return any(pat in mount for mount in mounts)
 
 
-@command()
 def fsck(dev):
-    return 'fsck -y {0}'.format(dev)
+    return monitor_command(['fsck', '-y', dev])
 
 
-@command()
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
         log.error('Must provide dev or mountpoint')
@@ -91,6 +158,13 @@ def mount(mountspec):
     if mountspec.fstype:
         if mountspec.fstype == 'bind':
             fstype_flag = '-o'
+            # we may need to create the mountpoint if it does not exist
+            if not isdir(mountspec.dev):
+                mountpoint = dirname(mountspec.mountpoint)
+            else:
+                mountpoint = mountspec.mountpoint
+                if not isdir(mountpoint):
+                    makedirs(mountpoint)
         else:
             fstype_flag = '-t'
         fstype_arg = '{0} {1}'.format(fstype_flag, mountspec.fstype)
@@ -98,16 +172,15 @@ def mount(mountspec):
     if mountspec.options:
         options_arg = '-o ' + mountspec.options
 
-    return 'mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint)
+    return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
 
-@command()
+
 def unmount(dev):
-    return 'umount {0}'.format(dev)
+    return monitor_command(['umount', dev])
 
 
-@command()
 def busy_mount(mountpoint):
-    return 'lsof -X {0}'.format(mountpoint)
+    return monitor_command(['lsof', '-X', mountpoint])
 
 
 def sanitize_metadata(word):
@@ -123,19 +196,22 @@ def keyval_parse(record_sep='\n', field_sep=':'):
     """
     @decorator
     def _parse(f, *args, **kwargs):
-        metadata = {}
-        ret = f(*args, **kwargs)
-        if ret.success:
-            for record in ret.result.std_out.split(record_sep):
-                try:
-                    key, val = record.split(field_sep, 1)
-                except ValueError:
-                    continue
-                metadata[key.strip()] = val.strip()
-        else:
-            log.debug('failure:{0.command} :{0.stderr}'.format(ret.result))
-        return metadata
+        return result_to_dict(f(*args, **kwargs), record_sep, field_sep)
     return _parse
+
+
+def result_to_dict(commandResult, record_sep='\n', field_sep=':'):
+    metadata = {}
+    if commandResult.success:
+        for record in commandResult.result.std_out.split(record_sep):
+            try:
+                key, val = record.split(field_sep, 1)
+            except ValueError:
+                continue
+            metadata[key.strip()] = val.strip()
+    else:
+        log.debug('failure:{0.command} :{0.std_err}'.format(commandResult.result))
+    return metadata
 
 
 class Chroot(object):
@@ -153,6 +229,8 @@ class Chroot(object):
         return self
 
     def __exit__(self, typ, exc, trc):
+        if typ:
+            log.debug('Exception encountered in Chroot', exc_info=(typ, exc, trc))
         log.debug('Leaving chroot')
         os.fchdir(self.real_root)
         os.chroot('.')
@@ -170,8 +248,7 @@ def lifo_mounts(root=None):
     if not mount_entries:
         # return an empty list if we didn't match
         return mount_entries
-    return [entry for entry in reversed(mount_entries)
-            if entry == root or entry.startswith(root + '/')]
+    return [entry for entry in reversed(mount_entries) if entry == root or entry.startswith(root + '/')]
 
 
 def copy_image(src=None, dst=None):
@@ -184,11 +261,11 @@ def copy_image(src=None, dst=None):
         dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
         blks = 0
         blksize = 64 * 1024
-        log.debug("copying %s to %s" % (src, dst))
+        log.debug("copying {0} to {1}".format(src, dst))
         while True:
             buf = os.read(src_fd, blksize)
             if len(buf) <= 0:
-                log.debug("%d %d blocks written." % (blks, blksize))
+                log.debug("{0} {1} blocks written.".format(blks, blksize))
                 os.close(src_fd)
                 os.close(dst_fd)
                 break
@@ -197,7 +274,7 @@ def copy_image(src=None, dst=None):
                 log.debug('wrote {0} bytes.'.format(out))
             blks += 1
     except OSError as e:
-        log.debug("%s: errno[%d]: %s." % (e.filename, e.errno, e.strerror))
+        log.debug("{0}: errno[{1}]: {2}.".format(e.filename, e.errno, e.strerror))
         return False
     return True
 
@@ -210,9 +287,9 @@ def flock(filename=None):
            ...
     """
     with open(filename, 'a') as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
+        _flock(fh, LOCK_EX)
         yield
-        fcntl.flock(fh, fcntl.LOCK_UN)
+        _flock(fh, LOCK_UN)
 
 
 def locked(filename=None):
@@ -222,11 +299,14 @@ def locked(filename=None):
     """
     with open(filename, 'a') as fh:
         try:
-            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _flock(fh, LOCK_EX | LOCK_NB)
             ret = False
         except IOError as e:
-            log.debug('{0} is locked: {1}'.format(filename, e))
-            ret = True
+            if e.errno == errno.EAGAIN:
+                log.debug('{0} is locked: {1}'.format(filename, e))
+                ret = True
+            else:
+                ret = False
     return ret
 
 
@@ -246,9 +326,8 @@ def native_device_prefix(prefixes):
         if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
             log.debug('Native prefix is {0}'.format(prefix))
             return prefix
-    else:
-        log.debug('{0} contains no native device prefixes'.format(prefixes))
-        return None
+    log.debug('{0} contains no native device prefixes'.format(prefixes))
+    return None
 
 
 def device_prefix(source_device):
@@ -292,18 +371,37 @@ def install_provision_config(src, dstpath, backup_ext='_aminator'):
         try:
             if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
                 backup = '{0}{1}'.format(dst, backup_ext)
-                log.debug('Moving existing {0} out of the way'.format(dst))
+                log.debug('Making backup of {0}'.format(dst))
                 try:
-                    os.rename(dst, backup)
+                    if os.path.isdir(dst) or os.path.islink(dst):
+                        try:
+                            os.rename(dst, backup)
+                        except OSError as e:
+                            if e.errno == 18:  # EXDEV Invalid cross-device link
+                                # need to copy across devices
+                                if os.path.isdir(dst):
+                                    shutil.copytree(dst, backup, symlinks=True)
+                                    shutil.rmtree(dst)
+                                elif os.path.islink(dst):
+                                    link = os.readlink(dst)
+                                    os.remove(dst)
+                                    os.symlink(link, backup)
+
+                    elif os.path.isfile(dst):
+                        shutil.copy(dst, backup)
                 except Exception:
-                    log.exception('Error encountered while copying {0} to {1}'.format(dst, backup))
+                    errstr = 'Error encountered while copying {0} to {1}'.format(dst, backup)
+                    log.critical(errstr)
+                    log.debug(errstr, exc_info=True)
                     return False
             if os.path.isdir(src):
-                shutil.copytree(src,dst,symlinks=True)
+                shutil.copytree(src, dst, symlinks=True)
             else:
-                shutil.copy(src,dst)
+                shutil.copy(src, dst)
         except Exception:
-            log.exception('Error encountered while copying {0} to {1}'.format(src, dst))
+            errstr = 'Error encountered while copying {0} to {1}'.format(src, dst)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         log.debug('{0} copied from aminator host to {1}'.format(src, dstpath))
         return True
@@ -324,25 +422,30 @@ def remove_provision_config(src, dstpath, backup_ext='_aminator'):
     backup = '{0}{1}'.format(dst, backup_ext)
     try:
         if os.path.isfile(dst) or os.path.islink(dst) or os.path.isdir(dst):
-            log.debug('Removing {0}'.format(dst))
             try:
                 if os.path.isdir(dst):
+                    log.debug('Removing {0}'.format(dst))
                     shutil.rmtree(dst)
-                else:
-                    os.remove(dst)
-                log.debug('Provision config {0} removed'.format(dst))
+                    log.debug('Provision config {0} removed'.format(dst))
             except Exception:
-                log.exception('Error encountered while removing {0}'.format(dst))
+                errstr = 'Error encountered while removing {0}'.format(dst)
+                log.critical(errstr)
+                log.debug(errstr, exc_info=True)
                 return False
 
         if os.path.isfile(backup) or os.path.islink(backup) or os.path.isdir(backup):
             log.debug('Restoring {0} to {1}'.format(backup, dst))
-            os.rename(backup, dst)
+            if os.path.isdir(backup) or os.path.islink(backup):
+                os.rename(backup, dst)
+            elif os.path.isfile(backup):
+                shutil.copy(backup, dst)
             log.debug('Restoration of {0} to {1} successful'.format(backup, dst))
         else:
             log.warn('No backup file {0} was found'.format(backup))
     except Exception:
-        log.exception('Error encountered while restoring {0} to {1}'.format(backup, dst))
+        errstr = 'Error encountered while restoring {0} to {1}'.format(backup, dst)
+        log.critical(errstr)
+        log.debug(errstr, exc_info=True)
         return False
     return True
 
@@ -364,7 +467,9 @@ def short_circuit(root, cmd, ext='short_circuit', dst='/bin/true'):
             os.symlink(dst, fullpath)
             log.debug('{0} linked to {1}'.format(fullpath, dst))
         except Exception:
-            log.exception('Error encountered while short circuiting {0} to {1}'.format(fullpath, dst))
+            errstr = 'Error encountered while short circuiting {0} to {1}'.format(fullpath, dst)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         else:
             log.debug('short circuited {0} to {1}'.format(fullpath, dst))
@@ -390,7 +495,9 @@ def rewire(root, cmd, ext='short_circuit'):
             os.rename('{0}.{1}'.format(fullpath, ext), fullpath)
             log.debug('{0} rewired'.format(fullpath))
         except Exception:
-            log.exception('Error encountered while rewiring {0}'.format(fullpath))
+            errstr = 'Error encountered while rewiring {0}'.format(fullpath)
+            log.critical(errstr)
+            log.debug(errstr, exc_info=True)
             return False
         else:
             log.debug('rewired {0}'.format(fullpath))

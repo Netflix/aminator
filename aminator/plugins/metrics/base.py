@@ -2,7 +2,7 @@
 
 #
 #
-#  Copyright 2013 Netflix, Inc.
+#  Copyright 2014 Netflix, Inc.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
 #     you may not use this file except in compliance with the License.
@@ -19,39 +19,64 @@
 #
 
 """
-aminator.plugins.distro.base
-=================================
-Base class(es) for OS distributions plugins
+aminator.plugins.metrics.base
+============================
+Base class(es) for metrics plugins
 """
 import abc
 import logging
 
 from aminator.plugins.base import BasePlugin
 
-__all__ = ('BaseDistroPlugin',)
+
+__all__ = ('BaseMetricsPlugin',)
 log = logging.getLogger(__name__)
 
 
-class BaseDistroPlugin(BasePlugin):
+class BaseMetricsPlugin(BasePlugin):
     """
-    Distribution plugins take a volume and prepare it for provisioning.
-    They are context managers to ensure resource cleanup
     """
-
     __metaclass__ = abc.ABCMeta
-    _entry_point = 'aminator.plugins.distro'
+    _entry_point = 'aminator.plugins.metrics'
 
     @abc.abstractmethod
+    def increment(self, name, value=1):
+        pass
+
+    @abc.abstractmethod
+    def gauge(self, name, value):
+        pass
+
+    @abc.abstractmethod
+    def timer(self, name, seconds):
+        pass
+
+    @abc.abstractmethod
+    def start_timer(self, name):
+        pass
+
+    @abc.abstractmethod
+    def stop_timer(self, name):
+        pass
+
+    @abc.abstractmethod
+    def flush(self):
+        pass
+
+    def add_tag(self, name, value):
+        self.tags[name] = value
+
+    def __init__(self):
+        super(BaseMetricsPlugin, self).__init__()
+        self.tags = {}
+
     def __enter__(self):
+        setattr(self._config, "metrics", self)
         return self
 
-    @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, trace):
+        self.flush()
         if exc_type:
-            log.debug('Exception encountered in distro plugin context manager',
+            log.debug('Exception encountered in metrics plugin context manager',
                       exc_info=(exc_type, exc_value, trace))
         return False
-
-    def __call__(self, mountpoint):
-        self._mountpoint = mountpoint
-        return self
