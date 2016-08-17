@@ -6,3 +6,5 @@ pyyaml
 requests
 stevedore
 simplejson
+dill
+
