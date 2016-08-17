@@ -35,6 +35,8 @@ from boto.exception import EC2ResponseError
 from boto.utils import get_instance_metadata
 from decorator import decorator
 from os import environ
+import os.path
+import dill
 
 from aminator.config import conf_action
 from aminator.exceptions import FinalizerException, VolumeException
@@ -421,15 +423,47 @@ class EC2CloudPlugin(BaseCloudPlugin):
                     raise RuntimeError('Must configure or provide either a base ami name or id')
                 else:
                     context.ami['ami_id'] = ami_id
-                    log.info('looking up base AMI with ID {0}'.format(ami_id))
-                    baseami = self._connection.get_all_images(image_ids=[ami_id])[0]
+                    baseami = self._lookup_ami_by_id(ami_id)
             else:
-                log.info('looking up base AMI with name {0}'.format(ami_id))
-                baseami = self._connection.get_all_images(filters={'name': ami_id})[0]
+                baseami = self._lookup_ami_by_name(ami_id)
         except IndexError:
             raise RuntimeError('Could not locate base AMI with identifier: {0}'.format(ami_id))
         log.info('Successfully resolved {0.name}({0.id})'.format(baseami))
         context['base_ami'] = baseami
+
+    def _lookup_ami_by_name(self, ami_name):
+        ami_details = self._lookup_image_cache(ami_name)
+        if ami_details:
+            return ami_details
+        log.info('looking up base AMI with name {0}'.format(ami_name))
+        ami_details = self._connection.get_all_images(filters={'name': ami_name})[0]
+        self._save_image_cache(ami_name, ami_details)
+        return ami_details
+
+    def _lookup_ami_by_id(self, ami_id):
+        ami_details = self._lookup_image_cache(ami_id)
+        if ami_details:
+            return ami_details
+        log.info('looking up base AMI with ID {0}'.format(ami_id))
+        ami_details = self._connection.get_all_images(image_ids=[ami_id])[0]
+        self._save_image_cache(ami_id, ami_details)
+        return ami_details
+
+    def _lookup_image_cache(self, filename):
+        cache_file = os.path.join(self._config.aminator_root, "image-cache", filename)
+        if os.path.isfile(cache_file):
+            try:
+                log.info("loading cached ami details for {0}".format(filename))
+                with open(cache_file, 'r') as f:
+                    return dill.load(f)
+            except Exception as e:
+                log.warning("Failed to parse {0}: {1}".format(cache_file, e))
+        return None
+
+    def _save_image_cache(self, filename, details):
+        cache_file = os.path.join(self._config.aminator_root, "image-cache", filename)
+        with open(cache_file, 'w') as f:
+            dill.dump(details, f)
 
     def __enter__(self):
         self.connect()
