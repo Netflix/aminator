@@ -42,7 +42,7 @@ from aminator.config import conf_action
 from aminator.exceptions import FinalizerException, VolumeException
 from aminator.plugins.cloud.base import BaseCloudPlugin
 from aminator.util import retry
-from aminator.util.linux import device_prefix, native_block_device, os_node_exists
+from aminator.util.linux import device_prefix, native_block_device, os_node_exists, mkdir_p
 from aminator.util.metrics import timer, raises, succeeds, lapse
 
 
@@ -461,7 +461,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return None
 
     def _save_image_cache(self, filename, details):
-        cache_file = os.path.join(self._config.aminator_root, "image-cache", filename)
+        cache_dir = os.path.join(self._config.aminator_root, "image-cache")
+        cache_file = os.path.join(cache_dir, filename)
+        mkdir_p(cache_dir)
         with open(cache_file, 'w') as f:
             dill.dump(details, f)
 
