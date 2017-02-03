@@ -1,3 +1,4 @@
+boto>=2.7
 boto3
 bunch
 decorator

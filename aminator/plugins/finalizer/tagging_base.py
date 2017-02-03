@@ -47,6 +47,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         tagging.add_argument('-c', '--creator', dest='creator', action=conf_action(context.ami), help=creator_help)
         tagging.add_argument('--vm-type', dest='vm_type', choices=["paravirtual", "hvm"], action=conf_action(context.ami), help='virtualization type to register image as')
         tagging.add_argument('--enhanced-networking', dest='enhanced_networking', action=conf_action(context.ami, action='store_true'), help='enable enhanced networking (SR-IOV)')
+        tagging.add_argument('--ena-networking', dest='ena_networking', action=conf_action(context.ami, action='store_true'), help='enable elastic network adapter support (ENA)')
         return tagging
 
     def _set_metadata(self):
@@ -123,10 +124,16 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
             environ["AMINATOR_VM_TYPE"] = context.ami.vm_type
         if context.ami.get("enhanced_networking", None):
             environ["AMINATOR_ENHANCED_NETWORKING"] = str(int(context.ami.enhanced_networking))
+        if context.ami.get("ena_networking", None):
+            environ["AMINATOR_ENA_NETWORKING"] = str(int(context.ami.ena_networking))
 
         if context.ami.get("enhanced_networking", False):
             if context.ami.get("vm_type", "paravirtual") != "hvm":
                 raise ValueError("--enhanced-networking requires --vm-type hvm")
+
+        if context.ami.get("ena_networking", False):
+            if context.ami.get("vm_type", "paravirtual") != "hvm":
+                raise ValueError("--ena-networking requires --vm-type hvm")
 
         return self
 
