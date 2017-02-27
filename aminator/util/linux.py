@@ -158,6 +158,10 @@ def mount(mountspec):
     if mountspec.fstype:
         if mountspec.fstype == 'bind':
             fstype_flag = '-o'
+            # need to make the bind mounts private so other aminate processes
+            # running in parallel do not automagically effect our mounts
+            # preventing us from umount'ing with "device busy" error
+            options_arg = "--make-private"
             # we may need to create the mountpoint if it does not exist
             if not isdir(mountspec.dev):
                 mountpoint = dirname(mountspec.mountpoint)
