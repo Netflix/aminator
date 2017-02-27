@@ -174,7 +174,7 @@ def mount(mountspec):
         fstype_arg = '{0} {1}'.format(fstype_flag, mountspec.fstype)
 
     if mountspec.options:
-        options_arg = '-o ' + mountspec.options
+        options_arg += ' -o ' + mountspec.options
 
     return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
 
