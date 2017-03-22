@@ -335,6 +335,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             client = boto3.client('ec2', region_name=ami_metadata.get('region'))
             response = client.register_image(**request)
             log.debug('Registration response data [{}]'.format(response))
+
             ami_id = response['ImageId']
             if ami_id is None:
                 return False
@@ -347,7 +348,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             waiter.wait(**wait_request)
             # Now, using boto2, load the Image so downstream tagging operations work
             # using boto2 classes
-            log.debug('loading Image for [{}]'.format(ami_id))
+            log.debug('Image available!  Loading boto2.Image for [{}]'.format(ami_id))
             self._ami = self._connection.get_image(ami_id)
         except ClientError as e:
             if e['Error']['Code'] == 'InvalidAMIID.NotFound':
