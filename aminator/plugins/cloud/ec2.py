@@ -332,7 +332,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
           
         log.debug('Boto3 registration request data [{}]'.format(request))
 
-	try:
+	    try:
             client = boto3.client('ec2', region_name=ami_metadata.get('region'))
             response = client.register_image(**request)
         except ClientError as e:
@@ -343,29 +343,28 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
         ami_id = response['ImageId']
 
-	if ami_id is None:
+	    if ami_id is None:
             return False
 
-	try:
-            # not 100% sure this is
+	    try:
             log.info('Waiting for [{}] to become available'.format(ami_id))
-	    waiter = client.get_waiter('image_available')
-	    wait_request = {}
+	        waiter = client.get_waiter('image_available')
+	        wait_request = {}
             wait_request['ImageIds'] = []
-	    wait_request['ImageIds'].append(ami_id)
+	        wait_request['ImageIds'].append(ami_id)
             waiter.wait(**wait_request)
 
-	    # Now, using boto2, load the Image so downstream tagging operations work
+	        # Now, using boto2, load the Image so downstream tagging operations work
             # using boto2 classes
             log.debug('loading Image for [{}]'.format(ami_id))
-	    self._ami = self._connection.get_image(ami_id)
+	        self._ami = self._connection.get_image(ami_id)
        	except ClientError as e:
             if e['Error']['Code'] == 'InvalidAMIID.NotFound':
                 log.debug('{0} was not found while waiting for it to become available'.format(ami_id))
             else:
                 raise e
 
-	self._config.context.ami.image = self._ami
+	    self._config.context.ami.image = self._ami
 
         return True
 
