@@ -27,7 +27,6 @@ import logging
 from time import sleep
 
 from boto.ec2 import connect_to_region, EC2Connection
-from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
 from boto.ec2.image import Image
 from boto.ec2.instance import Instance
 from boto.ec2.volume import Volume
@@ -309,10 +308,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
     @registration_retry(tries=3, delay=1, backoff=1)
     def _register_image(self, **ami_metadata):
         """Register the AMI using boto3/botocore components which supports ENA
-           This is the only use of boto3 in aminator currently""" 
+           This is the only use of boto3 in aminator currently"""
 
         # construct AMI registration payload boto3 style
-        request = {} 
+        request = {}
         request['Name'] = ami_metadata.pop('name')
         request['Description'] = ami_metadata.pop('description')
         request['Architecture'] = ami_metadata.pop('architecture')
@@ -329,42 +328,34 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
         if (ami_metadata.get('ena_networking')):
             request['EnaSupport'] = ami_metadata.pop('ena_networking')
-          
+
         log.debug('Boto3 registration request data [{}]'.format(request))
 
-	    try:
+        try:
             client = boto3.client('ec2', region_name=ami_metadata.get('region'))
             response = client.register_image(**request)
+            log.debug('Registration response data [{}]'.format(response))
+            ami_id = response['ImageId']
+            if ami_id is None:
+                return False
+
+            log.info('Waiting for [{}] to become available'.format(ami_id))
+            waiter = client.get_waiter('image_available')
+            wait_request = {}
+            wait_request['ImageIds'] = []
+            wait_request['ImageIds'].append(ami_id)
+            waiter.wait(**wait_request)
+            # Now, using boto2, load the Image so downstream tagging operations work
+            # using boto2 classes
+            log.debug('loading Image for [{}]'.format(ami_id))
+            self._ami = self._connection.get_image(ami_id)
         except ClientError as e:
+            if e['Error']['Code'] == 'InvalidAMIID.NotFound':
+                log.debug('{0} was not found while waiting for it to become available'.format(ami_id))
             log.error('Error during register_image: {}'.format(e))
             return False
 
-        log.debug('Registration response data [{}]'.format(response))
-
-        ami_id = response['ImageId']
-
-	    if ami_id is None:
-            return False
-
-	    try:
-            log.info('Waiting for [{}] to become available'.format(ami_id))
-	        waiter = client.get_waiter('image_available')
-	        wait_request = {}
-            wait_request['ImageIds'] = []
-	        wait_request['ImageIds'].append(ami_id)
-            waiter.wait(**wait_request)
-
-	        # Now, using boto2, load the Image so downstream tagging operations work
-            # using boto2 classes
-            log.debug('loading Image for [{}]'.format(ami_id))
-	        self._ami = self._connection.get_image(ami_id)
-       	except ClientError as e:
-            if e['Error']['Code'] == 'InvalidAMIID.NotFound':
-                log.debug('{0} was not found while waiting for it to become available'.format(ami_id))
-            else:
-                raise e
-
-	    self._config.context.ami.image = self._ami
+        self._config.context.ami.image = self._ami
 
         return True
 
@@ -414,7 +405,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return True
 
     def _make_block_device_map(self, block_device_map, root_block_device, delete_on_termination=True):
-	""" construct boto3 style BlockDeviceMapping """
+        """ construct boto3 style BlockDeviceMapping """
 
         bdm = []
 
@@ -433,7 +424,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             mapping = {}
             mapping['VirtualName'] = ec2_dev
             mapping['DeviceName'] = os_dev
-	    bdm.append(mapping)
+        bdm.append(mapping)
 
         log.debug('Created BlockDeviceMapping [{}]'.format(bdm))
         return bdm
