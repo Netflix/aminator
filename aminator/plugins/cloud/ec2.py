@@ -329,8 +329,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
             if request[key] is None:
                 raise FinalizerException('{} cannot be None'.format(key))
 
-        # this will be None for pv, set to 'simple' for hvm
-        request['SriovNetSupport'] = ami_metadata.get('sriov_net_support', None)
+        # can only be set to 'simple' for hvm.  don't include otherwise
+        if ami_metadata.get('sriov_net_support') is not None:
+            request['SriovNetSupport'] = ami_metadata.get('sriov_net_support')
 
         log.debug('Boto3 registration request data [{}]'.format(request))
 
@@ -427,8 +428,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             mapping = {}
             mapping['VirtualName'] = ec2_dev
             mapping['DeviceName'] = os_dev
-
-        bdm.append(mapping)
+            bdm.append(mapping)
 
         log.debug('Created BlockDeviceMapping [{}]'.format(bdm))
         return bdm
