@@ -27,14 +27,15 @@ import logging
 from time import sleep
 
 from boto.ec2 import connect_to_region, EC2Connection
-from boto.ec2.blockdevicemapping import BlockDeviceMapping, BlockDeviceType
 from boto.ec2.image import Image
 from boto.ec2.instance import Instance
 from boto.ec2.volume import Volume
 from boto.exception import EC2ResponseError
 from boto.utils import get_instance_metadata
+from botocore.exceptions import ClientError
 from decorator import decorator
 from os import environ
+import boto3
 import os.path
 import dill
 
@@ -306,36 +307,76 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     @registration_retry(tries=3, delay=1, backoff=1)
     def _register_image(self, **ami_metadata):
-        context = self._config.context
-        ami = Image(connection=self._connection)
-        ami.id = self._connection.register_image(**ami_metadata)
-        if ami.id is None:
+        """Register the AMI using boto3/botocore components which supports ENA
+           This is the only use of boto3 in aminator currently"""
+
+        # construct AMI registration payload boto3 style
+        request = {}
+        request['Name'] = ami_metadata.get('name', None)
+        request['Description'] = ami_metadata.get('description', None)
+        request['Architecture'] = ami_metadata.get('architecture', None)
+        request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
+        request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
+        request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
+        request['EnaSupport'] = ami_metadata.get('ena_networking', False)
+
+        if (ami_metadata.get('virtualization_type') == 'pv'):
+            request['KernelId'] = ami_metadata.get('kernel_id', None)
+            request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
+
+        # assert we have all the key params we need, nothing should be None
+        for key, value in request.items():
+            if request[key] is None:
+                raise FinalizerException('{} cannot be None'.format(key))
+
+        # can only be set to 'simple' for hvm.  don't include otherwise
+        if ami_metadata.get('sriov_net_support') is not None:
+            request['SriovNetSupport'] = ami_metadata.get('sriov_net_support')
+
+        log.debug('Boto3 registration request data [{}]'.format(request))
+
+        try:
+            client = boto3.client('ec2', region_name=ami_metadata.get('region'))
+            response = client.register_image(**request)
+            log.debug('Registration response data [{}]'.format(response))
+
+            ami_id = response['ImageId']
+            if ami_id is None:
+                return False
+
+            log.info('Waiting for [{}] to become available'.format(ami_id))
+            waiter = client.get_waiter('image_available')
+            wait_request = {}
+            wait_request['ImageIds'] = []
+            wait_request['ImageIds'].append(ami_id)
+            waiter.wait(**wait_request)
+            # Now, using boto2, load the Image so downstream tagging operations work
+            # using boto2 classes
+            log.debug('Image available!  Loading boto2.Image for [{}]'.format(ami_id))
+            self._ami = self._connection.get_image(ami_id)
+        except ClientError as e:
+            if e['Error']['Code'] == 'InvalidAMIID.NotFound':
+                log.debug('{0} was not found while waiting for it to become available'.format(ami_id))
+            log.error('Error during register_image: {}'.format(e))
             return False
-        else:
-            while True:
-                # spin until Amazon recognizes the AMI ID it told us about
-                try:
-                    sleep(2)
-                    ami.update()
-                    break
-                except EC2ResponseError, e:
-                    if e.error_code == 'InvalidAMIID.NotFound':
-                        log.debug('{0} not found, retrying'.format(ami.id))
-                    else:
-                        raise e
-            log.info('AMI registered: {0} {1}'.format(ami.id, ami.name))
-            context.ami.image = self._ami = ami
-            return True
+
+        self._config.context.ami.image = self._ami
+
+        return True
 
     def register_image(self, *args, **kwargs):
         context = self._config.context
         vm_type = context.ami.get("vm_type", "paravirtual")
+        cloud_config = self._config.plugins[self.full_name]
+        self._instance_metadata = get_instance_metadata()
+        instance_region = self._instance_metadata['placement']['availability-zone'][:-1]
+        region = kwargs.pop('region', context.get('region', cloud_config.get('region', instance_region)))
         if 'manifest' in kwargs:
             ami_metadata = {
                 'name': context.ami.name,
                 'description': context.ami.description,
                 'image_location': kwargs['manifest'],
-                'virtualization_type': vm_type
+                'virtualization_type': vm_type,
             }
         else:
             # args will be [block_device_map, root_block_device]
@@ -345,11 +386,13 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'name': context.ami.name,
                 'description': context.ami.description,
                 'block_device_map': bdm,
+                'block_device_map_list': block_device_map,
                 'root_device_name': root_block_device,
                 'kernel_id': context.base_ami.kernel_id,
                 'ramdisk_id': context.base_ami.ramdisk_id,
                 'architecture': context.base_ami.architecture,
-                'virtualization_type': vm_type
+                'virtualization_type': vm_type,
+                'region': region
             }
             if vm_type == "hvm":
                 del ami_metadata['kernel_id']
@@ -358,16 +401,36 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if vm_type == 'hvm':
             if context.ami.get("enhanced_networking", False):
                 ami_metadata['sriov_net_support'] = 'simple'
+            ami_metadata['ena_networking'] = context.ami.get('ena_networking', False)
 
         if not self._register_image(**ami_metadata):
             return False
+
         return True
 
-    def _make_block_device_map(self, block_device_map, root_block_device):
-        bdm = BlockDeviceMapping(connection=self._connection)
-        bdm[root_block_device] = BlockDeviceType(snapshot_id=self._snapshot.id, delete_on_termination=True)
+    def _make_block_device_map(self, block_device_map, root_block_device, delete_on_termination=True):
+        """ construct boto3 style BlockDeviceMapping """
+
+        bdm = []
+
+        # root device
+        root_mapping = {}
+        root_mapping['DeviceName'] = root_block_device
+        root_mapping['Ebs'] = {}
+        root_mapping['Ebs']['SnapshotId'] = self._snapshot.id
+        root_mapping['Ebs']['VolumeSize'] = self._volume.size
+        root_mapping['Ebs']['VolumeType'] = self._volume.type
+        root_mapping['Ebs']['DeleteOnTermination'] = delete_on_termination
+        bdm.append(root_mapping)
+
+        # ephemerals
         for (os_dev, ec2_dev) in block_device_map:
-            bdm[os_dev] = BlockDeviceType(ephemeral_name=ec2_dev)
+            mapping = {}
+            mapping['VirtualName'] = ec2_dev
+            mapping['DeviceName'] = os_dev
+            bdm.append(mapping)
+
+        log.debug('Created BlockDeviceMapping [{}]'.format(bdm))
         return bdm
 
     @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
