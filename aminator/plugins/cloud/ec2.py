@@ -312,22 +312,25 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
         # construct AMI registration payload boto3 style
         request = {}
-        request['Name'] = ami_metadata.pop('name')
-        request['Description'] = ami_metadata.pop('description')
-        request['Architecture'] = ami_metadata.pop('architecture')
-        request['BlockDeviceMappings'] = ami_metadata.pop('block_device_map')
-        request['VirtualizationType'] = ami_metadata.pop('virtualization_type')
-        request['RootDeviceName'] = ami_metadata.pop('root_device_name')
+        request['Name'] = ami_metadata.get('name', None)
+        request['Description'] = ami_metadata.get('description', None)
+        request['Architecture'] = ami_metadata.get('architecture', None)
+        request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
+        request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
+        request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
+        request['EnaSupport'] = ami_metadata.get('ena_networking', False)
 
         if (ami_metadata.get('virtualization_type') == 'pv'):
-            request['KernelId'] = ami_metadata.pop('kernel_id')
-            request['RamdiskId'] = ami_metadata.pop('ramdisk_id')
+            request['KernelId'] = ami_metadata.get('kernel_id', None)
+            request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
 
-        if (ami_metadata.get('sriov_net_support')):
-            request['SriovNetSupport'] = ami_metadata.pop('sriov_net_support')
+        # assert we have all the key params we need, nothing should be None
+        for key, value in request.items():
+            if request[key] is None:
+                raise FinalizerException('{} cannot be None'.format(key))
 
-        if (ami_metadata.get('ena_networking')):
-            request['EnaSupport'] = ami_metadata.pop('ena_networking')
+        # this will be None for pv, set to 'simple' for hvm
+        request['SriovNetSupport'] = ami_metadata.get('sriov_net_support', None)
 
         log.debug('Boto3 registration request data [{}]'.format(request))
 
@@ -397,8 +400,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if vm_type == 'hvm':
             if context.ami.get("enhanced_networking", False):
                 ami_metadata['sriov_net_support'] = 'simple'
-            if context.ami.get("ena_networking", False):
-                ami_metadata['ena_networking'] = True
+            ami_metadata['ena_networking'] = context.ami.get('ena_networking', False)
 
         if not self._register_image(**ami_metadata):
             return False
@@ -425,6 +427,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
             mapping = {}
             mapping['VirtualName'] = ec2_dev
             mapping['DeviceName'] = os_dev
+
         bdm.append(mapping)
 
         log.debug('Created BlockDeviceMapping [{}]'.format(bdm))
