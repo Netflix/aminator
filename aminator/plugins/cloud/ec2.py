@@ -51,7 +51,7 @@ __all__ = ('EC2CloudPlugin',)
 log = logging.getLogger(__name__)
 
 
-def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, backoff=1, logger=None):
+def registration_retry(ExceptionToCheck=(ClientError,), tries=3, delay=1, backoff=1, logger=None):
     """
     a slightly tweaked form of aminator.util.retry for handling retries on image registration
     """
@@ -67,7 +67,7 @@ def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, b
             try:
                 return f(*args, **kwargs)
             except ExceptionToCheck, e:
-                if e.error_code == 'InvalidAMIName.Duplicate':
+                if e.response['Error']['Code'] == 'InvalidAMIName.Duplicate':
                     log.debug('Duplicate AMI Name {0}, retrying'.format(kwargs['name']))
                     attempt = abs(_tries - (total_tries + 1))
                     kwargs['name'] = kwargs.pop('name') + str(attempt)
@@ -76,9 +76,8 @@ def registration_retry(ExceptionToCheck=(EC2ResponseError,), tries=3, delay=1, b
                     _tries -= 1
                     _delay *= backoff
                 else:
-                    for (code, msg) in e.errors:
-                        log.critical('EC2ResponseError: {0}: {1}.'.format(code, msg))
-                        return False
+                    log.critical("Unable to retry register_image due to ClientError: %s", e)
+                    return False
         log.critical('Failed to register AMI')
         return False
     return _retry
@@ -355,11 +354,15 @@ class EC2CloudPlugin(BaseCloudPlugin):
             log.debug('Image available!  Loading boto2.Image for [{}]'.format(ami_id))
             self._ami = self._connection.get_image(ami_id)
         except ClientError as e:
-            if e['Error']['Code'] == 'InvalidAMIID.NotFound':
+            if e.response['Error']['Code'] == 'InvalidAMIID.NotFound':
                 log.debug('{0} was not found while waiting for it to become available'.format(ami_id))
-            log.error('Error during register_image: {}'.format(e))
-            return False
+                log.error('Error during register_image: {}'.format(e))
+                return False
+            else:
+                # defer to registration_retry decorator
+                raise e
 
+        log.info('AMI registered: {0} {1}'.format(self._ami.id, self._ami.name))
         self._config.context.ami.image = self._ami
 
         return True
