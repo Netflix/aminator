@@ -362,6 +362,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 # defer to registration_retry decorator
                 raise e
 
+        log.info('AMI registered: {0} {1}'.format(self._ami.id, self._ami.name))
         self._config.context.ami.image = self._ami
 
         return True
