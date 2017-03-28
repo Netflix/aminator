@@ -314,19 +314,21 @@ class EC2CloudPlugin(BaseCloudPlugin):
         request['Name'] = ami_metadata.get('name', None)
         request['Description'] = ami_metadata.get('description', None)
         request['Architecture'] = ami_metadata.get('architecture', None)
-        request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
-        request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
-        request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
         request['EnaSupport'] = ami_metadata.get('ena_networking', False)
+        request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
 
-        if (ami_metadata.get('virtualization_type') == 'pv'):
+        if (ami_metadata.get('virtualization_type') == 'paravirtual'):
             request['KernelId'] = ami_metadata.get('kernel_id', None)
             request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
 
-        # assert we have all the key params we need, nothing should be None
+        # assert we have all the key params. Nothing to _here_ should be None
         for key, value in request.items():
             if request[key] is None:
                 raise FinalizerException('{} cannot be None'.format(key))
+
+        # these can be None for S3 backed AMIs
+        request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
+        request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
 
         # can only be set to 'simple' for hvm.  don't include otherwise
         if ami_metadata.get('sriov_net_support') is not None:
