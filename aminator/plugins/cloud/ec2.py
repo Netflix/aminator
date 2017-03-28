@@ -318,15 +318,17 @@ class EC2CloudPlugin(BaseCloudPlugin):
         request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
 
         if (ami_metadata.get('virtualization_type') == 'paravirtual'):
+            # KernelId required
             request['KernelId'] = ami_metadata.get('kernel_id', None)
-            request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
+            if ami_metadata.get('ramdisk_id') is not None:
+                request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
 
         # assert we have all the key params. Nothing to _here_ should be None
         for key, value in request.items():
             if request[key] is None:
                 raise FinalizerException('{} cannot be None'.format(key))
 
-        # these can be None for S3 backed AMIs
+        # these can be None for instance store (S3) AMIs
         request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
         request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
 
