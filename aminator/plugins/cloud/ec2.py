@@ -313,7 +313,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         request = {}
         request['Name'] = ami_metadata.get('name', None)
         request['Description'] = ami_metadata.get('description', None)
-        request['Architecture'] = ami_metadata.get('architecture', None)
+        request['Architecture'] = ami_metadata.get('architecture', 'x86_64')
         request['EnaSupport'] = ami_metadata.get('ena_networking', False)
         request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
 
