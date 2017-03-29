@@ -313,19 +313,26 @@ class EC2CloudPlugin(BaseCloudPlugin):
         request = {}
         request['Name'] = ami_metadata.get('name', None)
         request['Description'] = ami_metadata.get('description', None)
-        request['Architecture'] = ami_metadata.get('architecture', 'x86_64')
+        request['Architecture'] = ami_metadata.get('architecture', None)
         request['EnaSupport'] = ami_metadata.get('ena_networking', False)
         request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
 
+        # when instance store, don't provide botocore expects a string value
         if ami_metadata.get('block_device_map') is not None:
             request['BlockDeviceMappings'] = ami_metadata.get('block_device_map')
         if ami_metadata.get('root_device_name') is not None:
             request['RootDeviceName'] = ami_metadata.get('root_device_name')
+
+        # only present for instance store
         if ami_metadata.get('image_location') is not None:
             request['ImageLocation'] = ami_metadata.get('image_location')
 
+        # can only be set to 'simple' for hvm.  don't include otherwise
+        if ami_metadata.get('sriov_net_support') is not None:
+            request['SriovNetSupport'] = ami_metadata.get('sriov_net_support')
+
         if (ami_metadata.get('virtualization_type') == 'paravirtual'):
-            # KernelId required, 
+            # KernelId required
             request['KernelId'] = ami_metadata.get('kernel_id', None)
             if ami_metadata.get('ramdisk_id') is not None:
                 request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
@@ -334,10 +341,6 @@ class EC2CloudPlugin(BaseCloudPlugin):
         for key, value in request.items():
             if request[key] is None:
                 raise FinalizerException('{} cannot be None'.format(key))
-
-        # can only be set to 'simple' for hvm.  don't include otherwise
-        if ami_metadata.get('sriov_net_support') is not None:
-            request['SriovNetSupport'] = ami_metadata.get('sriov_net_support')
 
         log.debug('Boto3 registration request data [{}]'.format(request))
 
@@ -377,37 +380,32 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def register_image(self, *args, **kwargs):
         context = self._config.context
         vm_type = context.ami.get("vm_type", "paravirtual")
+        architecture = context.ami.get("architecture", "x86_64")
         cloud_config = self._config.plugins[self.full_name]
         self._instance_metadata = get_instance_metadata()
         instance_region = self._instance_metadata['placement']['availability-zone'][:-1]
         region = kwargs.pop('region', context.get('region', cloud_config.get('region', instance_region)))
+
+        ami_metadata = {
+            'name': context.ami.name,
+            'description': context.ami.description,
+            'virtualization_type': vm_type,
+            'architecture': architecture,
+            'kernel_id': context.base_ami.kernel_id,
+            'ramdisk_id': context.base_ami.ramdisk_id,
+            'region': region
+        }
+
         if 'manifest' in kwargs:
-            ami_metadata = {
-                'name': context.ami.name,
-                'description': context.ami.description,
-                'image_location': kwargs['manifest'],
-                'virtualization_type': vm_type,
-                'architecture': context.base_ami.architecture,
-                'kernel_id': context.base_ami.kernel_id,
-                'ramdisk_id': context.base_ami.ramdisk_id,
-                'region': region
-            }
+            # it's an instance store AMI and needs bucket location
+            ami_metadata['image_location'] = kwargs['manifest']
         else:
             # args will be [block_device_map, root_block_device]
             block_device_map, root_block_device = args[:2]
             bdm = self._make_block_device_map(block_device_map, root_block_device)
-            ami_metadata = {
-                'name': context.ami.name,
-                'description': context.ami.description,
-                'block_device_map': bdm,
-                'block_device_map_list': block_device_map,
-                'root_device_name': root_block_device,
-                'kernel_id': context.base_ami.kernel_id,
-                'ramdisk_id': context.base_ami.ramdisk_id,
-                'architecture': context.base_ami.architecture,
-                'virtualization_type': vm_type,
-                'region': region
-            }
+            ami_metadata['block_device_map'] = bdm
+            ami_metadata['block_device_map_list'] = block_device_map
+            ami_metadata['root_device_name'] = root_block_device
 
         if vm_type == 'hvm':
             del ami_metadata['kernel_id']

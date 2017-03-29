@@ -48,6 +48,7 @@ class TaggingBaseFinalizerPlugin(BaseFinalizerPlugin):
         tagging.add_argument('--vm-type', dest='vm_type', choices=["paravirtual", "hvm"], action=conf_action(context.ami), help='virtualization type to register image as')
         tagging.add_argument('--enhanced-networking', dest='enhanced_networking', action=conf_action(context.ami, action='store_true'), help='enable enhanced networking (SR-IOV)')
         tagging.add_argument('--ena-networking', dest='ena_networking', action=conf_action(context.ami, action='store_true'), help='enable elastic network adapter support (ENA)')
+        tagging.add_argument('--arch', dest='architecture', choices=["i386", "x86_64"], action=conf_action(context.ami), help='architecture to register image as')
         return tagging
 
     def _set_metadata(self):

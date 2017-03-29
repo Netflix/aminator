@@ -12,3 +12,4 @@ default_block_device_map:
   - [/dev/sdc, ephemeral1]
   - [/dev/sdd, ephemeral2]
   - [/dev/sde, ephemeral3]
+default_architecture: x86_64
