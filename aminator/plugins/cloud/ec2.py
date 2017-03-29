@@ -384,7 +384,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'description': context.ami.description,
                 'image_location': kwargs['manifest'],
                 'virtualization_type': vm_type,
-                'architecture': context.base_ami.architecture
+                'architecture': context.base_ami.architecture,
+                'region': region
             }
         else:
             # args will be [block_device_map, root_block_device]
