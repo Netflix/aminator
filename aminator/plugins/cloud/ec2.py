@@ -388,6 +388,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'image_location': kwargs['manifest'],
                 'virtualization_type': vm_type,
                 'architecture': context.base_ami.architecture,
+                'kernel_id': context.base_ami.kernel_id,
+                'ramdisk_id': context.base_ami.ramdisk_id,
                 'region': region
             }
         else:
@@ -406,11 +408,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 'virtualization_type': vm_type,
                 'region': region
             }
-            if vm_type == "hvm":
-                del ami_metadata['kernel_id']
-                del ami_metadata['ramdisk_id']
 
         if vm_type == 'hvm':
+            del ami_metadata['kernel_id']
+            del ami_metadata['ramdisk_id']
             if context.ami.get("enhanced_networking", False):
                 ami_metadata['sriov_net_support'] = 'simple'
             ami_metadata['ena_networking'] = context.ami.get('ena_networking', False)
