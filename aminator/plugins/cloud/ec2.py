@@ -321,9 +321,11 @@ class EC2CloudPlugin(BaseCloudPlugin):
             request['BlockDeviceMappings'] = ami_metadata.get('block_device_map')
         if ami_metadata.get('root_device_name') is not None:
             request['RootDeviceName'] = ami_metadata.get('root_device_name')
+        if ami_metadata.get('image_location') is not None:
+            request['ImageLocation'] = ami_metadata.get('image_location')
 
         if (ami_metadata.get('virtualization_type') == 'paravirtual'):
-            # KernelId required
+            # KernelId required, 
             request['KernelId'] = ami_metadata.get('kernel_id', None)
             if ami_metadata.get('ramdisk_id') is not None:
                 request['RamdiskId'] = ami_metadata.get('ramdisk_id', None)
