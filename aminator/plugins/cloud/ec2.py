@@ -317,6 +317,11 @@ class EC2CloudPlugin(BaseCloudPlugin):
         request['EnaSupport'] = ami_metadata.get('ena_networking', False)
         request['VirtualizationType'] = ami_metadata.get('virtualization_type', None)
 
+        if ami_metadata.get('block_device_map') is not None:
+            request['BlockDeviceMappings'] = ami_metadata.get('block_device_map')
+        if ami_metadata.get('root_device_name') is not None:
+            request['RootDeviceName'] = ami_metadata.get('root_device_name')
+
         if (ami_metadata.get('virtualization_type') == 'paravirtual'):
             # KernelId required
             request['KernelId'] = ami_metadata.get('kernel_id', None)
@@ -327,10 +332,6 @@ class EC2CloudPlugin(BaseCloudPlugin):
         for key, value in request.items():
             if request[key] is None:
                 raise FinalizerException('{} cannot be None'.format(key))
-
-        # these can be None for instance store (S3) AMIs
-        request['BlockDeviceMappings'] = ami_metadata.get('block_device_map', None)
-        request['RootDeviceName'] = ami_metadata.get('root_device_name', None)
 
         # can only be set to 'simple' for hvm.  don't include otherwise
         if ami_metadata.get('sriov_net_support') is not None:
