@@ -104,15 +104,42 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
     def add_plugin_args(self, *args, **kwargs):
         context = self._config.context
-        base_ami = self._parser.add_argument_group(title='Base AMI', description='EITHER AMI id OR name, not both!')
+        base_ami = self._parser.add_argument_group(
+            title='Base AMI', description='EITHER AMI id OR name, not both!')
         base_ami_mutex = base_ami.add_mutually_exclusive_group(required=True)
-        base_ami_mutex.add_argument('-b', '--base-ami-name', dest='base_ami_name', action=conf_action(config=context.ami), help='The name of the base AMI used in provisioning')
-        base_ami_mutex.add_argument('-B', '--base-ami-id', dest='base_ami_id', action=conf_action(config=context.ami), help='The id of the base AMI used in provisioning')
-        cloud = self._parser.add_argument_group(title='EC2 Options', description='EC2 Connection Information')
-        cloud.add_argument('-r', '--region', dest='region', help='EC2 region (default: us-east-1)', action=conf_action(config=context.cloud))
-        cloud.add_argument('--boto-secure', dest='is_secure', help='Connect via https', action=conf_action(config=context.cloud, action='store_true'))
-        cloud.add_argument('--boto-debug', dest='boto_debug', help='Boto debug output', action=conf_action(config=context.cloud, action='store_true'))
-        cloud.add_argument('-V', '--volume-id', dest='volume_id', action=conf_action(config=context.ami), help='The volume id already attached to the system')
+        base_ami_mutex.add_argument(
+            '-b', '--base-ami-name', dest='base_ami_name',
+            action=conf_action(config=context.ami),
+            help='The name of the base AMI used in provisioning')
+        base_ami_mutex.add_argument(
+            '-B', '--base-ami-id', dest='base_ami_id',
+            action=conf_action(config=context.ami),
+            help='The id of the base AMI used in provisioning')
+        cloud = self._parser.add_argument_group(
+            title='EC2 Options', description='EC2 Connection Information')
+        cloud.add_argument(
+            '-r', '--region', dest='region',
+            help='EC2 region (default: us-east-1)',
+            action=conf_action(config=context.cloud))
+        cloud.add_argument(
+            '--boto-secure', dest='is_secure', help='Connect via https',
+            action=conf_action(config=context.cloud, action='store_true'))
+        cloud.add_argument(
+            '--boto-debug', dest='boto_debug', help='Boto debug output',
+            action=conf_action(config=context.cloud, action='store_true'))
+        volume_mutex = cloud.add_mutually_exclusive_group()
+        volume_mutex.add_argument(
+            '-V', '--volume-id', dest='volume_id',
+            action=conf_action(config=context.ami),
+            help='The Base AMI volume id already attached to the system')
+        volume_mutex.add_argument(
+            '--provisioner-ebs-type', dest='provisioner_ebs_type',
+            action=conf_action(config=context.cloud),
+            help='The type of EBS volume to create from the Base AMI snapshot')
+        cloud.add_argument(
+            '--register-ebs-type', dest='register_ebs_type',
+            action=conf_action(config=context.cloud),
+            help='The root volume EBS type for AMI registration')
 
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
@@ -157,7 +184,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._volume = Volume(connection=self._connection)
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
-        self._volume.id = self._connection.create_volume(size=rootdev.size, zone=self._instance.placement, snapshot=rootdev.snapshot_id).id
+        volume_type = context.cloud.provisioner_ebs_type
+        self._volume.id = self._connection.create_volume(
+            size=rootdev.size, zone=self._instance.placement,
+            volume_type=volume_type, snapshot=rootdev.snapshot_id).id
         if not self._volume_available():
             log.critical('{0}: unavailable.')
             return False
@@ -422,6 +452,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def _make_block_device_map(self, block_device_map, root_block_device, delete_on_termination=True):
         """ construct boto3 style BlockDeviceMapping """
 
+        context = self._config.context
+
         bdm = []
 
         # root device
@@ -430,7 +462,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         root_mapping['Ebs'] = {}
         root_mapping['Ebs']['SnapshotId'] = self._snapshot.id
         root_mapping['Ebs']['VolumeSize'] = self._volume.size
-        root_mapping['Ebs']['VolumeType'] = self._volume.type
+        root_mapping['Ebs']['VolumeType'] = context.cloud.register_ebs_type
         root_mapping['Ebs']['DeleteOnTermination'] = delete_on_termination
         bdm.append(root_mapping)
 

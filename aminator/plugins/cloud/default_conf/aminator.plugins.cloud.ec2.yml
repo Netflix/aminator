@@ -9,4 +9,6 @@ ephemeral_devices:
   - /dev/sde
 is_secure: true
 root_device: /dev/sda1
+provisioner_ebs_type: standard
+register_ebs_type: standard
 #region:
