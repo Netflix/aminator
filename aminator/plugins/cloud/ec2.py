@@ -184,7 +184,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         self._volume = Volume(connection=self._connection)
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
-        volume_type = context.cloud.provisioner_ebs_type
+        volume_type = context.cloud.get('provisioner_ebs_type', cloud_config.get('provisioner_ebs_type', 'standard'))
         self._volume.id = self._connection.create_volume(
             size=rootdev.size, zone=self._instance.placement,
             volume_type=volume_type, snapshot=rootdev.snapshot_id).id
@@ -453,8 +453,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
         """ construct boto3 style BlockDeviceMapping """
 
         context = self._config.context
+        cloud_config = self._config.plugins[self.full_name]
 
         bdm = []
+        volume_type = context.cloud.get('register_ebs_type', cloud_config.get('register_ebs_type', 'standard'))
 
         # root device
         root_mapping = {}
