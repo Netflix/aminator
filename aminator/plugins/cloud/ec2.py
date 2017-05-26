@@ -464,7 +464,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         root_mapping['Ebs'] = {}
         root_mapping['Ebs']['SnapshotId'] = self._snapshot.id
         root_mapping['Ebs']['VolumeSize'] = self._volume.size
-        root_mapping['Ebs']['VolumeType'] = context.cloud.register_ebs_type
+        root_mapping['Ebs']['VolumeType'] = volume_type
         root_mapping['Ebs']['DeleteOnTermination'] = delete_on_termination
         bdm.append(root_mapping)
 
