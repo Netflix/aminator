@@ -140,6 +140,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
             '--register-ebs-type', dest='register_ebs_type',
             action=conf_action(config=context.cloud),
             help='The root volume EBS type for AMI registration')
+        cloud.add_argument(
+            '--root-volume-size', dest='root_volume_size',
+            action=conf_action(config=context.ami),
+            help='Root volume size (in GB)')
 
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
@@ -185,8 +189,17 @@ class EC2CloudPlugin(BaseCloudPlugin):
 
         rootdev = context.base_ami.block_device_mapping[context.base_ami.root_device_name]
         volume_type = context.cloud.get('provisioner_ebs_type', cloud_config.get('provisioner_ebs_type', 'standard'))
+        volume_size = context.ami.get('root_volume_size', None)
+        if volume_size is None:
+            volume_size = cloud_config.get('root_volume_size', rootdev.size)
+        if not isinstance(volume_size, int) or volume_size < 1:
+            raise VolumeException('root_volume_size must be a positive integer, received {}'.format(volume_size))
+        if volume_size < rootdev.size:
+            raise VolumeException(
+                'root_volume_size ({}) must be at least as large as the root '
+                'volume of the base AMI ({})'.format(volume_size, rootdev.size))
         self._volume.id = self._connection.create_volume(
-            size=rootdev.size, zone=self._instance.placement,
+            size=volume_size, zone=self._instance.placement,
             volume_type=volume_type, snapshot=rootdev.snapshot_id).id
         if not self._volume_available():
             log.critical('{0}: unavailable.')
@@ -335,7 +348,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return False
 
     @registration_retry(tries=3, delay=1, backoff=1)
-    def _register_image(self, **ami_metadata):
+    def _register_image(self, ami_metadata):
         """Register the AMI using boto3/botocore components which supports ENA
            This is the only use of boto3 in aminator currently"""
 
@@ -444,7 +457,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 ami_metadata['sriov_net_support'] = 'simple'
             ami_metadata['ena_networking'] = context.ami.get('ena_networking', False)
 
-        if not self._register_image(**ami_metadata):
+        if not self._register_image(ami_metadata):
             return False
 
         return True
@@ -452,18 +465,21 @@ class EC2CloudPlugin(BaseCloudPlugin):
     def _make_block_device_map(self, block_device_map, root_block_device, delete_on_termination=True):
         """ construct boto3 style BlockDeviceMapping """
 
-        context = self._config.context
-        cloud_config = self._config.plugins[self.full_name]
-
         bdm = []
-        volume_type = context.cloud.get('register_ebs_type', cloud_config.get('register_ebs_type', 'standard'))
+        volume_type = self.context.cloud.get('register_ebs_type', None)
+        if volume_type is None:
+            volume_type = self.plugin_config.get('register_ebs_type', 'standard'))
+
+        volume_size = self.context.ami.get('root_volume_size'. None)
+        if volume_size is None:
+            volume_size = self.plugin_config.get('root_volume_size', self._volume.size)
 
         # root device
         root_mapping = {}
         root_mapping['DeviceName'] = root_block_device
         root_mapping['Ebs'] = {}
         root_mapping['Ebs']['SnapshotId'] = self._snapshot.id
-        root_mapping['Ebs']['VolumeSize'] = self._volume.size
+        root_mapping['Ebs']['VolumeSize'] = volume_size
         root_mapping['Ebs']['VolumeType'] = volume_type
         root_mapping['Ebs']['DeleteOnTermination'] = delete_on_termination
         bdm.append(root_mapping)
