@@ -30,6 +30,7 @@ from os import makedirs, system
 
 from os import environ
 from aminator.config import conf_action
+from aminator.exceptions import VolumeException
 from aminator.plugins.finalizer.tagging_base import TaggingBaseFinalizerPlugin
 from aminator.util import randword
 from aminator.util.linux import sanitize_metadata, monitor_command
@@ -192,6 +193,14 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
 
     def __enter__(self):
         context = self._config.context
+        volume_size = context.ami.get('root_volume_size', None)
+        if volume_size is None:
+            volume_size = self._cloud.plugin_config.get('root_volume_size', None)
+        if volume_size is not None and isinstance(volume_size, int):
+            if volume_size > self.plugin_config.max_root_volume_size:
+                raise VolumeException(
+                    'Requested root volume size {} exceeds 10G maximum for '
+                    'S3-backed AMIs'.format(volume_size))
 
         environ["AMINATOR_STORE_TYPE"] = "s3"
         if context.ami.get("name", None):
