@@ -468,7 +468,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         bdm = []
         volume_type = self.context.cloud.get('register_ebs_type', None)
         if volume_type is None:
-            volume_type = self.plugin_config.get('register_ebs_type', 'standard'))
+            volume_type = self.plugin_config.get('register_ebs_type', 'standard')
 
         volume_size = self.context.ami.get('root_volume_size'. None)
         if volume_size is None:
