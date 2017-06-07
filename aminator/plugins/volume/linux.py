@@ -27,7 +27,7 @@ import logging
 import os
 
 from aminator.util import retry
-from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount
+from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount, resize2fs
 from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
 from aminator.util.metrics import raises
@@ -83,11 +83,19 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             if not result.success:
                 raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint, result.result.std_err))
 
+    def _resize(self):
+        result = resize2fs(self.context.volume.dev)
+        if not result.success:
+            raise VolumeException(
+                'resize of {} failed: {}'.format(self.context.volume.dev, result.result.std_err))
+
     def _delete(self):
         self._cloud.delete_volume()
 
     def __enter__(self):
         self._attach(self._blockdevice)
+        if self.plugin_config.get('resize_volume', False):
+            self._resize()
         self._mount()
         self._config.context.volume["mountpoint"] = self._mountpoint
         return self._mountpoint
