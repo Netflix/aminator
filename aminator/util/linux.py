@@ -147,6 +147,8 @@ def mounted(path):
 def fsck(dev):
     return monitor_command(['fsck', '-y', dev])
 
+def resize2fs(dev):
+    return monitor_command(['resize2fs', dev])
 
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
