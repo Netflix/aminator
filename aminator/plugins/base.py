@@ -65,6 +65,20 @@ class BasePlugin(object):
     def full_name(self):
         return '{0}.{1}'.format(self.entry_point, self.name)
 
+    @property
+    def full_config(self):
+        return self._config
+
+    @property
+    def plugin_config(self):
+        config = self.full_config.get('plugins', {})
+        plugin_config = config.get(self.full_name, {})
+        return plugin_config
+
+    @property
+    def context(self):
+        return self.full_config.get('context', {})
+
     def configure(self, config, parser):
         """ Configure the plugin and contribute to command line args """
         log.debug("Configuring plugin {0} for entry point {1}".format(self.name, self.entry_point))
@@ -80,7 +94,7 @@ class BasePlugin(object):
     def load_plugin_config(self):
         entry_point = self.entry_point
         name = self.name
-        key = '.'.join((entry_point, name))
+        key = self.full_name
 
         if self._config.plugins.config_root.startswith('~'):
             plugin_conf_dir = os.path.expanduser(self._config.plugins.config_root)

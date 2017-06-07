@@ -19,3 +19,4 @@ default_block_device_map:
   - [/dev/sdd, ephemeral2]
   - [/dev/sde, ephemeral3]
 default_architecture: x86_64
+max_root_volume_size: 10

@@ -11,4 +11,5 @@ is_secure: true
 root_device: /dev/sda1
 provisioner_ebs_type: standard
 register_ebs_type: standard
+root_volume_size: 10
 #region:
