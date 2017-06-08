@@ -192,7 +192,8 @@ class EC2CloudPlugin(BaseCloudPlugin):
         volume_size = context.ami.get('root_volume_size', None)
         if volume_size is None:
             volume_size = cloud_config.get('root_volume_size', rootdev.size)
-        if not isinstance(volume_size, int) or volume_size < 1:
+        volume_size = int(volume_size)
+        if volume_size < 1:
             raise VolumeException('root_volume_size must be a positive integer, received {}'.format(volume_size))
         if volume_size < rootdev.size:
             raise VolumeException(
@@ -470,9 +471,10 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if volume_type is None:
             volume_type = self.plugin_config.get('register_ebs_type', 'standard')
 
-        volume_size = self.context.ami.get('root_volume_size'. None)
+        volume_size = self.context.ami.get('root_volume_size', None)
         if volume_size is None:
             volume_size = self.plugin_config.get('root_volume_size', self._volume.size)
+        volume_size = int(volume_size)
 
         # root device
         root_mapping = {}

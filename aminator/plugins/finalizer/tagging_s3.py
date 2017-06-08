@@ -196,8 +196,9 @@ class TaggingS3FinalizerPlugin(TaggingBaseFinalizerPlugin):
         volume_size = context.ami.get('root_volume_size', None)
         if volume_size is None:
             volume_size = self._cloud.plugin_config.get('root_volume_size', None)
-        if volume_size is not None and isinstance(volume_size, int):
-            if volume_size > self.plugin_config.max_root_volume_size:
+        if volume_size is not None:
+            volume_size = int(volume_size)
+            if volume_size > int(self.plugin_config.max_root_volume_size):
                 raise VolumeException(
                     'Requested root volume size {} exceeds 10G maximum for '
                     'S3-backed AMIs'.format(volume_size))
