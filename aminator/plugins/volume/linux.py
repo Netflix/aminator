@@ -27,7 +27,8 @@ import logging
 import os
 
 from aminator.util import retry
-from aminator.util.linux import MountSpec, busy_mount, mount, mounted, unmount, resize2fs
+from aminator.util.linux import (
+    MountSpec, busy_mount, mount, mounted, unmount, resize2fs, fsck)
 from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
 from aminator.util.metrics import raises
@@ -84,10 +85,16 @@ class LinuxVolumePlugin(BaseVolumePlugin):
                 raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint, result.result.std_err))
 
     def _resize(self):
-        result = resize2fs(self.context.volume.dev)
-        if not result.success:
+        log.info('Checking and repairing root volume as necessary')
+        fsck_op = fsck(self.context.volume.dev)
+        if not fsck_op.success:
             raise VolumeException(
-                'resize of {} failed: {}'.format(self.context.volume.dev, result.result.std_err))
+                'fsck of {} failed: {}'.format(self.context.volume.dev, fsck_op.result.std_err))
+        log.info('Attempting to resize root fs to fill volume')
+        resize_op = resize2fs(self.context.volume.dev)
+        if not resize_op.success:
+            raise VolumeException(
+                'resize of {} failed: {}'.format(self.context.volume.dev, resize_op.result.std_err))
 
     def _delete(self):
         self._cloud.delete_volume()
