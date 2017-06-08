@@ -143,7 +143,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         cloud.add_argument(
             '--root-volume-size', dest='root_volume_size',
             action=conf_action(config=context.ami),
-            help='Root volume size (in GB)')
+            help='Root volume size (in GB). The default is to inherit from the base AMI.')
 
     def configure(self, config, parser):
         super(EC2CloudPlugin, self).configure(config, parser)
@@ -191,7 +191,9 @@ class EC2CloudPlugin(BaseCloudPlugin):
         volume_type = context.cloud.get('provisioner_ebs_type', cloud_config.get('provisioner_ebs_type', 'standard'))
         volume_size = context.ami.get('root_volume_size', None)
         if volume_size is None:
-            volume_size = cloud_config.get('root_volume_size', rootdev.size)
+            volume_size = cloud_config.get('root_volume_size', None)
+            if volume_size is None:
+                volume_size = rootdev.size
         volume_size = int(volume_size)
         if volume_size < 1:
             raise VolumeException('root_volume_size must be a positive integer, received {}'.format(volume_size))
