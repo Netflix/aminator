@@ -473,9 +473,12 @@ class EC2CloudPlugin(BaseCloudPlugin):
         if volume_type is None:
             volume_type = self.plugin_config.get('register_ebs_type', 'standard')
 
+        rootdev = self.context.base_ami.block_device_mapping[self.context.base_ami.root_device_name]
         volume_size = self.context.ami.get('root_volume_size', None)
         if volume_size is None:
-            volume_size = self.plugin_config.get('root_volume_size', self._volume.size)
+            volume_size = self.plugin_config.get('root_volume_size', None)
+            if volume_size is None:
+                volume_size = rootdev.size
         volume_size = int(volume_size)
 
         # root device
