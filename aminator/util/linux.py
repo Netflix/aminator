@@ -145,7 +145,13 @@ def mounted(path):
 
 
 def fsck(dev):
-    return monitor_command(['fsck', '-y', '-f', dev])
+    cmd = monitor_command(['fsck', '-y', '-f', dev])
+    # e2fsck will exit 1 if it finds and corrects filesystem problems.
+    # consider that a success but fail all other exits as they should be legitimate
+    # problems that prevent a bake.
+    if not cmd.success and cmd.result.status_code == 1:
+        cmd = CommandResult(True, cmd.result)
+    return cmd
 
 
 def resize2fs(dev):
