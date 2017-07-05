@@ -68,10 +68,10 @@ def registration_retry(ExceptionToCheck=(ClientError,), tries=3, delay=1, backof
                 return f(*args, **kwargs)
             except ExceptionToCheck, e:
                 if e.response['Error']['Code'] == 'InvalidAMIName.Duplicate':
-                    log.debug('Duplicate AMI Name {0}, retrying'.format(kwargs['name']))
+                    log.debug('Duplicate AMI Name {0}, retrying'.format(kwargs['Name']))
                     attempt = abs(_tries - (total_tries + 1))
-                    kwargs['name'] = kwargs.pop('name') + str(attempt)
-                    log.debug('Trying name {0}'.format(kwargs['name']))
+                    kwargs['Name'] = kwargs.pop('Name') + str(attempt)
+                    log.debug('Trying Name {0}'.format(kwargs['Name']))
                     sleep(_delay)
                     _tries -= 1
                     _delay *= backoff
