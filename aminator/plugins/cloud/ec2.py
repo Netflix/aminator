@@ -68,10 +68,10 @@ def registration_retry(ExceptionToCheck=(ClientError,), tries=3, delay=1, backof
                 return f(*args, **kwargs)
             except ExceptionToCheck, e:
                 if e.response['Error']['Code'] == 'InvalidAMIName.Duplicate':
-                    log.debug('Duplicate AMI Name {0}, retrying'.format(kwargs['Name']))
+                    log.debug('Duplicate AMI name {0}, retrying'.format(kwargs['name']))
                     attempt = abs(_tries - (total_tries + 1))
-                    kwargs['Name'] = kwargs.pop('Name') + str(attempt)
-                    log.debug('Trying Name {0}'.format(kwargs['Name']))
+                    kwargs['name'] = kwargs.pop('name') + str(attempt)
+                    log.debug('Trying name {0}'.format(kwargs['name']))
                     sleep(_delay)
                     _tries -= 1
                     _delay *= backoff
@@ -351,7 +351,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         return False
 
     @registration_retry(tries=3, delay=1, backoff=1)
-    def _register_image(self, ami_metadata):
+    def _register_image(self, **ami_metadata):
         """Register the AMI using boto3/botocore components which supports ENA
            This is the only use of boto3 in aminator currently"""
 
@@ -460,7 +460,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
                 ami_metadata['sriov_net_support'] = 'simple'
             ami_metadata['ena_networking'] = context.ami.get('ena_networking', False)
 
-        if not self._register_image(ami_metadata):
+        if not self._register_image(**ami_metadata):
             return False
 
         return True
