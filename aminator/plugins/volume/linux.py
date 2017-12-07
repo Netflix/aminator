@@ -28,7 +28,7 @@ import os
 
 from aminator.util import retry
 from aminator.util.linux import (
-    MountSpec, busy_mount, mount, mounted, unmount, resize2fs, fsck)
+    MountSpec, busy_mount, mount, mounted, unmount, resize2fs, fsck, growpart)
 from aminator.exceptions import VolumeException
 from aminator.plugins.volume.base import BaseVolumePlugin
 from aminator.util.metrics import raises
@@ -43,7 +43,11 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     def _attach(self, blockdevice):
         with blockdevice(self._cloud) as dev:
             self._dev = dev
-            self._config.context.volume["dev"] = self._dev
+            if blockdevice.partition is not None:
+                devpart = '{0}{1}'.format(dev, blockdevice.partition)
+                self.context.volume['dev'] = devpart
+            else:
+                self.context.volume['dev'] = self._dev
             self._cloud.attach_volume(self._dev)
 
     def _detach(self):
@@ -60,13 +64,7 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             os.makedirs(self._mountpoint)
 
         if not mounted(self._mountpoint):
-            # Handle optional partition
-            dev = self._dev
-            if self._blockdevice.partition is not None:
-                dev = '{0}{1}'.format(dev, self._blockdevice.partition)
-
-            mountspec = MountSpec(dev, None, self._mountpoint, None)
-
+            mountspec = MountSpec(self.context.volume.dev, None, self._mountpoint, None)
             result = mount(mountspec)
             if not result.success:
                 msg = 'Unable to mount {0.dev} at {0.mountpoint}: {1}'.format(mountspec, result.result.std_err)
@@ -91,6 +89,14 @@ class LinuxVolumePlugin(BaseVolumePlugin):
             raise VolumeException(
                 'fsck of {} failed: {}'.format(self.context.volume.dev, fsck_op.result.std_err))
         log.info('Attempting to resize root fs to fill volume')
+        if self._blockdevice.partition is not None:
+            log.info('Growing partition if necessary')
+            growpart_op = growpart(self._dev, self._blockdevice.partition)
+            if not growpart_op.success:
+                volmsg = 'growpart of {} partition {} failed: {}'
+                raise VolumeException(
+                    volmsg.format(
+                        self._dev, self._blockdevice.partition, growpart_op.result.std_err))
         resize_op = resize2fs(self.context.volume.dev)
         if not resize_op.success:
             raise VolumeException(
