@@ -158,6 +158,15 @@ def resize2fs(dev):
     return monitor_command(['resize2fs', dev])
 
 
+def growpart(dev, part):
+    cmd = monitor_command(['growpart', dev, part])
+    # growpart exits 1 when there is no free space to grow into, exits 2
+    # when a legitimate error is thrown
+    if not cmd.success and cmd.result.status_code == 1:
+        cmd = CommandResult(True, cmd.result)
+    return cmd
+
+
 def mount(mountspec):
     if not any((mountspec.dev, mountspec.mountpoint)):
         log.error('Must provide dev or mountpoint')
