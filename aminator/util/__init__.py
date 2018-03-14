@@ -30,6 +30,11 @@ from time import sleep
 
 from decorator import decorator
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 
 log = logging.getLogger(__name__)
 

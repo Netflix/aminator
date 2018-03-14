@@ -66,7 +66,7 @@ def registration_retry(ExceptionToCheck=(ClientError,), tries=3, delay=1, backof
         while _tries > 0:
             try:
                 return f(*args, **kwargs)
-            except ExceptionToCheck, e:
+            except ExceptionToCheck as e:
                 if e.response['Error']['Code'] == 'InvalidAMIName.Duplicate':
                     log.debug('Duplicate AMI name {0}, retrying'.format(kwargs['name']))
                     attempt = abs(_tries - (total_tries + 1))

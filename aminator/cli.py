@@ -83,7 +83,7 @@ def plugin_manager():
 
     if args.command == 'search':
         if not args.name:
-            print "ERROR: You must supply a keyword to search for"
+            print("ERROR: You must supply a keyword to search for")
             sys.exit()
 
         results = []
@@ -102,9 +102,9 @@ def plugin_manager():
                 results.append("Name:        %s\nAliases:     %s\nType:        %s\nDescription: %s" % (name, ", ".join(data['aliases']), data['type'], data['description']))
 
         if len(results) == 0:
-            print "No plugins found for keyword %s" % args.name
+            print("No plugins found for keyword %s" % args.name)
         else:
-            print "\n----------\n".join(results)
+            print("\n----------\n".join(results))
 
     elif args.command == 'list':
         results = []
@@ -114,17 +114,17 @@ def plugin_manager():
             results.append("Name:        %s\nAliases:     %s\nType:        %s\nDescription: %s" % (name, ", ".join(data['aliases']), data['type'], data['description']))
 
         if len(results) == 0:
-            print "No plugins found"
+            print("No plugins found")
         else:
-            print "\n----------\n".join(results)
+            print("\n----------\n".join(results))
 
     elif args.command == 'install':
         if not args.name:
-            print "ERROR: You must supply a plugin name to install"
+            print("ERROR: You must supply a plugin name to install")
             sys.exit()
 
         if os.geteuid() != 0:
-            print "ERROR: You must run installs as root (or through sudo)"
+            print("ERROR: You must run installs as root (or through sudo)")
             sys.exit()
 
         rgx = re.compile('^%s$' % args.name, re.I)
@@ -142,11 +142,11 @@ def plugin_manager():
                 plugin = data
 
         if not plugin:
-            print "Unable to find a plugin named %s. You should use the search to find the correct name or alias for the plugin you want to install" % args.name
+            print("Unable to find a plugin named %s. You should use the search to find the correct name or alias for the plugin you want to install" % args.name)
             sys.exit()
         else:
             url = 'https://github.com/aminator-plugins/%s/archive/%s.tar.gz' % (plugin['repo_name'], plugin['branch'])
-            print "Downloading latest version of %s from %s" % (args.name, url)
+            print("Downloading latest version of %s from %s" % (args.name, url))
             req = requests.get(url, stream=True)
 
             tar = tarfile.open(mode="r:*", fileobj=StringIO(req.raw.read()))
@@ -166,7 +166,7 @@ def plugin_manager():
                 errf.write(err)
                 errf.close()
 
-                print "Plugin installation failed. You should look at install.log and install.err in the installation folder, %s, for the cause of the failure" % tmpdir
+                print("Plugin installation failed. You should look at install.log and install.err in the installation folder, %s, for the cause of the failure" % tmpdir)
             else:
-                print "%s plugin installed successfully, removing temp dir %s" % (args.name, tmpdir)
+                print("%s plugin installed successfully, removing temp dir %s" % (args.name, tmpdir))
                 shutil.rmtree(tmpdir)

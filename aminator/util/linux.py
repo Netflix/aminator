@@ -278,7 +278,7 @@ def copy_image(src=None, dst=None):
     """
     try:
         src_fd = os.open(src, os.O_RDONLY)
-        dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
+        dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0o644)
         blks = 0
         blksize = 64 * 1024
         log.debug("copying {0} to {1}".format(src, dst))

@@ -34,6 +34,11 @@ from aminator.plugins.blockdevice.base import BaseBlockDevicePlugin
 from aminator.util.linux import flock, locked, native_device_prefix
 from aminator.util.metrics import raises
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 __all__ = ('LinuxBlockDevicePlugin',)
 log = logging.getLogger(__name__)
 
