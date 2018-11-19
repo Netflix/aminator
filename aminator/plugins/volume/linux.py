@@ -29,7 +29,7 @@ import os
 from aminator.util import retry
 from aminator.util.linux import (
     MountSpec, busy_mount, mount, mounted, unmount, resize2fs, fsck, growpart)
-from aminator.exceptions import VolumeException
+from aminator.exceptions import VolumeException, CommandException
 from aminator.plugins.volume.base import BaseVolumePlugin
 from aminator.util.metrics import raises
 
@@ -76,11 +76,17 @@ class LinuxVolumePlugin(BaseVolumePlugin):
     @retry(VolumeException, tries=6, delay=1, backoff=2, logger=log)
     def _unmount(self):
         if mounted(self._mountpoint):
-            if busy_mount(self._mountpoint).success:
-                raise VolumeException('Unable to unmount {0} from {1}'.format(self._dev, self._mountpoint))
-            result = unmount(self._mountpoint)
-            if not result.success:
-                raise VolumeException('Unable to unmount {0} from {1}: {2}'.format(self._dev, self._mountpoint, result.result.std_err))
+            try:
+                result = unmount(self._mountpoint)
+            except CommandException as ce:
+                err = 'Unable to unmount {0} from {1}'
+                err = err.format(self._dev, self._mountpoint)
+                raise VolumeException(err)
+            else:
+                if not result.success:
+                    err = 'Unable to unmount {0} from {1}: {2}'
+                    err = err.format(self._dev, self._mountpoint, result.result.std_err)
+                    raise VolumeException(err)
 
     def _resize(self):
         log.info('Checking and repairing root volume as necessary')

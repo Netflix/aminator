@@ -46,6 +46,9 @@ from subprocess import Popen, PIPE
 
 from decorator import decorator
 
+from . import retry
+from ..exceptions import CommandException
+
 
 log = logging.getLogger(__name__)
 MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
@@ -195,8 +198,17 @@ def mount(mountspec):
     return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
 
 
+@retry(CommandException, tries=10, delay=1, backoff=1, logger=log, maxdelay=1)
 def unmount(dev):
-    return monitor_command(['umount', dev])
+    result = monitor_command(['umount', dev])
+    if not result.success:
+        if os.path.isdir(dev) and busy_mount(dev).success:
+            err = 'Unable to unmount {0}, device appears busy: {1}'
+            err = err.format(dev, result.result.std_err)
+        else:
+            err = 'Unable to unmount {0}: {1}'.format(dev, result.result.std_err)
+        raise CommandException(err)
+    return result
 
 
 def busy_mount(mountpoint):

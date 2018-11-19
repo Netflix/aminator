@@ -27,7 +27,7 @@ import abc
 import logging
 import os
 
-from aminator.exceptions import VolumeException
+from aminator.exceptions import VolumeException, CommandException
 from aminator.plugins.distro.base import BaseDistroPlugin
 from aminator.util.linux import lifo_mounts, mount, mounted, MountSpec, unmount
 from aminator.util.linux import install_provision_configs, remove_provision_configs
@@ -166,17 +166,31 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
             if not mounted(mountspec.mountpoint):
                 log.warning('{0} not mounted'.format(mountspec.mountpoint))
                 continue
-            result = unmount(mountspec.mountpoint)
-            if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
+            try:
+                result = unmount(mountspec.mountpoint)
+            except CommandException as ce:
+                log.error('Unable to unmount {0}'.format(mountspec.mountpoint))
                 return False
+            else:
+                if not result.success:
+                    log.error(
+                        'Unable to unmount {0.mountpoint}: '
+                        '{1.std_err}'.format(mountspec, result.result))
+                    return False
         log.debug('Checking for stray mounts')
         for mountpoint in lifo_mounts(self._mountpoint):
             log.debug('Stray mount found: {0}, attempting to unmount'.format(mountpoint))
-            result = unmount(mountpoint)
-            if not result.success:
-                log.error('Unable to unmount {0.mountpoint}: {1.std_err}'.format(mountspec, result.result))
+            try:
+                result = unmount(mountpoint)
+            except CommandException as ce:
+                log.error('Unable to unmount {0}'.format(mountspec.mountpoint))
                 return False
+            else:
+                if not result.success:
+                    log.error(
+                        'Unable to unmount {0.mountpoint}: '
+                        '{1.std_err}'.format(mountspec, result.result))
+                    return False
         log.debug('Teardown of chroot mounts succeeded!')
         return True
 

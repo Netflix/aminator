@@ -50,3 +50,7 @@ class ProvisionException(AminateException):
 
 class FinalizerException(AminateException):
     """ Errors during finalizing """
+
+
+class CommandException(AminateException):
+    """ Errors from external commands """
