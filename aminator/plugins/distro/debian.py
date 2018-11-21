@@ -24,7 +24,7 @@ aminator.plugins.distro.debian
 basic debian distro
 """
 import logging
-import os
+import os.path
 
 from aminator.plugins.distro.linux import BaseLinuxDistroPlugin
 
@@ -48,9 +48,10 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
         if not super(DebianDistroPlugin, self)._deactivate_provisioning_service_block():
             return False
 
-        config = self._config.plugins[self.full_name]
-        path = self._mountpoint + config.get('policy_file_path', '')
-        filename = path + "/" + config.get('policy_file')
+        config = self.plugin_config
+        path = os.path.join(
+            self.root_mountspec.mountpoint, config.get('policy_file_path', ''))
+        filename = os.path.join(path, config.get('policy_file'))
 
         if not os.path.isdir(path):
             log.debug("creating %s", path)
@@ -73,10 +74,12 @@ class DebianDistroPlugin(BaseLinuxDistroPlugin):
         if not super(DebianDistroPlugin, self)._activate_provisioning_service_block():
             return False
 
-        config = self._config.plugins[self.full_name]
+        config = self.plugin_config
 
-        policy_file = self._mountpoint + "/" + config.get('policy_file_path', '') + "/" + \
-            config.get('policy_file', '')
+        policy_file = os.path.join(
+            self.root_mountspec.mountpoint,
+            config.get('policy_file_path', ''),
+            config.get('policy_file', ''))
 
         if os.path.isfile(policy_file):
             log.debug("removing %s", policy_file)

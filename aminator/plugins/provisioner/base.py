@@ -85,9 +85,9 @@ class BaseProvisionerPlugin(BasePlugin):
         log.debug('Pre chroot command block')
         self._pre_chroot_block()
 
-        log.debug('Entering chroot at {0}'.format(self._distro._mountpoint))
+        log.debug('Entering chroot at {0}'.format(self._distro.root_mountspec.mountpoint))
 
-        with Chroot(self._distro._mountpoint):
+        with Chroot(self._distro.root_mountspec.mountpoint):
             log.debug('Inside chroot')
 
             result = self._provision_package()
@@ -167,7 +167,9 @@ class BaseProvisionerPlugin(BasePlugin):
         """
         context = self._config.context
         context.package.file = os.path.basename(context.package.arg)
-        context.package.full_path = os.path.join(self._distro._mountpoint, context.package.dir.lstrip('/'), context.package.file)
+        root_path = self._distro.root_mountspec.mountpoint
+        stage_path = os.path.join(root_path, context.package.dir.lstrip('/'))
+        context.package.full_path = os.path.join(stage_path, context.package.file)
         try:
             if any(protocol in context.package.arg for protocol in ['http://', 'https://']):
                 self._download_pkg(context)

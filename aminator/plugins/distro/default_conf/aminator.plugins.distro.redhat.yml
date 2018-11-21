@@ -13,6 +13,8 @@ chroot_mounts:
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
 
+recursive_unmount: false
+
 provision_configs: true
 provision_config_files:
   - /etc/resolv.conf
