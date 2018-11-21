@@ -51,7 +51,3 @@ class BaseDistroPlugin(BasePlugin):
             log.debug('Exception encountered in distro plugin context manager',
                       exc_info=(exc_type, exc_value, trace))
         return False
-
-    def __call__(self, mountpoint):
-        self._mountpoint = mountpoint
-        return self

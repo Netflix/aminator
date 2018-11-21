@@ -8,12 +8,13 @@ short_circuit_files:
 chroot_mounts:
     - [proc, proc, /proc, null]
     - [sysfs, sysfs, /sys, null]
-    # Note: on Ubuntu Xenial (16.04) you need --make-private option on the
-    # /dev bind mount which can be accomplished with:
-    # - [/dev, bind, /dev, "rw --make-private"]
+    # Note: on Ubuntu 16.04 and later, bind mounts need the 'private' option
+    # - [/dev, bind, /dev, 'private']
     - [/dev, bind, /dev, null]
     - [devpts, devpts, /dev/pts, null]
     - [binfmt_misc, binfmt_misc, /proc/sys/fs/binfmt_misc, null]
+
+recursive_unmount: false
 
 provision_configs: true
 provision_config_files:

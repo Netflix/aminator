@@ -57,8 +57,8 @@ class Environment(object):
         with self.metrics:  # pylint: disable=no-member
             with self.cloud as cloud:  # pylint: disable=no-member
                 with self.finalizer(cloud) as finalizer:  # pylint: disable=no-member
-                    with self.volume(self.cloud, self.blockdevice) as volume:  # pylint: disable=no-member
-                        with self.distro(volume) as distro:  # pylint: disable=no-member
+                    with self.volume(self.cloud, self.blockdevice):  # pylint: disable=no-member
+                        with self.distro as distro:  # pylint: disable=no-member
                             success = self.provisioner(distro).provision()  # pylint: disable=no-member
                             if not success:
                                 log.critical('Provisioning failed!')

@@ -46,9 +46,6 @@ from subprocess import Popen, PIPE
 
 from decorator import decorator
 
-from . import retry
-from ..exceptions import CommandException
-
 
 log = logging.getLogger(__name__)
 MountSpec = namedtuple('MountSpec', 'dev fstype mountpoint options')
@@ -141,8 +138,8 @@ def monitor_command(cmd, timeout=None):
     return CommandResult(status_code == 0, Response(cmdStr, std_err, std_out, status_code))
 
 
-def mounted(path):
-    pat = path.strip() + ' '
+def mounted(mountspec):
+    pat = mountspec.mountpoint.strip() + ' '
     with open('/proc/mounts') as mounts:
         return any(pat in mount for mount in mounts)
 
@@ -175,7 +172,7 @@ def mount(mountspec):
         log.error('Must provide dev or mountpoint')
         return None
 
-    fstype_arg = options_arg = ''
+    fstype_arg = options_arg = None
 
     mountpoint = mountspec.mountpoint
 
@@ -195,24 +192,41 @@ def mount(mountspec):
     if mountspec.options:
         options_arg = '-o ' + mountspec.options
 
-    return monitor_command('mount {0} {1} {2} {3}'.format(fstype_arg, options_arg, mountspec.dev, mountspec.mountpoint))
+    cmd = ['mount']
+    if fstype_arg is not None:
+        cmd.append(fstype_arg)
+    if options_arg is not None:
+        cmd.append(options_arg)
+    cmd.extend([mountspec.dev, mountspec.mountpoint])
+    return monitor_command(' '.join(cmd))
 
 
-@retry(CommandException, tries=10, delay=1, backoff=1, logger=log, maxdelay=1)
-def unmount(dev):
-    result = monitor_command(['umount', dev])
-    if not result.success:
-        if os.path.isdir(dev) and busy_mount(dev).success:
-            err = 'Unable to unmount {0}, device appears busy: {1}'
-            err = err.format(dev, result.result.std_err)
-        else:
-            err = 'Unable to unmount {0}: {1}'.format(dev, result.result.std_err)
-        raise CommandException(err)
-    return result
+def unmount(mountspec, verbose=True, recursive=False):
+    cmd = ['umount']
+    if verbose:
+        cmd.append('--verbose')
+    if recursive:
+        cmd.append('--recursive')
+    cmd.append(mountspec.mountpoint)
+    return monitor_command(cmd)
 
 
 def busy_mount(mountpoint):
-    return monitor_command(['lsof', '-X', mountpoint])
+    lsof = monitor_command(['lsof', '-X', mountpoint])
+    # lsof against a bind-mounted /dev will show open handles against /dev
+    # so filter such that we only return open handles explicitly containing
+    # the mountpoint
+    if not lsof.success or len(lsof.result.std_out) == 0:
+        return lsof
+    stdout_lines = lsof.result.std_out.split('\n')
+    header = stdout_lines[0]
+    filtered_lines = [line for line in stdout_lines if mountpoint in line]
+    new_success = len(filtered_lines) > 0
+    new_out = '\n'.join([header] + filtered_lines)
+    # repackage the response
+    resp = Response(
+        lsof.result.command, lsof.result.std_err, new_out, lsof.result.status_code)
+    return CommandResult(new_success, resp)
 
 
 def sanitize_metadata(word):
@@ -271,7 +285,7 @@ class Chroot(object):
         return False
 
 
-def lifo_mounts(root=None):
+def lifo_mounts(root):
     """return list of mount points mounted on 'root'
     and below in lifo order from /proc/mounts."""
     with open('/proc/mounts') as proc_mounts:
@@ -290,7 +304,7 @@ def copy_image(src=None, dst=None):
     """
     try:
         src_fd = os.open(src, os.O_RDONLY)
-        dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0644)
+        dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT, 0o644)
         blks = 0
         blksize = 64 * 1024
         log.debug("copying {0} to {1}".format(src, dst))

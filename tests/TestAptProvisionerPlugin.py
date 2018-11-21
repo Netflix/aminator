@@ -18,13 +18,14 @@
 #
 #
 import logging
-import os
+import os.path
 
 from aminator.util.linux import keyval_parse, Response, CommandResult
 
 from aminator.plugins.provisioner.apt import AptProvisionerPlugin
 from aminator.config import Config
-from collections import namedtuple
+from aminator.util.linux import MountSpec
+
 
 log = logging.getLogger(__name__)
 console = logging.StreamHandler()
@@ -49,11 +50,12 @@ class TestAptProvisionerPlugin(object):
         config = self.plugin._config.plugins['aminator.plugins.provisioner.apt']
 
         # use /tmp if not configured, ideally to use tempfile, but needs C build
-        self.full_path = config.get('mountpoint', '/tmp') + "/" + \
-                         config.get('policy_file_path', '/usr/sbin') + "/" + \
-                         config.get('policy_file', 'policy-rc.d')
+        self.full_path = os.path.join(
+            config.get('mountpoint', '/tmp'),
+            config.get('policy_file_path', '/usr/sbin'),
+            config.get('policy_file', 'policy-rc.d'))
 
-        self.plugin._mountpoint = config.get('mountpoint', '/tmp')
+        self.plugin._root_mountspec = MountSpec(None, None, config.get('mountpoint', '/tmp'), None)
 
         # cleanup
         if os.path.isfile(self.full_path):
@@ -74,7 +76,7 @@ class TestAptProvisionerPlugin(object):
         assert original_content == content
 
         assert self.plugin._activate_provisioning_service_block()
-        assert False == os.path.isfile(self.full_path)
+        assert os.path.isfile(self.full_path)
 
     def test_metadata(self):
         """ test that given we get back the metadata we expect
@@ -112,6 +114,7 @@ class TestAptProvisionerPlugin(object):
 
         assert result['Build-Number'] == '357'
         assert result['Build-Job'] == 'JOB-helloWorld'
+
 
 @keyval_parse()
 def parse_command_result(data):
