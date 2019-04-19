@@ -107,7 +107,8 @@ class BaseLinuxDistroPlugin(BaseDistroPlugin):
                 if open_files.success:
                     err = '{0}. Device has open files:\n{1}'.format(err, open_files.result.std_out)
                 raise VolumeException(err)
-        log.debug('Unmounted {0.mountpoint}'.format(mountspec))
+        if hasattr(mountspec, 'mountpoint'):
+            log.debug('Unmounted {0.mountpoint}'.format(mountspec))
 
     @fails("aminator.distro.linux.configure_chroot.error")
     @timer("aminator.distro.linux.configure_chroot.duration")

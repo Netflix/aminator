@@ -139,6 +139,9 @@ def monitor_command(cmd, timeout=None):
 
 
 def mounted(mountspec):
+    if not hasattr(mountspec, 'mountpoint'):
+        return False
+        
     pat = mountspec.mountpoint.strip() + ' '
     with open('/proc/mounts') as mounts:
         return any(pat in mount for mount in mounts)
