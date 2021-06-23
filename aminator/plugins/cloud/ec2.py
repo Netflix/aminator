@@ -76,8 +76,15 @@ def registration_retry(ExceptionToCheck=(ClientError,), tries=3, delay=1, backof
                     _tries -= 1
                     _delay *= backoff
                 else:
-                    log.critical("Unable to retry register_image due to ClientError: %s", e)
-                    return False
+                    # This could be a retryable error, such as ec2 api throttling
+                    _tries -= 1
+                    if (_tries > 0):
+                        log.critical("ClientError registering image, retrying: %s", e)
+                        sleep(_delay)
+                        _delay *= backoff
+                    else:
+                        log.critical("Unable to retry register_image due to ClientError: %s", e)
+                        return False
         log.critical('Failed to register AMI')
         return False
     return _retry
@@ -350,7 +357,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('{0} not stale, using'.format(dev))
         return False
 
-    @registration_retry(tries=3, delay=1, backoff=1)
+    @registration_retry(tries=5, delay=2, backoff=2)
     def _register_image(self, **ami_metadata):
         """Register the AMI using boto3/botocore components which supports ENA
            This is the only use of boto3 in aminator currently"""
@@ -501,7 +508,7 @@ class EC2CloudPlugin(BaseCloudPlugin):
         log.debug('Created BlockDeviceMapping [{}]'.format(bdm))
         return bdm
 
-    @retry(FinalizerException, tries=3, delay=1, backoff=2, logger=log)
+    @retry(FinalizerException, tries=5, delay=2, backoff=2, logger=log)
     def add_tags(self, resource_type):
         context = self._config.context
 
