@@ -38,6 +38,7 @@ from contextlib import contextmanager
 from copy import copy
 from fcntl import fcntl, F_GETFL, F_SETFL, LOCK_EX, LOCK_UN, LOCK_NB
 from fcntl import flock as _flock
+from glob import glob
 from os import O_NONBLOCK, environ, makedirs
 from os.path import isdir, dirname
 from select import select
@@ -366,14 +367,56 @@ def root_check():
     return None
 
 
-def native_device_prefix(prefixes):
-    log.debug('Getting the OS-native device prefix from potential prefixes: {0}'.format(prefixes))
+def is_nvme():
+    return any(glob('/sys/block/nvme*n*'))
+
+
+# on NVMe instances with udev rules configured, /dev/<prefix>* will be symlinks to
+# the real NVMe block devices under /sys/block
+def nvme_device_prefix(prefixes):
+    log.debug('Getting OS-native device prefix from candidates: {}'.format(prefixes))
+    log.debug('NVMe system detected, searchinig /dev')
+    devpat = '/dev/{}*'
     for prefix in prefixes:
-        if any(device.startswith(prefix) for device in os.listdir('/sys/block')):
-            log.debug('Native prefix is {0}'.format(prefix))
+        devices = glob(devpat.format(prefix))
+        if any(devices):
+            test_device = devices[0]
+            if not os.path.islink(test_device):
+                log.debug('Device {} does not appear to be a symlink, skipping'.format(test_device))
+                continue
+            # sanity check
+            target = os.path.realpath(test_device)
+            if not os.path.exists(target):
+                log.debug('Device {} points to {} which does not exist, '
+                          'skipping'.format(test_device, target))
+                continue
+            if not target.startswith('/dev/nvme'):
+                log.debug('Device {} points to {} which does not appear to be '
+                          'NVMe, skipping'.format(test_device, target))
+                continue
+            log.debug('Device {} points to {}, prefix is {}'.format(test_device, target, prefix))
             return prefix
-    log.debug('{0} contains no native device prefixes'.format(prefixes))
-    return None
+
+    else:
+        log.debug('No candidates found under /dev, falling back to standard search')
+        return standard_device_prefix(prefixes)
+
+
+def standard_device_prefix(prefixes):
+    log.debug('Getting OS-native device prefix from candidates: {}'.format(prefixes))
+    log.debug('Non-NVMe system or NVMe-fallback, searching /sys/block')
+    devpat = '/sys/block/{}*'
+    for prefix in prefixes:
+        if any(glob(devpat.format(prefix))):
+            log.debug('Prefix {} derived from existing devices under /sys/block'.format(prefix))
+            return prefix
+    else:
+        log.error('Unable to determine block device prefix from candidates: {}'.format(prefixes))
+        return None
+
+
+def native_device_prefix(prefixes):
+    return nvme_device_prefix(prefixes) if is_nvme() else standard_device_prefix(prefixes)
 
 
 def device_prefix(source_device):
